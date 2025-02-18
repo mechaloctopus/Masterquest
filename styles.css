@@ -13,11 +13,11 @@ canvas {
 /* Joystick */
 #joystickContainer {
     position: absolute;
-    bottom: 15%;
+    bottom: 10%;
     left: 5%;
-    width: 100px;
-    height: 100px;
-    background: rgba(0, 255, 0, 0.3); /* Visible for testing */
+    width: 120px;
+    height: 120px;
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 50%;
     touch-action: none;
 }
@@ -25,7 +25,7 @@ canvas {
 /* Jump Button */
 #jumpButton {
     position: absolute;
-    bottom: 15%;
+    bottom: 10%;
     right: 10%;
     width: 80px;
     height: 80px;
