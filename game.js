@@ -3,15 +3,15 @@ window.addEventListener("DOMContentLoaded", function () {
     const engine = new BABYLON.Engine(canvas, true);
     const scene = new BABYLON.Scene(engine);
 
-    // Enable physics engine
+    // Enable physics
     const gravityVector = new BABYLON.Vector3(0, -9.81, 0);
     const physicsPlugin = new BABYLON.CannonJSPlugin();
     scene.enablePhysics(gravityVector, physicsPlugin);
 
-    // Create a light
+    // Add lighting
     const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
 
-    // Create ground
+    // Add ground
     const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 50, height: 50 }, scene);
     ground.physicsImpostor = new BABYLON.PhysicsImpostor(
         ground, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.1 }, scene
@@ -22,8 +22,15 @@ window.addEventListener("DOMContentLoaded", function () {
     player.attachControl(canvas, true);
     player.applyGravity = true;
     player.checkCollisions = true;
-    player.ellipsoid = new BABYLON.Vector3(1, 1, 1); // Player collision box
+    player.ellipsoid = new BABYLON.Vector3(1, 1, 1);
     scene.activeCamera = player;
+
+    // Test Walls
+    const wall1 = BABYLON.MeshBuilder.CreateBox("wall1", { height: 3, width: 10, depth: 1 }, scene);
+    wall1.position.set(0, 1.5, 5);
+
+    const wall2 = BABYLON.MeshBuilder.CreateBox("wall2", { height: 3, width: 10, depth: 1 }, scene);
+    wall2.position.set(0, 1.5, -5);
 
     // Movement Variables
     let moveX = 0, moveZ = 0;
@@ -45,7 +52,7 @@ window.addEventListener("DOMContentLoaded", function () {
         if (!joystickActive) return;
         const dx = event.touches[0].clientX - startX;
         const dy = event.touches[0].clientY - startY;
-        moveX = dx / 50; // Normalize values
+        moveX = dx / 50;
         moveZ = dy / 50;
     });
 
@@ -66,13 +73,10 @@ window.addEventListener("DOMContentLoaded", function () {
 
     canvas.addEventListener("touchmove", (event) => {
         if (lastTouchX === null || lastTouchY === null) return;
-
         const deltaX = event.touches[0].clientX - lastTouchX;
         const deltaY = event.touches[0].clientY - lastTouchY;
-
         player.rotation.y -= deltaX * 0.002;
         player.rotation.x -= deltaY * 0.002;
-
         lastTouchX = event.touches[0].clientX;
         lastTouchY = event.touches[0].clientY;
     });
@@ -98,4 +102,6 @@ window.addEventListener("DOMContentLoaded", function () {
     window.addEventListener("resize", () => {
         engine.resize();
     });
+
+    console.log("Game loaded successfully!");
 });
