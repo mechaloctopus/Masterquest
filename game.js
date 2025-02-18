@@ -11,23 +11,26 @@ window.addEventListener("DOMContentLoaded", function () {
     // Lighting
     const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
 
-    // Grid Ground
+    // Neon Grid Floor
     const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 50, height: 50 }, scene);
-    ground.material = new BABYLON.GridMaterial("groundMaterial", scene);
-    ground.physicsImpostor = new BABYLON.PhysicsImpostor(
-        ground, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.1 }, scene
-    );
+    const gridMaterial = new BABYLON.GridMaterial("grid", scene);
+    gridMaterial.majorUnitFrequency = 1;
+    gridMaterial.minorUnitVisibility = 0.45;
+    gridMaterial.gridRatio = 1;
+    gridMaterial.backFaceCulling = false;
+    gridMaterial.mainColor = new BABYLON.Color3(0, 0, 0);
+    gridMaterial.lineColor = new BABYLON.Color3(1, 0, 1); // Neon Purple
+    ground.material = gridMaterial;
 
     // FPS Player (Camera)
     const player = new BABYLON.UniversalCamera("player", new BABYLON.Vector3(0, 2, 0), scene);
-    player.attachControl(canvas, true);
+    player.attachControl(canvas, false);
     player.applyGravity = true;
     player.checkCollisions = true;
     player.ellipsoid = new BABYLON.Vector3(1, 1, 1);
-    player.speed = 0.2;
     scene.activeCamera = player;
 
-    // Add Walls for Reference
+    // Walls for Reference
     const createWall = (x, z) => {
         const wall = BABYLON.MeshBuilder.CreateBox("wall", { height: 3, width: 10, depth: 1 }, scene);
         wall.position.set(x, 1.5, z);
@@ -40,23 +43,21 @@ window.addEventListener("DOMContentLoaded", function () {
     createWall(5, 0);
     createWall(-5, 0);
 
-    // Movement Variables
+    // Movement & Controls
     let moveX = 0, moveZ = 0;
-    const moveSpeed = 0.2;
     let isJumping = false;
 
-    // Joystick Movement
-    const joystick = document.getElementById("joystickContainer");
+    // Virtual Joystick (Left Side for Movement)
     let joystickActive = false;
     let startX, startY;
 
-    joystick.addEventListener("touchstart", (event) => {
+    document.getElementById("joystickContainer").addEventListener("touchstart", (event) => {
         joystickActive = true;
         startX = event.touches[0].clientX;
         startY = event.touches[0].clientY;
     });
 
-    joystick.addEventListener("touchmove", (event) => {
+    document.getElementById("joystickContainer").addEventListener("touchmove", (event) => {
         if (!joystickActive) return;
         const dx = event.touches[0].clientX - startX;
         const dy = event.touches[0].clientY - startY;
@@ -64,13 +65,13 @@ window.addEventListener("DOMContentLoaded", function () {
         moveZ = dy / 50;
     });
 
-    joystick.addEventListener("touchend", () => {
+    document.getElementById("joystickContainer").addEventListener("touchend", () => {
         joystickActive = false;
         moveX = 0;
         moveZ = 0;
     });
 
-    // Swipe Look Controls
+    // Swipe Look Controls (Right Side for Aiming)
     let lastTouchX = null;
     let lastTouchY = null;
 
@@ -89,9 +90,8 @@ window.addEventListener("DOMContentLoaded", function () {
         lastTouchY = event.touches[0].clientY;
     });
 
-    // Jump Button
-    const jumpButton = document.getElementById("jumpButton");
-    jumpButton.addEventListener("touchstart", () => {
+    // Jump Button (Right Side)
+    document.getElementById("jumpButton").addEventListener("touchstart", () => {
         if (!isJumping) {
             player.position.y += 2;
             isJumping = true;
@@ -101,8 +101,8 @@ window.addEventListener("DOMContentLoaded", function () {
 
     // Game Loop
     engine.runRenderLoop(() => {
-        player.position.x += moveX * moveSpeed;
-        player.position.z += moveZ * moveSpeed;
+        player.position.x += moveX * 0.2;
+        player.position.z += moveZ * 0.2;
         scene.render();
     });
 
