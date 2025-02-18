@@ -1,0 +1,40 @@
+html, body {
+    margin: 0;
+    overflow: hidden;
+    touch-action: none;
+    background: black;
+}
+canvas {
+    width: 100vw;
+    height: 100vh;
+    display: block;
+}
+
+/* Joystick */
+#joystickContainer {
+    position: absolute;
+    bottom: 15%;
+    left: 5%;
+    width: 100px;
+    height: 100px;
+    background: rgba(0, 255, 0, 0.3); /* Visible for testing */
+    border-radius: 50%;
+    touch-action: none;
+}
+
+/* Jump Button */
+#jumpButton {
+    position: absolute;
+    bottom: 15%;
+    right: 10%;
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    text-align: center;
+    line-height: 80px;
+    font-size: 20px;
+    color: white;
+    border: none;
+    touch-action: none;
+}
