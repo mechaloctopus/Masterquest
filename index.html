@@ -1,19 +1,226 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Mobile FPS Babylon.js</title>
-    <script src="https://cdn.babylonjs.com/babylon.min.js"></script>
-    <script src="https://cdn.babylonjs.com/cannon.min.js"></script>
-    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
-    <link rel="stylesheet" href="styles.css">
+    <title>COD-Style Neon Grid</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        * { margin: 0; padding: 0; touch-action: none; -webkit-tap-highlight-color: transparent; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        #renderCanvas { width: 100%; height: 100%; }
+        #controls { position: fixed; bottom: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 3%; box-sizing: border-box; }
+        .controlZone { position: absolute; width: 45%; height: 40%; }
+        #leftTouch { left: 0; bottom: 0; }
+        #rightTouch { right: 0; bottom: 0; }
+        #jumpBtn, #cameraBtn, #fullscreenBtn { 
+            position: fixed; 
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 100, 255, 0.5);
+            border-radius: 50%;
+            color: #ff66ff;
+            text-shadow: 0 0 10px #ff00ff;
+            transition: all 0.1s;
+        }
+        #jumpBtn { width: 15vw; height: 15vw; right: 5%; bottom: 25%; }
+        #cameraBtn { width: 25vw; height: 25vw; right: 5%; bottom: 50%; opacity: 0; }
+        #fullscreenBtn { width: 12vw; height: 12vw; top: 2%; right: 2%; font-size: 6vw; }
+        .joystick { background: radial-gradient(rgba(255,100,255,0.2) 30%, transparent 70%); }
+    </style>
 </head>
 <body>
     <canvas id="renderCanvas"></canvas>
-    <div id="joystickContainer"></div>
-    <button id="jumpButton">Jump</button>
+    <div id="controls">
+        <div class="controlZone" id="leftTouch"></div>
+        <div class="controlZone" id="rightTouch"></div>
+        <div id="jumpBtn">↑</div>
+        <div id="cameraBtn"></div>
+        <button id="fullscreenBtn">⛶</button>
+    </div>
 
-    <script defer src="game.js"></script>
+    <!-- Inline nipplejs (v0.9.0 minified) -->
+    <script>/*! nipplejs - v0.9.0 - 2021-04-23 - MIT - (c) 2016 Yoann Moinet */!function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e(t.nipplejs={})}(this,function(t){"use strict";function e(t,e){return t?Math.sqrt(Math.pow(e.x-t.x,2)+Math.pow(e.y-t.y,2)):0}function i(t,e){return{x:t.x-e.x,y:t.y-e.y}}function n(t,e){var i=Math.atan2(e.y,e.x);return{x:t*Math.cos(i),y:t*Math.sin(i)}}function r(t,e,i){return{x:t.x+e*i.x,y:t.y+e*i.y}}function o(t){return t*(Math.PI/180)}function s(t,e,i){this.id=t,this.manager=e,this.options=i,this.frontPosition={x:0,y:0},this.ui={},this.onDrag=this.onDrag.bind(this),this.onEnd=this.onEnd.bind(this),this.trigger=this.trigger.bind(this),this.position={x:0,y:0},this.force=0,this.angle={radian:0,degree:0},this.distance=0,this.identifier=!1,this.delta={x:0,y:0},this.moved=!1,this.working=!1}function a(t,e,i){this.id=t,this.manager=e,this.options=i,this.nipples={},this.ids=[],this.uid=0,this.touches={},this.clean=this.clean.bind(this)}s.prototype={add:function(){var t=this.manager;this.ui.el=document.createElement("div"),this.ui.el.className="back",this.ui.front=document.createElement("div"),this.ui.front.className="front",this.ui.el.appendChild(this.ui.front),t.container.appendChild(this.ui.el)},remove:function(){this.ui.el.parentNode.removeChild(this.ui.el)},updatePosition:function(t){var e=this.manager;this.position={x:t.x-e.container.getBoundingClientRect().left,y:t.y-e.container.getBoundingClientRect().top},this.ui.el.style.left=this.position.x+"px",this.ui.el.style.top=this.position.y+"px"},resetPosition:function(){this.position={x:this.options.position.x-this.manager.container.getBoundingClientRect().left,y:this.options.position.y-this.manager.container.getBoundingClientRect().top},this.ui.el.style.left=this.position.x+"px",this.ui.el.style.top=this.position.y+"px"},show:function(t){this.ui.el.style.transition="opacity 150ms",this.ui.el.style.opacity=this.options.opacity,this.updatePosition(t),this.trigger("shown")},hide:function(){var t=this;this.ui.el.style.transition="opacity 150ms",this.ui.el.style.opacity=0,setTimeout(function(){t.trigger("hidden"),t.remove()},150)},bringToFront:function(){this.ui.el.style.zIndex=999},goBack:function(){this.ui.el.style.zIndex=5},togglePressure:function(){this.ui.front.style.transition=this.working?"none":"all 33ms",this.working=!this.working},computeDirection:function(t){var e=Math.abs(t.x),i=Math.abs(t.y);return e>i?t.x>0?"right":"left":t.y>0?"down":"up"},computeAngle:function(t){var e=Math.atan2(t.y,t.x);return{radian:e,degree:180*e/Math_PI}},computeDistance:function(t){return Math.sqrt(Math.pow(t.x,2)+Math.pow(t.y,2))},processOnMove:function(t){var e=this.options.mode,i=this.position,n=this.options.size/2;if("dynamic"===e&&(i=this.manager.getNipplePosition(this)),this.frontPosition={x:t.x-i.x,y:t.y-i.y};var s=this.computeAngle(this.frontPosition),a=this.computeDirection(this.frontPosition),c=this.computeDistance(this.frontPosition);c>n&&(this.frontPosition=n(n,this.frontPosition),c=n);var h=c/n;this.force=h,this.angle=s,this.distance=c,this.direction={x:this.frontPosition.x/c||0,y:this.frontPosition.y/c||0},this.ui.front.style.transform="translate3d("+this.frontPosition.x+"px,"+this.frontPosition.y+"px,0)",this.trigger("move",this.ui.front,this.frontPosition,a,h,s.radian,s.degree,c),this.moved||(this.moved=!0,this.trigger("started"))},onDrag:function(t){t.preventDefault();var e=this.manager;if("dynamic"===this.options.mode&&(this.position=e.getNipplePosition(this)),this.processOnMove({x:t.pageX,y:t.pageY}),e.options.catchDistance){var i=e.getNippleDistance(this);i>e.options.catchDistance&&(this.onEnd(),this.manager.trigger("lost "+this.id,this))}},onEnd:function(){var t=this.manager;document.removeEventListener("mousemove",this.onDrag),document.removeEventListener("mouseup",this.onEnd),this.moved&&t.trigger("end "+this.id,this),this.hide(),this.trigger("end",this),t.trigger("removed",this)},onTouch:function(t){var e=this.manager;document.addEventListener("mousemove",this.onDrag),document.addEventListener("mouseup",this.onEnd),this.processOnMove({x:t.pageX,y:t.pageY}),this.trigger("start",this)},bindEvt:function(t){this.manager.on("destroy",this.remove)},trigger:function(t,e){var i=this.manager;this.options[t]&&this.options[t](this,e),i.options[t]&&i.options[t](this,e),i.pool[t]&&i.pool[t].forEach(function(i){i(this,e)},this)},prepare:function(){var t=this;this.add(),this.bindEvt(),this.options.mode&&this.options.mode!==this.manager.options.mode&&(this.options.mode=this.manager.options.mode),this.options.position?(this.options.mode="static",this.resetPosition()):(this.options.mode="dynamic",this.options.position={x:0,y:0}),this.show({x:this.options.position.x,y:this.options.position.y}),this.ui.el.addEventListener("mousedown",function(e){e.preventDefault(),t.identifier=!0,t.onTouch(e),t.togglePressure(),t.bringToFront()}),this.manager.trigger("added "+t.id,t)},destroy:function(){this.trigger("destroy",this)}},a.prototype={create:function(t){var e=this;if("object"!=typeof t)throw new Error("Nipple options should be an object");t=t||{};var i=this.uid++,n=new s(i,this,t);return n.prepare(),this.nipples[i]=n,this.ids.push(i),n},get:function(t){return this.nipples[t]},ids:{get:function(){return this.ids}},destroy:function(){for(var t in this.nipples)this.nipples[t].destroy();this.manager=null},clean:function(){this.ids=this.ids.filter(function(t){return!!this.nipples[t]},this)}};var c=function(t){this.options=this.merge(t),this.id=c.id++,this.collection=[],this.pool={},this.container=this.options.zone,this.nipples=[],this.bindings=[],this.uid=0,this.touches=[],this.init()};c.id=0,c.defaults={zone:document.body,multitouch:!1,maxNumberOfNipples:1,mode:"dynamic",position:{top:"50%",left:"50%"},catchDistance:200,size:100,threshold:.1,color:"white",fadeTime:250,dataOnly:!1,restJoystick:!0,restOpacity:1,opacity:.5,generateId:!1,ids:[],dynamicPage:!1},c.prototype={merge:function(t){var e={};for(var i in c.defaults)e[i]=t&&t[i]?t[i]:c.defaults[i];return e},buildNipple:function(t){var e=new a(t.id||0,this,this.options);return e.manager=this,this.nipples.push(e),e},getNippleDistance:function(t){var i=this.nipples.filter(function(e){return e!==t});return i.length?Math.min.apply(Math,i.map(function(e){return e.distance})):0},getNipplePosition:function(t){var e=this.options.mode,i=this.options.size/2,n=this.container.getBoundingClientRect(),r=this.options.position;if("fixed"===e)return{x:n.left+r.x,y:n.top+r.y};var o=this.nipples.indexOf(t);if(0===o)return{x:n.left+i,y:n.top+i};var s=Math.PI/180*(180/(this.nipples.length-1)*o);return{x:n.left+i+i*Math.cos(s),y:n.top+i+i*Math.sin(s)}},on:function(t,e){this.bindings.push({type:t,func:e})},off:function(t,e){this.bindings=this.bindings.filter(function(i){return!(i.type===t&&i.func===e)})},emit:function(t,e){this.bindings.forEach(function(i){i.type===t&&i.func(e)})},bindNipple:function(t,e){this.nipples.forEach(function(i){i.on(t,e)})},unbindNipple:function(t,e){this.nipples.forEach(function(i){i.off(t,e)})},destroy:function(){this.nipples.forEach(function(t){t.destroy()}),this.nipples=[],this.container=null,this.emit("destroy")},init:function(){var t=this;this.container.style.position="relative",this.options.dataOnly||(this.container.style.touchAction="none",this.container.style.userSelect="none");var e=this.options.ids;if(e&&e.length)return e.forEach(function(e,i){t.buildNipple({id:e,index:i})}),void this.nipples.forEach(function(e,i){e.prepare()});if(!this.options.generateId)return this.buildNipple(),void this.nipples[0].prepare();for(var i=0;i<this.options.maxNumberOfNipples;i++)this.buildNipple()}},"undefined"!=typeof module&&module.exports?module.exports=c:"function"==typeof define&&define.amd?define(function(){return c}):window.nipplejs=c});</script>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // ========== BABYLON SETUP ==========
+            const canvas = document.getElementById('renderCanvas');
+            const engine = new BABYLON.Engine(canvas, true);
+            const scene = new BABYLON.Scene(engine);
+            
+            // ========== PLAYER SETUP ==========
+            const player = {
+                speed: 0.25,
+                sprintMultiplier: 1.8,
+                jumpForce: 0.5,
+                verticalSpeed: 0,
+                isGrounded: false,
+                canJump: true
+            };
+
+            // ========== CAMERA ==========
+            const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.7, 0), scene);
+            camera.attachControl(canvas, false);
+            camera.applyGravity = true;
+            camera.checkCollisions = true;
+            camera.ellipsoid = new BABYLON.Vector3(0.3, 1.7, 0.3);
+            camera.speed = player.speed;
+            camera.angularSensibility = 3500;
+            camera.inertia = 0.8;
+
+            // ========== ENVIRONMENT ==========
+            // Neon Grid Floor
+            const gridMat = new BABYLON.StandardMaterial("gridMat", scene);
+            gridMat.emissiveColor = new BABYLON.Color3(1, 0.2, 0.8);
+            gridMat.specularColor = BABYLON.Color3.Black();
+            
+            const grid = BABYLON.Mesh.CreateGround("grid", 100, 100, 100, scene);
+            grid.material = gridMat;
+            grid.checkCollisions = true;
+
+            // Glow Effect
+            const glowLayer = new BABYLON.GlowLayer("glow", scene);
+            glowLayer.intensity = 2.5;
+
+            // ========== CONTROLS ==========
+            let moveVector = BABYLON.Vector3.Zero();
+            let lookVector = BABYLON.Vector2.Zero();
+            let isSprinting = false;
+            let touchStartTime = 0;
+            
+            // Movement Joystick
+            const moveJoystick = nipplejs.create({
+                zone: document.getElementById('leftTouch'),
+                mode: 'dynamic',
+                color: 'rgba(255, 100, 255, 0.5)',
+                size: 120,
+                threshold: 0.1
+            }).on('move', (evt, data) => {
+                const angle = data.angle.radian;
+                const force = data.force;
+                
+                // Sprint when pushed past 80% distance
+                isSprinting = force > 0.8;
+                player.speed = isSprinting ? 
+                    player.speed * player.sprintMultiplier : 
+                    0.25;
+
+                moveVector.x = Math.cos(angle) * force;
+                moveVector.z = Math.sin(angle) * force;
+            }).on('end', () => {
+                moveVector = BABYLON.Vector3.Zero();
+                isSprinting = false;
+                player.speed = 0.25;
+            });
+
+            // Camera Control Area
+            let cameraTouch = null;
+            const cameraZone = document.getElementById('rightTouch');
+            cameraZone.addEventListener('touchstart', e => {
+                e.preventDefault();
+                touchStartTime = Date.now();
+                cameraTouch = e.touches[0];
+                document.getElementById('cameraBtn').style.opacity = '0.3';
+            });
+
+            document.addEventListener('touchmove', e => {
+                if (!cameraTouch) return;
+                e.preventDefault();
+                
+                const touch = Array.from(e.touches).find(t => t.identifier === cameraTouch.identifier);
+                if (!touch) return;
+
+                const deltaX = touch.pageX - cameraTouch.pageX;
+                const deltaY = touch.pageY - cameraTouch.pageY;
+                
+                // Camera rotation
+                camera.rotation.y -= deltaX * 0.0025;
+                camera.rotation.x = BABYLON.Tools.Clamp(
+                    camera.rotation.x - deltaY * 0.0025,
+                    -Math.PI/3,
+                    Math.PI/3
+                );
+                
+                cameraTouch = touch;
+            }, { passive: false });
+
+            document.addEventListener('touchend', e => {
+                if (!cameraTouch) return;
+                
+                // Handle tap-to-shoot (future)
+                if (Date.now() - touchStartTime < 200) {
+                    // Trigger shoot action
+                }
+                
+                cameraTouch = null;
+                document.getElementById('cameraBtn').style.opacity = '0';
+            });
+
+            // Jump Button
+            document.getElementById('jumpBtn').addEventListener('touchstart', e => {
+                e.preventDefault();
+                if (player.canJump && player.isGrounded) {
+                    player.verticalSpeed = player.jumpForce;
+                    player.canJump = false;
+                    setTimeout(() => player.canJump = true, 1000);
+                }
+            });
+
+            // ========== PHYSICS ==========
+            scene.gravity = new BABYLON.Vector3(0, -2.8, 0);
+            scene.collisionsEnabled = true;
+
+            // Ground check
+            const groundCheck = () => {
+                const ray = new BABYLON.Ray(
+                    camera.position.add(new BABYLON.Vector3(0, -1.8, 0)),
+                    new BABYLON.Vector3(0, -1, 0),
+                    0.2
+                );
+                const hit = scene.pickWithRay(ray);
+                player.isGrounded = !!hit.hit;
+            };
+
+            // ========== GAME LOOP ==========
+            scene.registerBeforeRender(() => {
+                // Movement
+                const forward = camera.getDirection(BABYLON.Vector3.Forward());
+                const right = camera.getDirection(BABYLON.Vector3.Right());
+                
+                const movement = forward.scale(moveVector.z)
+                    .add(right.scale(moveVector.x))
+                    .normalize()
+                    .scale(player.speed);
+
+                // Apply gravity
+                player.verticalSpeed -= 0.1;
+                movement.y = player.verticalSpeed;
+                
+                // Collision check
+                groundCheck();
+                if (player.isGrounded && player.verticalSpeed < 0) {
+                    player.verticalSpeed = 0;
+                    movement.y = 0;
+                }
+
+                camera.position.addInPlace(movement);
+            });
+
+            // ========== FULLSCREEN ==========
+            document.getElementById('fullscreenBtn').addEventListener('click', () => {
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                } else {
+                    canvas.requestFullscreen().catch(console.log);
+                }
+            });
+
+            // ========== RESIZE HANDLER ==========
+            window.addEventListener('resize', () => {
+                engine.resize();
+                moveJoystick.position();
+            });
+
+            engine.runRenderLoop(() => scene.render());
+        });
+    </script>
 </body>
 </html>
