@@ -8,29 +8,37 @@ window.addEventListener("DOMContentLoaded", function () {
     const physicsPlugin = new BABYLON.CannonJSPlugin();
     scene.enablePhysics(gravityVector, physicsPlugin);
 
-    // Add lighting
+    // Lighting
     const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
 
-    // Add ground
+    // Grid Ground
     const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 50, height: 50 }, scene);
+    ground.material = new BABYLON.GridMaterial("groundMaterial", scene);
     ground.physicsImpostor = new BABYLON.PhysicsImpostor(
         ground, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.1 }, scene
     );
 
-    // FPS Camera
+    // FPS Player (Camera)
     const player = new BABYLON.UniversalCamera("player", new BABYLON.Vector3(0, 2, 0), scene);
     player.attachControl(canvas, true);
     player.applyGravity = true;
     player.checkCollisions = true;
     player.ellipsoid = new BABYLON.Vector3(1, 1, 1);
+    player.speed = 0.2;
     scene.activeCamera = player;
 
-    // Test Walls
-    const wall1 = BABYLON.MeshBuilder.CreateBox("wall1", { height: 3, width: 10, depth: 1 }, scene);
-    wall1.position.set(0, 1.5, 5);
-
-    const wall2 = BABYLON.MeshBuilder.CreateBox("wall2", { height: 3, width: 10, depth: 1 }, scene);
-    wall2.position.set(0, 1.5, -5);
+    // Add Walls for Reference
+    const createWall = (x, z) => {
+        const wall = BABYLON.MeshBuilder.CreateBox("wall", { height: 3, width: 10, depth: 1 }, scene);
+        wall.position.set(x, 1.5, z);
+        wall.material = new BABYLON.StandardMaterial("wallMat", scene);
+        wall.material.diffuseColor = new BABYLON.Color3(Math.random(), Math.random(), Math.random());
+        return wall;
+    };
+    createWall(0, 5);
+    createWall(0, -5);
+    createWall(5, 0);
+    createWall(-5, 0);
 
     // Movement Variables
     let moveX = 0, moveZ = 0;
