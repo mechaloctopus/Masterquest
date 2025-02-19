@@ -42,9 +42,12 @@
 
                 // Camera
                 const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, 0), scene);
-                camera.attachControl(canvas, true);
+                camera.attachControl(canvas, false); // Prevent default touch-based rotation
                 camera.speed = 0.15;
                 camera.angularSensibility = 5000;
+
+                // Lock camera height
+                const groundY = 2;
 
                 // === NEON GRID ===
                 function createGrid() {
@@ -101,7 +104,7 @@
 
                 // === GAME LOOP ===
                 scene.registerBeforeRender(() => {
-                    // Move Player
+                    // Move Player (but lock Y to ground)
                     const forward = camera.getDirection(BABYLON.Vector3.Forward());
                     const right = camera.getDirection(BABYLON.Vector3.Right());
 
@@ -109,17 +112,18 @@
                         .add(right.scale(moveVector.x))
                         .scale(0.1);
 
-                    camera.position.addInPlace(movement);
+                    camera.position.addInPlace(new BABYLON.Vector3(movement.x, 0, movement.z)); // No Y movement
+                    camera.position.y = groundY; // Keep the camera on the ground
 
                     // Rotate Camera
                     camera.rotation.y -= rotateVector.x; // Left/Right (Yaw)
-                    camera.rotation.x -= rotateVector.y; // Up/Down (Pitch)
+                    camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x - rotateVector.y)); // Limit up/down (Pitch)
                 });
 
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
 
-                logMessage("Neon grid with dual joysticks added!");
+                logMessage("Fixed camera controls & locked movement to the ground!");
             } catch (error) {
                 logMessage("Error: " + error.message);
             }
