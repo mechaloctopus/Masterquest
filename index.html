@@ -55,45 +55,38 @@
             const scene = new BABYLON.Scene(engine);
             scene.clearColor = new BABYLON.Color4(0, 0, 0, 1); // Black background
 
-            // ========== NEON GRID FLOOR ==========
-            function createGrid(gridSize = 50, gridSpacing = 2) {
-                const lines = [];
-
-                for (let i = -gridSize; i <= gridSize; i++) {
-                    // Vertical lines
-                    lines.push(BABYLON.MeshBuilder.CreateLines(`gridX${i}`, {
-                        points: [
-                            new BABYLON.Vector3(i * gridSpacing, 0, -gridSize * gridSpacing),
-                            new BABYLON.Vector3(i * gridSpacing, 0, gridSize * gridSpacing)
-                        ],
-                        updatable: false
-                    }, scene));
-
-                    // Horizontal lines
-                    lines.push(BABYLON.MeshBuilder.CreateLines(`gridZ${i}`, {
-                        points: [
-                            new BABYLON.Vector3(-gridSize * gridSpacing, 0, i * gridSpacing),
-                            new BABYLON.Vector3(gridSize * gridSpacing, 0, i * gridSpacing)
-                        ],
-                        updatable: false
-                    }, scene));
-                }
-
-                // Set color and apply glow
-                lines.forEach(line => {
-                    line.color = new BABYLON.Color3(1, 0.2, 0.8);
+            // ========== CREATE GRID USING A SHADER MATERIAL ==========
+            function createNeonGrid() {
+                const gridMaterial = new BABYLON.ShaderMaterial("gridShader", scene, {
+                    vertexSource: `
+                        precision highp float;
+                        attribute vec3 position;
+                        uniform mat4 worldViewProjection;
+                        void main() {
+                            gl_Position = worldViewProjection * vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentSource: `
+                        precision highp float;
+                        uniform vec2 resolution;
+                        uniform vec3 gridColor;
+                        void main() {
+                            vec2 uv = gl_FragCoord.xy / resolution;
+                            float lines = abs(mod(uv.x * 20.0, 1.0) - 0.5) < 0.03 ||
+                                          abs(mod(uv.y * 20.0, 1.0) - 0.5) < 0.03 ? 1.0 : 0.0;
+                            gl_FragColor = vec4(gridColor * lines, 1.0);
+                        }
+                    `
                 });
 
-                // Glow effect
-                const glowLayer = new BABYLON.GlowLayer("glow", scene);
-                glowLayer.intensity = 2.5;
-            }
-            createGrid();
+                gridMaterial.setVector3("gridColor", new BABYLON.Vector3(1, 0, 1)); // Neon Purple
+                gridMaterial.backFaceCulling = false;
 
-            // ========== INVISIBLE FLOOR ==========
-            const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 1000, height: 1000 }, scene);
-            ground.isVisible = false;
-            ground.checkCollisions = true;
+                const gridPlane = BABYLON.MeshBuilder.CreateGround("grid", { width: 100, height: 100 }, scene);
+                gridPlane.material = gridMaterial;
+                gridPlane.position.y = -0.1;
+            }
+            createNeonGrid();
 
             // ========== PLAYER CAMERA ==========
             const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, 0), scene);
@@ -161,7 +154,6 @@
                     document.exitFullscreen();
                 } else {
                     canvas.requestFullscreen().then(() => {
-                        // Lock orientation for mobile
                         if (screen.orientation?.lock) {
                             screen.orientation.lock('landscape')
                                 .catch(() => console.log('Orientation lock not supported'));
