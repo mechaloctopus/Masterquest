@@ -8,13 +8,22 @@
         html, body { width: 100%; height: 100%; overflow: hidden; background: black; }
         #renderCanvas { width: 100%; height: 100%; display: block; }
         #log { position: absolute; top: 10px; left: 10px; color: white; font-family: monospace; font-size: 14px; background: rgba(0,0,0,0.5); padding: 5px; }
+        .joystick-container { position: absolute; bottom: 20px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; }
+        .joystick { width: 100px; height: 100px; background: rgba(255, 100, 255, 0.2); border-radius: 50%; border: 2px solid rgba(255, 100, 255, 0.5); }
     </style>
 </head>
 <body>
     <canvas id="renderCanvas"></canvas>
     <div id="log"></div>
+    
+    <!-- Joysticks -->
+    <div class="joystick-container">
+        <div id="leftJoystick" class="joystick"></div>
+        <div id="rightJoystick" class="joystick"></div>
+    </div>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
     <script>
         function logMessage(msg) {
             document.getElementById('log').innerText += msg + "\n";
@@ -29,7 +38,7 @@
                 const scene = new BABYLON.Scene(engine);
                 scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
-                // Camera
+                // === CAMERA ===
                 const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, 0), scene);
                 camera.attachControl(canvas, true);
                 camera.speed = 0.15;
@@ -64,11 +73,58 @@
 
                 createGrid();
 
+                // === MOVEMENT CONTROLS (LEFT JOYSTICK) ===
+                let moveVector = BABYLON.Vector3.Zero();
+                const moveJoystick = nipplejs.create({
+                    zone: document.getElementById('leftJoystick'),
+                    mode: 'static',
+                    position: { left: '50%', top: '50%' },
+                    color: 'rgba(255,100,255,0.5)',
+                    size: 80
+                }).on('move', (evt, data) => {
+                    moveVector.x = data.vector.x;
+                    moveVector.z = data.vector.y;
+                }).on('end', () => moveVector = BABYLON.Vector3.Zero());
+
+                // === LOOK CONTROLS (RIGHT JOYSTICK) ===
+                let lookVector = BABYLON.Vector2.Zero();
+                const lookJoystick = nipplejs.create({
+                    zone: document.getElementById('rightJoystick'),
+                    mode: 'static',
+                    position: { left: '50%', top: '50%' },
+                    color: 'rgba(255,100,255,0.5)',
+                    size: 80
+                }).on('move', (evt, data) => {
+                    lookVector.x = data.vector.x * 0.02; // Adjust look sensitivity
+                    lookVector.y = data.vector.y * 0.02;
+                }).on('end', () => lookVector = BABYLON.Vector2.Zero());
+
+                // === MOVEMENT & CAMERA ROTATION ===
+                scene.registerBeforeRender(() => {
+                    // Camera rotation (look around)
+                    camera.rotation.y -= lookVector.x;
+                    camera.rotation.x = BABYLON.Tools.Clamp(
+                        camera.rotation.x - lookVector.y,
+                        -Math.PI / 2.5,
+                        Math.PI / 2.5
+                    );
+
+                    // Player movement
+                    const forward = camera.getDirection(BABYLON.Vector3.Forward());
+                    const right = camera.getDirection(BABYLON.Vector3.Right());
+                    
+                    const movement = forward.scale(moveVector.z)
+                        .add(right.scale(moveVector.x))
+                        .scale(0.1);
+
+                    camera.position.addInPlace(movement);
+                });
+
                 // === ENGINE LOOP ===
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
 
-                logMessage("Neon grid added!");
+                logMessage("Neon grid added with joystick controls!");
             } catch (error) {
                 logMessage("Error: " + error.message);
             }
