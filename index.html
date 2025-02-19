@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         * { margin: 0; padding: 0; touch-action: none; }
-        html, body { width: 100%; height: 100%; overflow: hidden; }
-        #renderCanvas { width: 100%; height: 100%; }
+        html, body { width: 100%; height: 100%; overflow: hidden; background: black; }
+        #renderCanvas { width: 100%; height: 100%; display: block; }
         .joystick-container {
             position: fixed;
             bottom: 20px;
@@ -53,43 +53,53 @@
             const canvas = document.getElementById('renderCanvas');
             const engine = new BABYLON.Engine(canvas, true);
             const scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color4(0, 0, 0, 1); // Set black background
 
             // ========== NEON GRID FLOOR ==========
-            function createGrid() {
-                const gridSize = 100;  // Number of lines in each direction
-                const gridSpacing = 2; // Units between lines
-                const gridOffset = (gridSize * gridSpacing) / 2;
+            function createGrid(gridSize = 50, gridSpacing = 2) {
+                const lines = [];
 
-                // Create vertical lines (X-axis)
-                for(let x = -gridOffset; x <= gridOffset; x += gridSpacing) {
-                    BABYLON.Mesh.CreateLines("gridX", [
-                        new BABYLON.Vector3(x, 0, -gridOffset),
-                        new BABYLON.Vector3(x, 0, gridOffset)
-                    ], scene).color = new BABYLON.Color3(1, 0.2, 0.8);
+                for (let i = -gridSize; i <= gridSize; i++) {
+                    // Vertical lines
+                    lines.push(BABYLON.MeshBuilder.CreateLines(`gridX${i}`, {
+                        points: [
+                            new BABYLON.Vector3(i * gridSpacing, 0, -gridSize * gridSpacing),
+                            new BABYLON.Vector3(i * gridSpacing, 0, gridSize * gridSpacing)
+                        ]
+                    }, scene));
+
+                    // Horizontal lines
+                    lines.push(BABYLON.MeshBuilder.CreateLines(`gridZ${i}`, {
+                        points: [
+                            new BABYLON.Vector3(-gridSize * gridSpacing, 0, i * gridSpacing),
+                            new BABYLON.Vector3(gridSize * gridSpacing, 0, i * gridSpacing)
+                        ]
+                    }, scene));
                 }
 
-                // Create horizontal lines (Z-axis)
-                for(let z = -gridOffset; z <= gridOffset; z += gridSpacing) {
-                    BABYLON.Mesh.CreateLines("gridZ", [
-                        new BABYLON.Vector3(-gridOffset, 0, z),
-                        new BABYLON.Vector3(gridOffset, 0, z)
-                    ], scene).color = new BABYLON.Color3(1, 0.2, 0.8);
-                }
+                // Set color
+                lines.forEach(line => line.color = new BABYLON.Color3(1, 0.2, 0.8));
 
                 // Add glow effect
                 const glowLayer = new BABYLON.GlowLayer("glow", scene);
-                glowLayer.intensity = 2.5;
+                glowLayer.intensity = 1.5;
             }
             createGrid();
 
+            // ========== INVISIBLE FLOOR ==========
+            const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 1000, height: 1000 }, scene);
+            ground.isVisible = false; // Keep it invisible but solid for movement
+            ground.checkCollisions = true;
+
             // ========== PLAYER CAMERA ==========
-            const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.7, 0), scene);
+            const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, 0), scene);
             camera.attachControl(canvas, false);
             camera.checkCollisions = true;
-            camera.ellipsoid = new BABYLON.Vector3(0.3, 1.7, 0.3);
             camera.applyGravity = true;
+            camera.ellipsoid = new BABYLON.Vector3(0.3, 1, 0.3);
             camera.speed = 0.15;
             camera.angularSensibility = 5000;
+            camera.minZ = 0.1;
 
             // ========== JOYSTICK CONTROLS ==========
             let moveVector = BABYLON.Vector3.Zero();
@@ -126,14 +136,14 @@
                 camera.rotation.y -= lookVector.x;
                 camera.rotation.x = BABYLON.Tools.Clamp(
                     camera.rotation.x - lookVector.y,
-                    -Math.PI/2.5,
-                    Math.PI/2.5
+                    -Math.PI / 2.5,
+                    Math.PI / 2.5
                 );
 
                 // Player movement
                 const forward = camera.getDirection(BABYLON.Vector3.Forward());
                 const right = camera.getDirection(BABYLON.Vector3.Right());
-                
+
                 const movement = forward.scale(moveVector.z)
                     .add(right.scale(moveVector.x))
                     .scale(0.1);
@@ -143,12 +153,12 @@
 
             // ========== RELIABLE FULLSCREEN ==========
             document.getElementById('fullscreenBtn').addEventListener('click', () => {
-                if(document.fullscreenElement) {
+                if (document.fullscreenElement) {
                     document.exitFullscreen();
                 } else {
                     canvas.requestFullscreen().then(() => {
                         // Lock orientation for mobile
-                        if(screen.orientation?.lock) {
+                        if (screen.orientation?.lock) {
                             screen.orientation.lock('landscape')
                                 .catch(() => console.log('Orientation lock not supported'));
                         }
