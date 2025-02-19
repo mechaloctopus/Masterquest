@@ -8,13 +8,21 @@
         html, body { width: 100%; height: 100%; overflow: hidden; background: black; }
         #renderCanvas { width: 100%; height: 100%; display: block; }
         #log { position: absolute; top: 10px; left: 10px; color: white; font-family: monospace; font-size: 14px; background: rgba(0,0,0,0.5); padding: 5px; }
-        .joystick-container { position: absolute; bottom: 20px; left: 20px; width: 100px; height: 100px; }
+        .joystick-container {
+            position: absolute;
+            bottom: 20px;
+            width: 100px;
+            height: 100px;
+        }
+        #leftJoystick { left: 20px; }
+        #rightJoystick { right: 20px; }
     </style>
 </head>
 <body>
     <canvas id="renderCanvas"></canvas>
     <div id="log"></div>
     <div id="leftJoystick" class="joystick-container"></div>
+    <div id="rightJoystick" class="joystick-container"></div>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
@@ -40,9 +48,9 @@
 
                 // === NEON GRID ===
                 function createGrid() {
-                    const gridSize = 50;  // Grid extends in both directions
-                    const gridSpacing = 2; // Space between lines
-                    const color = new BABYLON.Color3(1, 0.2, 0.8); // Neon pink
+                    const gridSize = 50;  
+                    const gridSpacing = 2; 
+                    const color = new BABYLON.Color3(1, 0.2, 0.8);
 
                     for (let x = -gridSize; x <= gridSize; x += gridSpacing) {
                         const line = BABYLON.MeshBuilder.CreateLines("gridX", {
@@ -77,7 +85,23 @@
                     moveVector.z = data.vector.y;
                 }).on('end', () => moveVector = BABYLON.Vector3.Zero());
 
+                // === CAMERA ROTATION JOYSTICK (RIGHT) ===
+                const rotationSpeed = 0.05;
+                let rotateVector = { x: 0, y: 0 };
+                const lookJoystick = nipplejs.create({
+                    zone: document.getElementById('rightJoystick'),
+                    mode: 'static',
+                    position: { left: '50%', top: '50%' },
+                    color: 'white',
+                    size: 100
+                }).on('move', (evt, data) => {
+                    rotateVector.x = data.vector.x * rotationSpeed; // Left/Right (Yaw)
+                    rotateVector.y = data.vector.y * rotationSpeed; // Up/Down (Pitch)
+                }).on('end', () => rotateVector = { x: 0, y: 0 });
+
+                // === GAME LOOP ===
                 scene.registerBeforeRender(() => {
+                    // Move Player
                     const forward = camera.getDirection(BABYLON.Vector3.Forward());
                     const right = camera.getDirection(BABYLON.Vector3.Right());
 
@@ -86,12 +110,16 @@
                         .scale(0.1);
 
                     camera.position.addInPlace(movement);
+
+                    // Rotate Camera
+                    camera.rotation.y -= rotateVector.x; // Left/Right (Yaw)
+                    camera.rotation.x -= rotateVector.y; // Up/Down (Pitch)
                 });
 
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
 
-                logMessage("Neon grid added with left joystick movement!");
+                logMessage("Neon grid with dual joysticks added!");
             } catch (error) {
                 logMessage("Error: " + error.message);
             }
