@@ -42,9 +42,8 @@
 
                 // Camera
                 const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, 0), scene);
-                camera.attachControl(canvas, false); // Prevent default touch-based rotation
+                camera.attachControl(canvas, false); // Disable default touch movement
                 camera.speed = 0.15;
-                camera.angularSensibility = 5000;
 
                 // Lock camera height
                 const groundY = 2;
@@ -89,7 +88,7 @@
                 }).on('end', () => moveVector = BABYLON.Vector3.Zero());
 
                 // === CAMERA ROTATION JOYSTICK (RIGHT) ===
-                const rotationSpeed = 0.05;
+                const rotationSpeed = 0.025; // Lower sensitivity for smoother movement
                 let rotateVector = { x: 0, y: 0 };
                 const lookJoystick = nipplejs.create({
                     zone: document.getElementById('rightJoystick'),
@@ -98,13 +97,13 @@
                     color: 'white',
                     size: 100
                 }).on('move', (evt, data) => {
-                    rotateVector.x = data.vector.x * rotationSpeed; // Left/Right (Yaw)
-                    rotateVector.y = data.vector.y * rotationSpeed; // Up/Down (Pitch)
+                    rotateVector.x = -data.vector.x * rotationSpeed; // Reverse left/right
+                    rotateVector.y = data.vector.y * rotationSpeed;  // Invert up/down
                 }).on('end', () => rotateVector = { x: 0, y: 0 });
 
                 // === GAME LOOP ===
                 scene.registerBeforeRender(() => {
-                    // Move Player (but lock Y to ground)
+                    // Move Player (Y is locked)
                     const forward = camera.getDirection(BABYLON.Vector3.Forward());
                     const right = camera.getDirection(BABYLON.Vector3.Right());
 
@@ -112,18 +111,18 @@
                         .add(right.scale(moveVector.x))
                         .scale(0.1);
 
-                    camera.position.addInPlace(new BABYLON.Vector3(movement.x, 0, movement.z)); // No Y movement
-                    camera.position.y = groundY; // Keep the camera on the ground
+                    camera.position.addInPlace(new BABYLON.Vector3(movement.x, 0, movement.z)); 
+                    camera.position.y = groundY; // Keep camera locked to ground
 
                     // Rotate Camera
-                    camera.rotation.y -= rotateVector.x; // Left/Right (Yaw)
-                    camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x - rotateVector.y)); // Limit up/down (Pitch)
+                    camera.rotation.y -= rotateVector.x; // Left/right rotation
+                    camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x + rotateVector.y)); // Limit up/down rotation
                 });
 
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
 
-                logMessage("Fixed camera controls & locked movement to the ground!");
+                logMessage("Fixed joystick rotation directions & adjusted sensitivity!");
             } catch (error) {
                 logMessage("Error: " + error.message);
             }
