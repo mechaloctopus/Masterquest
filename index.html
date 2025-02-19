@@ -7,30 +7,40 @@
         * { margin: 0; padding: 0; touch-action: none; }
         html, body { width: 100%; height: 100%; overflow: hidden; background: black; }
         #renderCanvas { width: 100%; height: 100%; display: block; }
+        #log { position: absolute; top: 10px; left: 10px; color: white; font-family: monospace; font-size: 14px; background: rgba(0,0,0,0.5); padding: 5px; }
     </style>
 </head>
 <body>
     <canvas id="renderCanvas"></canvas>
+    <div id="log"></div>
+
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script>
+        function logMessage(msg) {
+            document.getElementById('log').innerText += msg + "\n";
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
-            // Initialize Babylon.js
-            const canvas = document.getElementById('renderCanvas');
-            const engine = new BABYLON.Engine(canvas, true, { disableWebGL2Support: true });
-            const scene = new BABYLON.Scene(engine);
-            scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
+            logMessage("Initializing...");
 
-            // Create FPS Camera
-            const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, 0), scene);
-            camera.attachControl(canvas, true);
-            camera.speed = 0.15;
-            camera.angularSensibility = 5000;
+            try {
+                const canvas = document.getElementById('renderCanvas');
+                const engine = new BABYLON.Engine(canvas, true, { disableWebGL2Support: true });
+                const scene = new BABYLON.Scene(engine);
+                scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
-            // Render loop
-            engine.runRenderLoop(() => scene.render());
-            window.addEventListener('resize', () => engine.resize());
+                const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, 0), scene);
+                camera.attachControl(canvas, true);
+                camera.speed = 0.15;
+                camera.angularSensibility = 5000;
 
-            console.log("Babylon.js initialized successfully");
+                engine.runRenderLoop(() => scene.render());
+                window.addEventListener('resize', () => engine.resize());
+
+                logMessage("Babylon.js initialized successfully!");
+            } catch (error) {
+                logMessage("Error: " + error.message);
+            }
         });
     </script>
 </body>
