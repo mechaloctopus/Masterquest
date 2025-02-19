@@ -54,7 +54,7 @@
                 scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
                 // Camera Setup
-                const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, 0), scene);
+                const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, -10), scene);
                 camera.attachControl(canvas, false);
                 camera.speed = 0.15;
                 const groundY = 2;
@@ -164,9 +164,10 @@
                 });
 
                 // Update title position
-                const targetPos = camera.position.add(camera.getDirection(BABYLON.Vector3.Forward()).scale(3));
-                targetPos.y = groundY; // Keep grounded
-                titleSprite.position = BABYLON.Vector3.Lerp(titleSprite.position, targetPos, titleLerpFactor);
+                scene.registerBeforeRender(() => {
+                    const targetPos = camera.position.add(camera.getDirection(BABYLON.Vector3.Forward()).scale(3));
+                    titleSprite.position = BABYLON.Vector3.Lerp(titleSprite.position, targetPos, titleLerpFactor);
+                });
 
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
