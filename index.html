@@ -42,30 +42,32 @@
 
                 // Camera
                 const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, 0), scene);
-                camera.attachControl(canvas, false); 
+                camera.attachControl(canvas, false);
                 camera.speed = 0.15;
 
                 // Lock camera height
                 const groundY = 2;
                 const lookLimit = Math.PI / 4; 
 
-                // === SKYBOX (STAR BACKGROUND) ===
+                // === SKYBOX (USING A SINGLE JPEG IMAGE AS A PANORAMIC SKYBOX) ===
                 function createSkybox() {
-                    const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 1000 }, scene);
-                    const skyboxMaterial = new BABYLON.StandardMaterial("skyBoxMat", scene);
-                    skyboxMaterial.backFaceCulling = false;
-                    skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("https://playground.babylonjs.com/textures/space", scene);
-                    skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
-                    skyboxMaterial.disableLighting = true;
-                    skybox.material = skyboxMaterial;
+                    const skybox = new BABYLON.PhotoDome(
+                        "skyDome",
+                        "eso0932a.jpg", // Make sure this path points to your JPEG image
+                        {
+                            resolution: 32, // Quality of the skybox
+                            size: 1000 // Size of the skybox, make it large enough
+                        },
+                        scene
+                    );
                 }
 
                 createSkybox();
 
                 // === NEON GRID ===
                 function createGrid() {
-                    const gridSize = 50;  
-                    const gridSpacing = 2; 
+                    const gridSize = 50;
+                    const gridSpacing = 2;
                     const color = new BABYLON.Color3(1, 0.2, 0.8);
 
                     for (let x = -gridSize; x <= gridSize; x += gridSpacing) {
@@ -139,7 +141,7 @@
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
 
-                logMessage("Skybox added with space background!");
+                logMessage("Skybox added with panoramic image!");
             } catch (error) {
                 logMessage("Error: " + error.message);
             }
