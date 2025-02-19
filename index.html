@@ -1,19 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mobile Neon Grid</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <title>Neon Grid Mobile</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <style>
         * { margin: 0; padding: 0; touch-action: none; }
         html, body { width: 100%; height: 100%; overflow: hidden; }
         #renderCanvas { width: 100%; height: 100%; }
-        #controls {
-            position: fixed;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-        }
         #fullscreenBtn {
             position: fixed;
             top: 10px;
@@ -39,90 +33,77 @@
             const canvas = document.getElementById('renderCanvas');
             const engine = new BABYLON.Engine(canvas, true);
             const scene = new BABYLON.Scene(engine);
-
-            // ===== SQUARE NEON GRID =====
-            function createGrid(size, step) {
-                const grid = new BABYLON.Mesh.CreateGround("grid", size, size, 1, scene);
+            
+            // ===== INFINITE NEON GRID =====
+            function createInfiniteGrid() {
+                const grid = BABYLON.Mesh.CreateGround("grid", 1000, 1000, 100, scene);
                 const mat = new BABYLON.StandardMaterial("gridMat", scene);
                 mat.emissiveColor = new BABYLON.Color3(1, 0.2, 0.8);
                 mat.wireframe = true;
                 mat.backFaceCulling = false;
                 grid.material = mat;
+                grid.receiveShadows = true;
+                grid.infiniteDistance = true;
+                grid.visibility = 10000;
                 
-                // Create actual square grid pattern
-                const gridLines = [];
-                for(let i = -size/2; i <= size/2; i += step) {
-                    const lineX = BABYLON.Mesh.CreateLines("lineX", [
-                        new BABYLON.Vector3(i, 0, -size/2),
-                        new BABYLON.Vector3(i, 0, size/2)
-                    ], scene);
-                    lineX.color = new BABYLON.Color3(1, 0.2, 0.8);
-                    
-                    const lineZ = BABYLON.Mesh.CreateLines("lineZ", [
-                        new BABYLON.Vector3(-size/2, 0, i),
-                        new BABYLON.Vector3(size/2, 0, i)
-                    ], scene);
-                    lineZ.color = new BABYLON.Color3(1, 0.2, 0.8);
-                    
-                    gridLines.push(lineX, lineZ);
-                }
+                // Add glowing effect
+                const glowLayer = new BABYLON.GlowLayer("glow", scene);
+                glowLayer.intensity = 2.5;
                 return grid;
             }
-            createGrid(1000, 10);
-
-            // ===== GLOW EFFECT =====
-            const glowLayer = new BABYLON.GlowLayer("glow", scene);
-            glowLayer.intensity = 1.8;
+            createInfiniteGrid();
 
             // ===== PLAYER CAMERA =====
             const camera = new BABYLON.FreeCamera("camera", new BABYLON.Vector3(0, 1.7, 0), scene);
             camera.attachControl(canvas, false);
+            camera.minZ = 0.1;
+            camera.maxZ = 1000;
+            camera.speed = 0.2;
+            camera.angularSensibility = 5000;
+            camera.applyGravity = false;
             camera.checkCollisions = true;
             camera.ellipsoid = new BABYLON.Vector3(0.3, 1.7, 0.3);
-            camera.speed = 0.15;
-            camera.angularSensibility = 0;
 
             // ===== TOUCH CONTROLS =====
-            let lookSensitivity = 0.002;
-            let moveVector = BABYLON.Vector3.Zero();
-            let touchStart = null;
+            let moveVector = { x: 0, y: 0 };
+            let lookDelta = { x: 0, y: 0 };
             let lastTouch = null;
-            
+
             // Movement Joystick
             const joystick = nipplejs.create({
-                zone: document.body,
+                zone: canvas,
                 mode: 'dynamic',
-                position: { left: '25%', bottom: '25%' },
+                position: { left: '20%', bottom: '20%' },
                 size: 120,
                 color: 'rgba(255,100,255,0.5)',
                 restOpacity: 0.5
             }).on('move', (evt, data) => {
                 moveVector.x = data.vector.x;
-                moveVector.z = data.vector.y;
-            }).on('end', () => moveVector = BABYLON.Vector3.Zero());
+                moveVector.y = data.vector.y;
+            }).on('end', () => {
+                moveVector.x = 0;
+                moveVector.y = 0;
+            });
 
             // Camera Look Controls
             document.addEventListener('touchstart', (e) => {
-                if(e.touches.length === 1) {
-                    touchStart = e.touches[0];
-                    lastTouch = touchStart;
+                if(e.touches.length === 1 && !joystick.active) {
+                    lastTouch = e.touches[0];
                 }
             });
 
             document.addEventListener('touchmove', (e) => {
-                if(!touchStart || e.touches.length !== 1) return;
+                if(!lastTouch || joystick.active) return;
                 const touch = e.touches[0];
                 
-                const deltaX = touch.pageX - lastTouch.pageX;
-                const deltaY = touch.pageY - lastTouch.pageY;
+                lookDelta.x = touch.pageX - lastTouch.pageX;
+                lookDelta.y = touch.pageY - lastTouch.pageY;
                 
-                // Horizontal rotation (yaw)
-                camera.rotation.y -= deltaX * lookSensitivity;
-                
-                // Vertical rotation (pitch) with limits
+                // Update camera rotation
+                camera.rotation.y -= lookDelta.x * 0.002;
                 camera.rotation.x = BABYLON.Tools.Clamp(
-                    camera.rotation.x - deltaY * lookSensitivity,
-                    -Math.PI/2.2,
+                    camera.rotation.x - lookDelta.y * 0.002,
+                    -Math.PI/2.2,  // Limit vertical look
                     Math.PI/2.2
                 );
                 
@@ -130,34 +111,37 @@
             }, { passive: false });
 
             document.addEventListener('touchend', () => {
-                touchStart = null;
                 lastTouch = null;
+                lookDelta = { x: 0, y: 0 };
             });
 
             // ===== SMOOTH MOVEMENT =====
             scene.registerBeforeRender(() => {
-                const deltaTime = engine.getDeltaTime() / 16.67;
-                
-                // Get camera direction vectors
                 const forward = camera.getDirection(BABYLON.Vector3.Forward());
                 const right = camera.getDirection(BABYLON.Vector3.Right());
                 
-                // Calculate movement direction
-                const movement = forward.scale(moveVector.z)
-                    .add(right.scale(moveVector.x))
-                    .normalize()
-                    .scale(0.2 * deltaTime);
-
+                const movement = forward.scale(moveVector.y * 0.1)
+                    .add(right.scale(moveVector.x * 0.1));
+                
                 camera.position.addInPlace(movement);
             });
 
-            // ===== PROPER FULLSCREEN =====
-            document.getElementById('fullscreenBtn').addEventListener('click', () => {
-                if(document.fullscreenElement) {
-                    document.exitFullscreen();
-                } else {
-                    document.documentElement.requestFullscreen();
-                }
+            // ===== PROPER MOBILE FULLSCREEN =====
+            document.getElementById('fullscreenBtn').addEventListener('click', async () => {
+                try {
+                    if(document.fullscreenElement) {
+                        await document.exitFullscreen();
+                    } else {
+                        await document.documentElement.requestFullscreen();
+                        screen.orientation.lock('landscape').catch(() => {});
+                    }
+                } catch(e) { console.error(e); }
+            });
+
+            // Handle orientation changes
+            screen.orientation.addEventListener('change', () => {
+                engine.resize();
+                joystick.position();
             });
 
             // ===== ENGINE START =====
@@ -166,5 +150,4 @@
         });
     </script>
 </body>
-</html>
 </html>
