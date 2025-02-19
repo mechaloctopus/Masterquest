@@ -29,15 +29,46 @@
                 const scene = new BABYLON.Scene(engine);
                 scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
+                // Camera
                 const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, 0), scene);
                 camera.attachControl(canvas, true);
                 camera.speed = 0.15;
                 camera.angularSensibility = 5000;
 
+                // === NEON GRID ===
+                function createGrid() {
+                    const gridSize = 50;  // Grid extends in both directions
+                    const gridSpacing = 2; // Space between lines
+                    const color = new BABYLON.Color3(1, 0.2, 0.8); // Neon pink
+
+                    // Vertical grid lines
+                    for (let x = -gridSize; x <= gridSize; x += gridSpacing) {
+                        const line = BABYLON.MeshBuilder.CreateLines("gridX", {
+                            points: [new BABYLON.Vector3(x, 0, -gridSize), new BABYLON.Vector3(x, 0, gridSize)]
+                        }, scene);
+                        line.color = color;
+                    }
+
+                    // Horizontal grid lines
+                    for (let z = -gridSize; z <= gridSize; z += gridSpacing) {
+                        const line = BABYLON.MeshBuilder.CreateLines("gridZ", {
+                            points: [new BABYLON.Vector3(-gridSize, 0, z), new BABYLON.Vector3(gridSize, 0, z)]
+                        }, scene);
+                        line.color = color;
+                    }
+
+                    // Glow effect
+                    const glowLayer = new BABYLON.GlowLayer("glow", scene);
+                    glowLayer.intensity = 1.5;
+                }
+
+                createGrid();
+
+                // === ENGINE LOOP ===
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
 
-                logMessage("Babylon.js initialized successfully!");
+                logMessage("Neon grid added!");
             } catch (error) {
                 logMessage("Error: " + error.message);
             }
