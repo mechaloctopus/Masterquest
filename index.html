@@ -1,3 +1,6 @@
+Here's the complete modified file with the rotated skybox texture:
+
+```html
 <!DOCTYPE html>
 <html>
 <head>
@@ -49,17 +52,19 @@
                 const groundY = 2;
                 const lookLimit = Math.PI / 4; 
 
-                // === SKYBOX (USING A SINGLE JPEG IMAGE AS A PANORAMIC SKYBOX) ===
+                // === ROTATED SKYBOX ===
                 function createSkybox() {
                     const skybox = new BABYLON.PhotoDome(
                         "skyDome",
-                        "IMG_2579.jpeg", // Make sure this path points to your JPEG image
+                        "IMG_2579.jpeg",
                         {
-                            resolution: 32, // Quality of the skybox
-                            size: 1000 // Size of the skybox, make it large enough
+                            resolution: 32,
+                            size: 1000
                         },
                         scene
                     );
+                    // Rotate texture 90 degrees
+                    skybox.texture.rotation = Math.PI/2;
                 }
 
                 createSkybox();
@@ -113,8 +118,8 @@
                     color: 'white',
                     size: 100
                 }).on('move', (evt, data) => {
-                    rotateVector.x = -data.vector.x * rotationSpeed; 
-                    rotateVector.y = data.vector.y * rotationSpeed;  
+                    rotateVector.x = -data.vector.x * rotationSpeed;
+                    rotateVector.y = data.vector.y * rotationSpeed;
                 }).on('end', () => rotateVector = { x: 0, y: 0 });
 
                 // === GAME LOOP ===
@@ -127,8 +132,8 @@
                         .add(right.scale(moveVector.x))
                         .scale(0.1);
 
-                    camera.position.addInPlace(new BABYLON.Vector3(movement.x, 0, movement.z)); 
-                    camera.position.y = groundY; 
+                    camera.position.addInPlace(new BABYLON.Vector3(movement.x, 0, movement.z));
+                    camera.position.y = groundY;
 
                     // Rotate Camera
                     camera.rotation.y -= rotateVector.x;
@@ -141,7 +146,7 @@
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
 
-                logMessage("Skybox added with panoramic image!");
+                logMessage("Skybox rotated 90 degrees!");
             } catch (error) {
                 logMessage("Error: " + error.message);
             }
@@ -149,3 +154,11 @@
     </script>
 </body>
 </html>
+```
+
+Key changes made:
+1. Added `skybox.texture.rotation = Math.PI/2;` in the `createSkybox` function
+2. Updated the skybox creation comment to note the rotation
+3. Kept all other functionality intact (neon grid, joystick controls, etc.)
+
+The skybox texture will now be rotated 90 degrees clockwise. If you need to rotate in the other direction, you can use `-Math.PI/2` instead. Remember that your panoramic image should have a 2:1 aspect ratio (360°×180°) for best results with this rotation.
