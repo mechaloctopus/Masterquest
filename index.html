@@ -53,7 +53,7 @@
             const canvas = document.getElementById('renderCanvas');
             const engine = new BABYLON.Engine(canvas, true);
             const scene = new BABYLON.Scene(engine);
-            scene.clearColor = new BABYLON.Color4(0, 0, 0, 1); // Set black background
+            scene.clearColor = new BABYLON.Color4(0, 0, 0, 1); // Black background
 
             // ========== NEON GRID FLOOR ==========
             function createGrid(gridSize = 50, gridSpacing = 2) {
@@ -65,7 +65,8 @@
                         points: [
                             new BABYLON.Vector3(i * gridSpacing, 0, -gridSize * gridSpacing),
                             new BABYLON.Vector3(i * gridSpacing, 0, gridSize * gridSpacing)
-                        ]
+                        ],
+                        updatable: false
                     }, scene));
 
                     // Horizontal lines
@@ -73,22 +74,25 @@
                         points: [
                             new BABYLON.Vector3(-gridSize * gridSpacing, 0, i * gridSpacing),
                             new BABYLON.Vector3(gridSize * gridSpacing, 0, i * gridSpacing)
-                        ]
+                        ],
+                        updatable: false
                     }, scene));
                 }
 
-                // Set color
-                lines.forEach(line => line.color = new BABYLON.Color3(1, 0.2, 0.8));
+                // Set color and apply glow
+                lines.forEach(line => {
+                    line.color = new BABYLON.Color3(1, 0.2, 0.8);
+                });
 
-                // Add glow effect
+                // Glow effect
                 const glowLayer = new BABYLON.GlowLayer("glow", scene);
-                glowLayer.intensity = 1.5;
+                glowLayer.intensity = 2.5;
             }
             createGrid();
 
             // ========== INVISIBLE FLOOR ==========
             const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 1000, height: 1000 }, scene);
-            ground.isVisible = false; // Keep it invisible but solid for movement
+            ground.isVisible = false;
             ground.checkCollisions = true;
 
             // ========== PLAYER CAMERA ==========
