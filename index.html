@@ -1,143 +1,36 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Neon Grid Mobile</title>
+    <title>Neon Grid FPS</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         * { margin: 0; padding: 0; touch-action: none; }
         html, body { width: 100%; height: 100%; overflow: hidden; background: black; }
         #renderCanvas { width: 100%; height: 100%; display: block; }
-        .joystick-container {
-            position: fixed;
-            bottom: 20px;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 20px;
-            box-sizing: border-box;
-        }
-        .joystick {
-            width: 100px;
-            height: 100px;
-            background: rgba(255, 100, 255, 0.2);
-            border-radius: 50%;
-            border: 2px solid rgba(255, 100, 255, 0.5);
-        }
-        #fullscreenBtn {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            padding: 10px 15px;
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            z-index: 1000;
-        }
     </style>
 </head>
 <body>
     <canvas id="renderCanvas"></canvas>
-    <button id="fullscreenBtn">⛶</button>
-    <div class="joystick-container">
-        <div id="leftJoystick" class="joystick"></div>
-        <div id="rightJoystick" class="joystick"></div>
-    </div>
-
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Babylon.js
             const canvas = document.getElementById('renderCanvas');
-            const engine = new BABYLON.Engine(canvas, true);
+            const engine = new BABYLON.Engine(canvas, true, { disableWebGL2Support: true });
             const scene = new BABYLON.Scene(engine);
             scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
-            // ========== CAMERA ==========
+            // Create FPS Camera
             const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, 0), scene);
-            camera.attachControl(canvas, false);
+            camera.attachControl(canvas, true);
             camera.speed = 0.15;
             camera.angularSensibility = 5000;
 
-            // ========== GRID FLOOR ==========
-            const gridSize = 100;
-            const gridSpacing = 2;
-            const gridLines = [];
-
-            for (let i = -gridSize; i <= gridSize; i += gridSpacing) {
-                let lineX = BABYLON.MeshBuilder.CreateLines("gridX", {
-                    points: [new BABYLON.Vector3(i, 0, -gridSize), new BABYLON.Vector3(i, 0, gridSize)]
-                }, scene);
-
-                let lineZ = BABYLON.MeshBuilder.CreateLines("gridZ", {
-                    points: [new BABYLON.Vector3(-gridSize, 0, i), new BABYLON.Vector3(gridSize, 0, i)]
-                }, scene);
-
-                lineX.color = new BABYLON.Color3(1, 0, 1);
-                lineZ.color = new BABYLON.Color3(1, 0, 1);
-                
-                gridLines.push(lineX, lineZ);
-            }
-
-            // Add Glow Effect
-            const glow = new BABYLON.GlowLayer("glow", scene);
-            glow.intensity = 1.5;
-
-            // ========== JOYSTICK CONTROLS ==========
-            let moveVector = BABYLON.Vector3.Zero();
-            let lookVector = BABYLON.Vector2.Zero();
-            const lookSensitivity = 0.02;
-
-            const moveJoystick = nipplejs.create({
-                zone: document.getElementById('leftJoystick'),
-                mode: 'static',
-                position: { left: '50%', top: '50%' },
-                color: 'rgba(255,100,255,0.5)',
-                size: 80
-            }).on('move', (evt, data) => {
-                moveVector.x = data.vector.x;
-                moveVector.z = data.vector.y;
-            }).on('end', () => moveVector = BABYLON.Vector3.Zero());
-
-            const lookJoystick = nipplejs.create({
-                zone: document.getElementById('rightJoystick'),
-                mode: 'static',
-                position: { left: '50%', top: '50%' },
-                color: 'rgba(255,100,255,0.5)',
-                size: 80
-            }).on('move', (evt, data) => {
-                lookVector.x = data.vector.x * lookSensitivity;
-                lookVector.y = data.vector.y * lookSensitivity;
-            }).on('end', () => lookVector = BABYLON.Vector2.Zero());
-
-            // ========== MOVEMENT & LOOK ==========
-            scene.registerBeforeRender(() => {
-                camera.rotation.y -= lookVector.x;
-                camera.rotation.x = BABYLON.Tools.Clamp(camera.rotation.x - lookVector.y, -Math.PI / 2.5, Math.PI / 2.5);
-
-                const forward = camera.getDirection(BABYLON.Vector3.Forward());
-                const right = camera.getDirection(BABYLON.Vector3.Right());
-
-                const movement = forward.scale(moveVector.z).add(right.scale(moveVector.x)).scale(0.1);
-                camera.position.addInPlace(movement);
-            });
-
-            // ========== FULLSCREEN ==========
-            document.getElementById('fullscreenBtn').addEventListener('click', () => {
-                if (document.fullscreenElement) {
-                    document.exitFullscreen();
-                } else {
-                    canvas.requestFullscreen().then(() => {
-                        if (screen.orientation?.lock) {
-                            screen.orientation.lock('landscape').catch(() => console.log('Orientation lock not supported'));
-                        }
-                    }).catch(console.error);
-                }
-            });
-
+            // Render loop
             engine.runRenderLoop(() => scene.render());
             window.addEventListener('resize', () => engine.resize());
+
+            console.log("Babylon.js initialized successfully");
         });
     </script>
 </body>
