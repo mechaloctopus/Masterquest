@@ -1,19 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Neon Grid FPS</title>
+    <title>Milky Way Viewer</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         * { margin: 0; padding: 0; touch-action: none; }
         html, body { width: 100%; height: 100%; overflow: hidden; background: black; }
         #renderCanvas { width: 100%; height: 100%; display: block; }
-        #log { position: absolute; top: 10px; left: 10px; color: white; font-family: monospace; font-size: 14px; background: rgba(0,0,0,0.5); padding: 5px; }
-        .joystick-container {
-            position: absolute;
-            bottom: 20px;
-            width: 100px;
-            height: 100px;
-        }
+        #log { position: absolute; top: 10px; left: 10px; color: #0f0; font-family: monospace; background: rgba(0,0,0,0.7); padding: 8px; }
+        .joystick-container { position: absolute; bottom: 20px; width: 100px; height: 100px; }
         #leftJoystick { left: 20px; }
         #rightJoystick { right: 20px; }
     </style>
@@ -27,131 +22,120 @@
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
     <script>
-        function logMessage(msg) {
-            document.getElementById('log').innerText += msg + "\n";
+        function log(msg) {
+            document.getElementById('log').innerText = 'System: ' + msg;
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            logMessage("Initializing Milky Way Viewer...");
-
+        document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const canvas = document.getElementById('renderCanvas');
-                const engine = new BABYLON.Engine(canvas, true, { disableWebGL2Support: true });
+                const engine = new BABYLON.Engine(canvas, true);
                 const scene = new BABYLON.Scene(engine);
                 scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
-                // Camera Setup
-                const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, 0), scene);
-                camera.attachControl(canvas, false);
-                camera.speed = 0.15;
-                const groundY = 2;
-                const lookLimit = Math.PI / 4;
+                // ========== SCENE TRANSFORMATION ==========
+                const sceneParent = new BABYLON.TransformNode("sceneRoot");
+                sceneParent.rotation.z = Math.PI/2; // Rotate entire scene 90°
 
-                // === MILKY WAY SKYBOX ===
+                // ========== CELESTIAL SYSTEM ==========
                 function createSkybox() {
-                    const skybox = new BABYLON.PhotoDome(
-                        "skyDome",
-                        "IMG_2579.jpeg",
-                        {
-                            resolution: 64,
-                            size: 1000,
-                            useDirectMapping: false
-                        },
-                        scene
-                    );
+                    const skybox = new BABYLON.PhotoDome("milkyWay", "IMG_2579.jpeg", {
+                        resolution: 128,
+                        size: 2000,
+                        useDirectMapping: false
+                    }, scene);
 
-                    // Rotate entire dome mesh 90 degrees
-                    skybox.mesh.rotation.z = -Math.PI/2;
-                    
-                    // Texture coordinate adjustments
-                    skybox.texture.uAng = Math.PI/2;
-                    skybox.texture.wAng = Math.PI;
+                    // Texture alignment adjustments
+                    skybox.texture.uAng = Math.PI;
+                    skybox.texture.wAng = Math.PI/2;
                     skybox.texture.uOffset = Math.PI;
                     
-                    // Optional: Adjust these based on your image's orientation
-                    // skybox.texture.vOffset = Math.PI/2;
-                    // skybox.texture.uScale = 1.5;
+                    return skybox;
                 }
-                createSkybox();
+                createSkybox().mesh.parent = sceneParent;
 
-                // === NEON GRID ===
+                // ========== GROUND GRID ==========
                 function createGrid() {
-                    const gridSize = 50;
-                    const gridSpacing = 2;
-                    const color = new BABYLON.Color3(1, 0.2, 0.8);
-
-                    // Horizontal lines
-                    for (let x = -gridSize; x <= gridSize; x += gridSpacing) {
-                        BABYLON.MeshBuilder.CreateLines("gridX", {
-                            points: [new BABYLON.Vector3(x, 0, -gridSize), new BABYLON.Vector3(x, 0, gridSize)]
-                        }, scene).color = color;
-                    }
-
-                    // Vertical lines
-                    for (let z = -gridSize; z <= gridSize; z += gridSpacing) {
-                        BABYLON.MeshBuilder.CreateLines("gridZ", {
-                            points: [new BABYLON.Vector3(-gridSize, 0, z), new BABYLON.Vector3(gridSize, 0, z)]
-                        }, scene).color = color;
-                    }
-
-                    new BABYLON.GlowLayer("glow", scene).intensity = 1.5;
+                    const grid = BABYLON.MeshBuilder.CreateGround('grid', {
+                        width: 100,
+                        height: 100,
+                        subdivisions: 50
+                    }, scene);
+                    
+                    const gridMat = new BABYLON.GridMaterial('gridMat', scene);
+                    gridMat.majorUnitFrequency = 5;
+                    gridMat.minorUnitVisibility = 0.3;
+                    gridMat.gridRatio = 0.01;
+                    gridMat.mainColor = new BABYLON.Color3(1, 0.2, 0.8);
+                    gridMat.lineColor = new BABYLON.Color3(0.5, 0.2, 0.5);
+                    grid.material = gridMat;
+                    
+                    new BABYLON.GlowLayer('glow', scene).intensity = 1.5;
+                    grid.parent = sceneParent;
                 }
                 createGrid();
 
-                // === CONTROL SYSTEMS ===
-                // Movement Joystick (Left)
+                // ========== CAMERA SYSTEM ==========
+                const camera = new BABYLON.UniversalCamera("mainCam", new BABYLON.Vector3(0, 2, 0), scene);
+                camera.parent = sceneParent;
+                camera.attachControl(canvas, false);
+                camera.speed = 0.2;
+                camera.inertia = 0.8;
+                
+                // ========== CONTROL SYSTEM ==========
                 let moveVector = BABYLON.Vector3.Zero();
+                let rotateVector = BABYLON.Vector2.Zero();
+                const rotationSpeed = 0.02;
+
+                // Movement Joystick
                 nipplejs.create({
                     zone: document.getElementById('leftJoystick'),
                     mode: 'static',
                     position: { left: '50%', top: '50%' },
-                    color: 'white',
+                    color: '#0f0',
                     size: 100
-                }).on('move', (evt, data) => {
-                    moveVector.x = data.vector.x;
-                    moveVector.z = data.vector.y;
-                }).on('end', () => moveVector = BABYLON.Vector3.Zero());
+                }).on('move', (_, data) => {
+                    moveVector.set(data.vector.x, 0, data.vector.y);
+                }).on('end', () => moveVector.setAll(0));
 
-                // Camera Joystick (Right)
-                const rotationSpeed = 0.015;
-                let rotateVector = { x: 0, y: 0 };
+                // Rotation Joystick
                 nipplejs.create({
                     zone: document.getElementById('rightJoystick'),
                     mode: 'static',
                     position: { left: '50%', top: '50%' },
-                    color: 'white',
+                    color: '#0f0',
                     size: 100
-                }).on('move', (evt, data) => {
-                    rotateVector.x = -data.vector.x * rotationSpeed;
-                    rotateVector.y = -data.vector.y * rotationSpeed; // Inverted Y-axis
-                }).on('end', () => rotateVector = { x: 0, y: 0 });
+                }).on('move', (_, data) => {
+                    rotateVector.set(-data.vector.x, -data.vector.y);
+                }).on('end', () => rotateVector.setAll(0));
 
-                // === GAME LOOP ===
-                scene.registerBeforeRender(() => {
+                // ========== GAME LOOP ==========
+                scene.onBeforeRenderObservable.add(() => {
                     // Movement
                     const forward = camera.getDirection(BABYLON.Vector3.Forward());
                     const right = camera.getDirection(BABYLON.Vector3.Right());
-                    camera.position.addInPlace(
-                        forward.scale(moveVector.z * 0.1)
-                               .add(right.scale(moveVector.x * 0.1))
-                    );
-                    camera.position.y = groundY;
+                    const movement = forward.scale(moveVector.z).add(right.scale(moveVector.x));
+                    camera.position.addInPlace(movement.scale(0.1));
 
                     // Rotation
-                    camera.rotation.y -= rotateVector.x;
+                    camera.rotation.y += rotateVector.x * rotationSpeed;
                     camera.rotation.x = BABYLON.Scalar.Clamp(
-                        camera.rotation.x + rotateVector.y,
-                        -lookLimit,
-                        lookLimit
+                        camera.rotation.x + (rotateVector.y * rotationSpeed),
+                        -Math.PI/3,
+                        Math.PI/3
                     );
                 });
 
+                // ========== INITIALIZATION ==========
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
+                log("System Ready - Celestial Alignment Achieved");
 
-                logMessage("System Ready - Milky Way Vertical Orientation Active");
+                // Debug Helpers (optional)
+                BABYLON.AxesViewer.ShowXYZAxes(engine, scene, 10);
+
             } catch (error) {
-                logMessage(`Fatal Error: ${error.message}`);
+                log(`ERROR: ${error.message}`);
             }
         });
     </script>
