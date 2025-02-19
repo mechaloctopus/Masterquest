@@ -3,16 +3,31 @@
 <head>
     <title>Neon Grid Mobile</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
     <style>
         * { margin: 0; padding: 0; touch-action: none; }
         html, body { width: 100%; height: 100%; overflow: hidden; }
         #renderCanvas { width: 100%; height: 100%; }
+        .joystick-container {
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+        .joystick {
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 100, 255, 0.2);
+            border-radius: 50%;
+            border: 2px solid rgba(255, 100, 255, 0.5);
+        }
         #fullscreenBtn {
             position: fixed;
             top: 10px;
             right: 10px;
-            padding: 15px;
+            padding: 10px 15px;
             background: rgba(255,255,255,0.2);
             color: white;
             border: none;
@@ -24,127 +39,124 @@
 <body>
     <canvas id="renderCanvas"></canvas>
     <button id="fullscreenBtn">⛶</button>
+    <div class="joystick-container">
+        <div id="leftJoystick" class="joystick"></div>
+        <div id="rightJoystick" class="joystick"></div>
+    </div>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // ========== ENGINE SETUP ==========
             const canvas = document.getElementById('renderCanvas');
             const engine = new BABYLON.Engine(canvas, true);
             const scene = new BABYLON.Scene(engine);
-            
-            // ===== INFINITE NEON GRID =====
-            function createInfiniteGrid() {
-                const grid = BABYLON.Mesh.CreateGround("grid", 1000, 1000, 100, scene);
-                const mat = new BABYLON.StandardMaterial("gridMat", scene);
-                mat.emissiveColor = new BABYLON.Color3(1, 0.2, 0.8);
-                mat.wireframe = true;
-                mat.backFaceCulling = false;
-                grid.material = mat;
-                grid.receiveShadows = true;
-                grid.infiniteDistance = true;
-                grid.visibility = 10000;
-                
-                // Add glowing effect
+
+            // ========== NEON GRID FLOOR ==========
+            function createGrid() {
+                const gridSize = 100;  // Number of lines in each direction
+                const gridSpacing = 2; // Units between lines
+                const gridOffset = (gridSize * gridSpacing) / 2;
+
+                // Create vertical lines (X-axis)
+                for(let x = -gridOffset; x <= gridOffset; x += gridSpacing) {
+                    BABYLON.Mesh.CreateLines("gridX", [
+                        new BABYLON.Vector3(x, 0, -gridOffset),
+                        new BABYLON.Vector3(x, 0, gridOffset)
+                    ], scene).color = new BABYLON.Color3(1, 0.2, 0.8);
+                }
+
+                // Create horizontal lines (Z-axis)
+                for(let z = -gridOffset; z <= gridOffset; z += gridSpacing) {
+                    BABYLON.Mesh.CreateLines("gridZ", [
+                        new BABYLON.Vector3(-gridOffset, 0, z),
+                        new BABYLON.Vector3(gridOffset, 0, z)
+                    ], scene).color = new BABYLON.Color3(1, 0.2, 0.8);
+                }
+
+                // Add glow effect
                 const glowLayer = new BABYLON.GlowLayer("glow", scene);
                 glowLayer.intensity = 2.5;
-                return grid;
             }
-            createInfiniteGrid();
+            createGrid();
 
-            // ===== PLAYER CAMERA =====
-            const camera = new BABYLON.FreeCamera("camera", new BABYLON.Vector3(0, 1.7, 0), scene);
+            // ========== PLAYER CAMERA ==========
+            const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.7, 0), scene);
             camera.attachControl(canvas, false);
-            camera.minZ = 0.1;
-            camera.maxZ = 1000;
-            camera.speed = 0.2;
-            camera.angularSensibility = 5000;
-            camera.applyGravity = false;
             camera.checkCollisions = true;
             camera.ellipsoid = new BABYLON.Vector3(0.3, 1.7, 0.3);
+            camera.applyGravity = true;
+            camera.speed = 0.15;
+            camera.angularSensibility = 5000;
 
-            // ===== TOUCH CONTROLS =====
-            let moveVector = { x: 0, y: 0 };
-            let lookDelta = { x: 0, y: 0 };
-            let lastTouch = null;
+            // ========== JOYSTICK CONTROLS ==========
+            let moveVector = BABYLON.Vector3.Zero();
+            let lookVector = BABYLON.Vector2.Zero();
+            const lookSensitivity = 0.02;
 
-            // Movement Joystick
-            const joystick = nipplejs.create({
-                zone: canvas,
-                mode: 'dynamic',
-                position: { left: '20%', bottom: '20%' },
-                size: 120,
+            // Movement Joystick (Left)
+            const moveJoystick = nipplejs.create({
+                zone: document.getElementById('leftJoystick'),
+                mode: 'static',
+                position: { left: '50%', top: '50%' },
                 color: 'rgba(255,100,255,0.5)',
-                restOpacity: 0.5
+                size: 80
             }).on('move', (evt, data) => {
                 moveVector.x = data.vector.x;
-                moveVector.y = data.vector.y;
-            }).on('end', () => {
-                moveVector.x = 0;
-                moveVector.y = 0;
-            });
+                moveVector.z = data.vector.y;
+            }).on('end', () => moveVector = BABYLON.Vector3.Zero());
 
-            // Camera Look Controls
-            document.addEventListener('touchstart', (e) => {
-                if(e.touches.length === 1 && !joystick.active) {
-                    lastTouch = e.touches[0];
-                }
-            });
+            // Look Joystick (Right)
+            const lookJoystick = nipplejs.create({
+                zone: document.getElementById('rightJoystick'),
+                mode: 'static',
+                position: { left: '50%', top: '50%' },
+                color: 'rgba(255,100,255,0.5)',
+                size: 80
+            }).on('move', (evt, data) => {
+                lookVector.x = data.vector.x * lookSensitivity;
+                lookVector.y = data.vector.y * lookSensitivity;
+            }).on('end', () => lookVector = BABYLON.Vector2.Zero());
 
-            document.addEventListener('touchmove', (e) => {
-                if(!lastTouch || joystick.active) return;
-                const touch = e.touches[0];
-                
-                lookDelta.x = touch.pageX - lastTouch.pageX;
-                lookDelta.y = touch.pageY - lastTouch.pageY;
-                
-                // Update camera rotation
-                camera.rotation.y -= lookDelta.x * 0.002;
-                camera.rotation.x = BABYLON.Tools.Clamp(
-                    camera.rotation.x - lookDelta.y * 0.002,
-                    -Math.PI/2.2,  // Limit vertical look
-                    Math.PI/2.2
-                );
-                
-                lastTouch = touch;
-            }, { passive: false });
-
-            document.addEventListener('touchend', () => {
-                lastTouch = null;
-                lookDelta = { x: 0, y: 0 };
-            });
-
-            // ===== SMOOTH MOVEMENT =====
+            // ========== MOVEMENT & LOOK ==========
             scene.registerBeforeRender(() => {
+                // Camera rotation
+                camera.rotation.y -= lookVector.x;
+                camera.rotation.x = BABYLON.Tools.Clamp(
+                    camera.rotation.x - lookVector.y,
+                    -Math.PI/2.5,
+                    Math.PI/2.5
+                );
+
+                // Player movement
                 const forward = camera.getDirection(BABYLON.Vector3.Forward());
                 const right = camera.getDirection(BABYLON.Vector3.Right());
                 
-                const movement = forward.scale(moveVector.y * 0.1)
-                    .add(right.scale(moveVector.x * 0.1));
-                
+                const movement = forward.scale(moveVector.z)
+                    .add(right.scale(moveVector.x))
+                    .scale(0.1);
+
                 camera.position.addInPlace(movement);
             });
 
-            // ===== PROPER MOBILE FULLSCREEN =====
-            document.getElementById('fullscreenBtn').addEventListener('click', async () => {
-                try {
-                    if(document.fullscreenElement) {
-                        await document.exitFullscreen();
-                    } else {
-                        await document.documentElement.requestFullscreen();
-                        screen.orientation.lock('landscape').catch(() => {});
-                    }
-                } catch(e) { console.error(e); }
+            // ========== RELIABLE FULLSCREEN ==========
+            document.getElementById('fullscreenBtn').addEventListener('click', () => {
+                if(document.fullscreenElement) {
+                    document.exitFullscreen();
+                } else {
+                    canvas.requestFullscreen().then(() => {
+                        // Lock orientation for mobile
+                        if(screen.orientation?.lock) {
+                            screen.orientation.lock('landscape')
+                                .catch(() => console.log('Orientation lock not supported'));
+                        }
+                    }).catch(console.error);
+                }
             });
 
-            // Handle orientation changes
-            screen.orientation.addEventListener('change', () => {
-                engine.resize();
-                joystick.position();
-            });
-
-            // ===== ENGINE START =====
+            // ========== ENGINE START ==========
             engine.runRenderLoop(() => scene.render());
             window.addEventListener('resize', () => engine.resize());
         });
