@@ -32,7 +32,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            logMessage("Initializing...");
+            logMessage("Initializing Milky Way Viewer...");
 
             try {
                 const canvas = document.getElementById('renderCanvas');
@@ -40,35 +40,38 @@
                 const scene = new BABYLON.Scene(engine);
                 scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
-                // Camera
+                // Camera Setup
                 const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, 0), scene);
                 camera.attachControl(canvas, false);
                 camera.speed = 0.15;
-
-                // Lock camera height
                 const groundY = 2;
                 const lookLimit = Math.PI / 4;
 
-                // === ROTATED SKYBOX ===
+                // === MILKY WAY SKYBOX ===
                 function createSkybox() {
                     const skybox = new BABYLON.PhotoDome(
                         "skyDome",
                         "IMG_2579.jpeg",
                         {
-                            resolution: 32,
+                            resolution: 64,
                             size: 1000,
-                            useDirectMapping: false // Important for proper texture rotation
+                            useDirectMapping: false
                         },
                         scene
                     );
-                    
-                    // Adjust texture mapping
-                    skybox.texture.wAng = Math.PI/2; // Rotate 90 degrees
-                    skybox.texture.vAng = Math.PI/2; // Adjust vertical alignment
-                    skybox.texture.uScale = 2.0; // Stretch horizontally if needed
-                    skybox.texture.vScale = 1.0;
-                }
 
+                    // Rotate entire dome mesh 90 degrees
+                    skybox.mesh.rotation.z = -Math.PI/2;
+                    
+                    // Texture coordinate adjustments
+                    skybox.texture.uAng = Math.PI/2;
+                    skybox.texture.wAng = Math.PI;
+                    skybox.texture.uOffset = Math.PI;
+                    
+                    // Optional: Adjust these based on your image's orientation
+                    // skybox.texture.vOffset = Math.PI/2;
+                    // skybox.texture.uScale = 1.5;
+                }
                 createSkybox();
 
                 // === NEON GRID ===
@@ -77,29 +80,28 @@
                     const gridSpacing = 2;
                     const color = new BABYLON.Color3(1, 0.2, 0.8);
 
+                    // Horizontal lines
                     for (let x = -gridSize; x <= gridSize; x += gridSpacing) {
-                        const line = BABYLON.MeshBuilder.CreateLines("gridX", {
+                        BABYLON.MeshBuilder.CreateLines("gridX", {
                             points: [new BABYLON.Vector3(x, 0, -gridSize), new BABYLON.Vector3(x, 0, gridSize)]
-                        }, scene);
-                        line.color = color;
+                        }, scene).color = color;
                     }
 
+                    // Vertical lines
                     for (let z = -gridSize; z <= gridSize; z += gridSpacing) {
-                        const line = BABYLON.MeshBuilder.CreateLines("gridZ", {
+                        BABYLON.MeshBuilder.CreateLines("gridZ", {
                             points: [new BABYLON.Vector3(-gridSize, 0, z), new BABYLON.Vector3(gridSize, 0, z)]
-                        }, scene);
-                        line.color = color;
+                        }, scene).color = color;
                     }
 
-                    const glowLayer = new BABYLON.GlowLayer("glow", scene);
-                    glowLayer.intensity = 1.5;
+                    new BABYLON.GlowLayer("glow", scene).intensity = 1.5;
                 }
-
                 createGrid();
 
-                // === MOVEMENT JOYSTICK (LEFT) ===
+                // === CONTROL SYSTEMS ===
+                // Movement Joystick (Left)
                 let moveVector = BABYLON.Vector3.Zero();
-                const moveJoystick = nipplejs.create({
+                nipplejs.create({
                     zone: document.getElementById('leftJoystick'),
                     mode: 'static',
                     position: { left: '50%', top: '50%' },
@@ -110,10 +112,10 @@
                     moveVector.z = data.vector.y;
                 }).on('end', () => moveVector = BABYLON.Vector3.Zero());
 
-                // === CAMERA ROTATION JOYSTICK (RIGHT) ===
+                // Camera Joystick (Right)
                 const rotationSpeed = 0.015;
                 let rotateVector = { x: 0, y: 0 };
-                const lookJoystick = nipplejs.create({
+                nipplejs.create({
                     zone: document.getElementById('rightJoystick'),
                     mode: 'static',
                     position: { left: '50%', top: '50%' },
@@ -126,31 +128,30 @@
 
                 // === GAME LOOP ===
                 scene.registerBeforeRender(() => {
-                    // Move Player
+                    // Movement
                     const forward = camera.getDirection(BABYLON.Vector3.Forward());
                     const right = camera.getDirection(BABYLON.Vector3.Right());
-
-                    const movement = forward.scale(moveVector.z)
-                        .add(right.scale(moveVector.x))
-                        .scale(0.1);
-
-                    camera.position.addInPlace(new BABYLON.Vector3(movement.x, 0, movement.z));
+                    camera.position.addInPlace(
+                        forward.scale(moveVector.z * 0.1)
+                               .add(right.scale(moveVector.x * 0.1))
+                    );
                     camera.position.y = groundY;
 
-                    // Rotate Camera
+                    // Rotation
                     camera.rotation.y -= rotateVector.x;
-
-                    // Limit up/down rotation
-                    const newXRotation = camera.rotation.x + rotateVector.y;
-                    camera.rotation.x = Math.max(-lookLimit, Math.min(lookLimit, newXRotation));
+                    camera.rotation.x = BABYLON.Scalar.Clamp(
+                        camera.rotation.x + rotateVector.y,
+                        -lookLimit,
+                        lookLimit
+                    );
                 });
 
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
 
-                logMessage("Controls inverted and skybox rotated!");
+                logMessage("System Ready - Milky Way Vertical Orientation Active");
             } catch (error) {
-                logMessage("Error: " + error.message);
+                logMessage(`Fatal Error: ${error.message}`);
             }
         });
     </script>
