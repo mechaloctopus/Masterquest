@@ -7,12 +7,24 @@
         * { margin: 0; padding: 0; touch-action: none; }
         html, body { width: 100%; height: 100%; overflow: hidden; background: black; }
         #renderCanvas { width: 100%; height: 100%; display: block; }
-        #log { position: absolute; top: 10px; left: 10px; color: white; font-family: monospace; font-size: 14px; background: rgba(0,0,0,0.5); padding: 5px; }
+        #log { 
+            position: absolute; 
+            top: 10px; 
+            left: 10px; 
+            color: #00ff00; /* Neon green */
+            font-family: 'Courier New', monospace; 
+            font-size: 14px; 
+            background: rgba(0,0,0,0.8); 
+            padding: 10px;
+            border: 1px solid #00ff00;
+            text-shadow: 0 0 10px #00ff0080; /* Green glow */
+        }
         .joystick-container {
             position: absolute;
             bottom: 20px;
             width: 100px;
             height: 100px;
+            filter: drop-shadow(0 0 5px #00ff00); /* Glow effect */
         }
         #leftJoystick { left: 20px; }
         #rightJoystick { right: 20px; }
@@ -32,7 +44,8 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            logMessage("Initializing Milky Way Viewer...");
+            logMessage("> SYSTEM INITIALIZING...");
+            logMessage("> LOADING NEON GRID PROTOCOL...");
 
             try {
                 const canvas = document.getElementById('renderCanvas');
@@ -60,17 +73,10 @@
                         scene
                     );
 
-                    // Rotate entire dome mesh 90 degrees
                     skybox.mesh.rotation.z = -Math.PI/2;
-                    
-                    // Texture coordinate adjustments
                     skybox.texture.uAng = Math.PI/2;
                     skybox.texture.wAng = Math.PI;
                     skybox.texture.uOffset = Math.PI;
-                    
-                    // Optional: Adjust these based on your image's orientation
-                    // skybox.texture.vOffset = Math.PI/2;
-                    // skybox.texture.uScale = 1.5;
                 }
                 createSkybox();
 
@@ -78,7 +84,7 @@
                 function createGrid() {
                     const gridSize = 50;
                     const gridSpacing = 2;
-                    const color = new BABYLON.Color3(1, 0.2, 0.8);
+                    const color = new BABYLON.Color3(0, 1, 0.2); // Neon green
 
                     // Horizontal lines
                     for (let x = -gridSize; x <= gridSize; x += gridSpacing) {
@@ -94,7 +100,9 @@
                         }, scene).color = color;
                     }
 
-                    new BABYLON.GlowLayer("glow", scene).intensity = 1.5;
+                    const glowLayer = new BABYLON.GlowLayer("glow", scene);
+                    glowLayer.intensity = 2.0;
+                    glowLayer.blurKernelSize = 64;
                 }
                 createGrid();
 
@@ -105,7 +113,7 @@
                     zone: document.getElementById('leftJoystick'),
                     mode: 'static',
                     position: { left: '50%', top: '50%' },
-                    color: 'white',
+                    color: '#00ff00', // Neon green
                     size: 100
                 }).on('move', (evt, data) => {
                     moveVector.x = data.vector.x;
@@ -119,11 +127,11 @@
                     zone: document.getElementById('rightJoystick'),
                     mode: 'static',
                     position: { left: '50%', top: '50%' },
-                    color: 'white',
+                    color: '#00ff00', // Neon green
                     size: 100
                 }).on('move', (evt, data) => {
                     rotateVector.x = -data.vector.x * rotationSpeed;
-                    rotateVector.y = -data.vector.y * rotationSpeed; // Inverted Y-axis
+                    rotateVector.y = -data.vector.y * rotationSpeed;
                 }).on('end', () => rotateVector = { x: 0, y: 0 });
 
                 // === GAME LOOP ===
@@ -149,9 +157,10 @@
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
 
-                logMessage("System Ready - Milky Way Vertical Orientation Active");
+                logMessage("> SYSTEM READY");
+                logMessage("> INITIALIZE GRID NAVIGATION...");
             } catch (error) {
-                logMessage(`Fatal Error: ${error.message}`);
+                logMessage(`!! SYSTEM ERROR: ${error.message}`);
             }
         });
     </script>
