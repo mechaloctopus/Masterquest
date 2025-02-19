@@ -35,7 +35,7 @@
 
                 // ========== SCENE TRANSFORMATION ==========
                 const sceneParent = new BABYLON.TransformNode("sceneRoot");
-                sceneParent.rotation.z = Math.PI/2; // Rotate entire scene 90°
+                sceneParent.rotation.z = Math.PI/2;
 
                 // ========== CELESTIAL SYSTEM ==========
                 function createSkybox() {
@@ -45,7 +45,6 @@
                         useDirectMapping: false
                     }, scene);
 
-                    // Texture alignment adjustments
                     skybox.texture.uAng = Math.PI;
                     skybox.texture.wAng = Math.PI/2;
                     skybox.texture.uOffset = Math.PI;
@@ -54,24 +53,33 @@
                 }
                 createSkybox().mesh.parent = sceneParent;
 
-                // ========== GROUND GRID ==========
+                // ========== NEON GRID ==========
                 function createGrid() {
-                    const grid = BABYLON.MeshBuilder.CreateGround('grid', {
-                        width: 100,
-                        height: 100,
-                        subdivisions: 50
-                    }, scene);
-                    
-                    const gridMat = new BABYLON.GridMaterial('gridMat', scene);
-                    gridMat.majorUnitFrequency = 5;
-                    gridMat.minorUnitVisibility = 0.3;
-                    gridMat.gridRatio = 0.01;
-                    gridMat.mainColor = new BABYLON.Color3(1, 0.2, 0.8);
-                    gridMat.lineColor = new BABYLON.Color3(0.5, 0.2, 0.5);
-                    grid.material = gridMat;
-                    
+                    const gridSize = 50;
+                    const gridSpacing = 2;
+                    const color = new BABYLON.Color3(1, 0.2, 0.8);
+
+                    // Create horizontal lines
+                    for (let x = -gridSize; x <= gridSize; x += gridSpacing) {
+                        BABYLON.MeshBuilder.CreateLines("gridX", {
+                            points: [
+                                new BABYLON.Vector3(x, 0, -gridSize),
+                                new BABYLON.Vector3(x, 0, gridSize)
+                            ]
+                        }, scene).color = color;
+                    }
+
+                    // Create vertical lines
+                    for (let z = -gridSize; z <= gridSize; z += gridSpacing) {
+                        BABYLON.MeshBuilder.CreateLines("gridZ", {
+                            points: [
+                                new BABYLON.Vector3(-gridSize, 0, z),
+                                new BABYLON.Vector3(gridSize, 0, z)
+                            ]
+                        }, scene).color = color;
+                    }
+
                     new BABYLON.GlowLayer('glow', scene).intensity = 1.5;
-                    grid.parent = sceneParent;
                 }
                 createGrid();
 
@@ -126,13 +134,9 @@
                     );
                 });
 
-                // ========== INITIALIZATION ==========
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
-                log("System Ready - Celestial Alignment Achieved");
-
-                // Debug Helpers (optional)
-                BABYLON.AxesViewer.ShowXYZAxes(engine, scene, 10);
+                log("System Ready - Celestial Navigation Active");
 
             } catch (error) {
                 log(`ERROR: ${error.message}`);
