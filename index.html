@@ -106,6 +106,15 @@
                 }
                 createGrid();
 
+                // === FLOATING TITLE GRAPHIC ===
+                let titleSprite;
+                const titleManager = new BABYLON.SpriteManager("titleManager", "title.png", 1, 128, scene);
+                titleSprite = new BABYLON.Sprite("titleSprite", titleManager);
+                titleSprite.size = 3;
+                titleSprite.invertU = -1; // Face camera
+                const titleOffset = new BABYLON.Vector3(0, 0, -3); // 3 units in front of camera
+                const titleLerpFactor = 0.1; // Smooth follow speed
+
                 // === CONTROL SYSTEMS ===
                 // Movement Joystick (Left)
                 let moveVector = BABYLON.Vector3.Zero();
@@ -153,6 +162,11 @@
                         lookLimit
                     );
                 });
+
+                // Update title position
+                const targetPos = camera.position.add(camera.getDirection(BABYLON.Vector3.Forward()).scale(3));
+                targetPos.y = groundY; // Keep grounded
+                titleSprite.position = BABYLON.Vector3.Lerp(titleSprite.position, targetPos, titleLerpFactor);
 
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
