@@ -7,33 +7,30 @@
         * { margin: 0; padding: 0; touch-action: none; }
         html, body { width: 100%; height: 100%; overflow: hidden; }
         #renderCanvas { width: 100%; height: 100%; }
-        #leftZone, #rightZone {
+        #controls {
             position: fixed;
-            bottom: 0;
-            width: 50%;
-            height: 50%;
-            opacity: 0.5;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
         }
-        #leftZone { left: 0; }
-        #rightZone { right: 0; }
         #fullscreenBtn {
             position: fixed;
             top: 10px;
             right: 10px;
-            padding: 10px;
+            padding: 15px;
             background: rgba(255,255,255,0.2);
             color: white;
             border: none;
+            border-radius: 5px;
+            z-index: 1000;
         }
     </style>
 </head>
 <body>
     <canvas id="renderCanvas"></canvas>
-    <div id="leftZone"></div>
-    <div id="rightZone"></div>
     <button id="fullscreenBtn">⛶</button>
 
-    <!-- Include Babylon.js and nipplejs -->
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
 
@@ -43,92 +40,124 @@
             const engine = new BABYLON.Engine(canvas, true);
             const scene = new BABYLON.Scene(engine);
 
-            // ===== NEON GRID =====
-            const gridMat = new BABYLON.StandardMaterial("gridMat", scene);
-            gridMat.emissiveColor = new BABYLON.Color3(1, 0.2, 0.8); // Neon pink
-            gridMat.wireframe = true;
-            
-            const ground = BABYLON.Mesh.CreateGround("ground", 1000, 1000, 100, scene);
-            ground.material = gridMat;
-            ground.checkCollisions = true;
+            // ===== SQUARE NEON GRID =====
+            function createGrid(size, step) {
+                const grid = new BABYLON.Mesh.CreateGround("grid", size, size, 1, scene);
+                const mat = new BABYLON.StandardMaterial("gridMat", scene);
+                mat.emissiveColor = new BABYLON.Color3(1, 0.2, 0.8);
+                mat.wireframe = true;
+                mat.backFaceCulling = false;
+                grid.material = mat;
+                
+                // Create actual square grid pattern
+                const gridLines = [];
+                for(let i = -size/2; i <= size/2; i += step) {
+                    const lineX = BABYLON.Mesh.CreateLines("lineX", [
+                        new BABYLON.Vector3(i, 0, -size/2),
+                        new BABYLON.Vector3(i, 0, size/2)
+                    ], scene);
+                    lineX.color = new BABYLON.Color3(1, 0.2, 0.8);
+                    
+                    const lineZ = BABYLON.Mesh.CreateLines("lineZ", [
+                        new BABYLON.Vector3(-size/2, 0, i),
+                        new BABYLON.Vector3(size/2, 0, i)
+                    ], scene);
+                    lineZ.color = new BABYLON.Color3(1, 0.2, 0.8);
+                    
+                    gridLines.push(lineX, lineZ);
+                }
+                return grid;
+            }
+            createGrid(1000, 10);
 
-            // Add glow effect
+            // ===== GLOW EFFECT =====
             const glowLayer = new BABYLON.GlowLayer("glow", scene);
-            glowLayer.intensity = 1.5;
+            glowLayer.intensity = 1.8;
 
             // ===== PLAYER CAMERA =====
-            const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.7, 0), scene);
+            const camera = new BABYLON.FreeCamera("camera", new BABYLON.Vector3(0, 1.7, 0), scene);
             camera.attachControl(canvas, false);
             camera.checkCollisions = true;
             camera.ellipsoid = new BABYLON.Vector3(0.3, 1.7, 0.3);
-            camera.speed = 0.2;
-            camera.angularSensibility = 5000;
+            camera.speed = 0.15;
+            camera.angularSensibility = 0;
 
             // ===== TOUCH CONTROLS =====
-            let lookDelta = { x: 0, y: 0 };
-            let moveVector = { x: 0, y: 0 };
+            let lookSensitivity = 0.002;
+            let moveVector = BABYLON.Vector3.Zero();
+            let touchStart = null;
+            let lastTouch = null;
             
-            // Movement joystick (left side)
+            // Movement Joystick
             const joystick = nipplejs.create({
-                zone: document.getElementById('leftZone'),
-                mode: 'static',
+                zone: document.body,
+                mode: 'dynamic',
                 position: { left: '25%', bottom: '25%' },
-                size: 100,
-                color: 'rgba(255,100,255,0.5)'
+                size: 120,
+                color: 'rgba(255,100,255,0.5)',
+                restOpacity: 0.5
             }).on('move', (evt, data) => {
                 moveVector.x = data.vector.x;
-                moveVector.y = data.vector.y;
-            }).on('end', () => {
-                moveVector.x = 0;
-                moveVector.y = 0;
+                moveVector.z = data.vector.y;
+            }).on('end', () => moveVector = BABYLON.Vector3.Zero());
+
+            // Camera Look Controls
+            document.addEventListener('touchstart', (e) => {
+                if(e.touches.length === 1) {
+                    touchStart = e.touches[0];
+                    lastTouch = touchStart;
+                }
             });
 
-            // Camera control (right side)
-            let touchStart = null;
-            document.getElementById('rightZone').addEventListener('touchstart', (e) => {
-                touchStart = e.touches[0];
-            });
-            
             document.addEventListener('touchmove', (e) => {
-                if (!touchStart) return;
+                if(!touchStart || e.touches.length !== 1) return;
                 const touch = e.touches[0];
                 
-                lookDelta.x = touch.pageX - touchStart.pageX;
-                lookDelta.y = touch.pageY - touchStart.pageY;
+                const deltaX = touch.pageX - lastTouch.pageX;
+                const deltaY = touch.pageY - lastTouch.pageY;
                 
-                // Update camera rotation
-                camera.rotation.y -= lookDelta.x * 0.005;
+                // Horizontal rotation (yaw)
+                camera.rotation.y -= deltaX * lookSensitivity;
+                
+                // Vertical rotation (pitch) with limits
                 camera.rotation.x = BABYLON.Tools.Clamp(
-                    camera.rotation.x - lookDelta.y * 0.005,
-                    -Math.PI/2.5,
-                    Math.PI/2.5
+                    camera.rotation.x - deltaY * lookSensitivity,
+                    -Math.PI/2.2,
+                    Math.PI/2.2
                 );
                 
-                touchStart = touch;
+                lastTouch = touch;
             }, { passive: false });
 
             document.addEventListener('touchend', () => {
                 touchStart = null;
-                lookDelta = { x: 0, y: 0 };
+                lastTouch = null;
             });
 
-            // ===== MOVEMENT =====
+            // ===== SMOOTH MOVEMENT =====
             scene.registerBeforeRender(() => {
-                // Get forward/right directions
+                const deltaTime = engine.getDeltaTime() / 16.67;
+                
+                // Get camera direction vectors
                 const forward = camera.getDirection(BABYLON.Vector3.Forward());
                 const right = camera.getDirection(BABYLON.Vector3.Right());
                 
-                // Calculate movement
-                const movement = forward.scale(moveVector.y)
+                // Calculate movement direction
+                const movement = forward.scale(moveVector.z)
                     .add(right.scale(moveVector.x))
-                    .scale(0.1);
+                    .normalize()
+                    .scale(0.2 * deltaTime);
 
                 camera.position.addInPlace(movement);
             });
 
-            // ===== FULLSCREEN =====
+            // ===== PROPER FULLSCREEN =====
             document.getElementById('fullscreenBtn').addEventListener('click', () => {
-                canvas.requestFullscreen().catch(console.log);
+                if(document.fullscreenElement) {
+                    document.exitFullscreen();
+                } else {
+                    document.documentElement.requestFullscreen();
+                }
             });
 
             // ===== ENGINE START =====
@@ -137,4 +166,5 @@
         });
     </script>
 </body>
+</html>
 </html>
