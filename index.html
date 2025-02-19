@@ -47,6 +47,7 @@
 
                 // Lock camera height
                 const groundY = 2;
+                const lookLimit = Math.PI / 4; // 45 degrees up/down limit
 
                 // === NEON GRID ===
                 function createGrid() {
@@ -88,7 +89,7 @@
                 }).on('end', () => moveVector = BABYLON.Vector3.Zero());
 
                 // === CAMERA ROTATION JOYSTICK (RIGHT) ===
-                const rotationSpeed = 0.025; // Lower sensitivity for smoother movement
+                const rotationSpeed = 0.015; // Further reduced sensitivity for smoother movement
                 let rotateVector = { x: 0, y: 0 };
                 const lookJoystick = nipplejs.create({
                     zone: document.getElementById('rightJoystick'),
@@ -116,13 +117,16 @@
 
                     // Rotate Camera
                     camera.rotation.y -= rotateVector.x; // Left/right rotation
-                    camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x + rotateVector.y)); // Limit up/down rotation
+
+                    // Limit up/down rotation to -45° to +45°
+                    const newXRotation = camera.rotation.x + rotateVector.y;
+                    camera.rotation.x = Math.max(-lookLimit, Math.min(lookLimit, newXRotation));
                 });
 
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
 
-                logMessage("Fixed joystick rotation directions & adjusted sensitivity!");
+                logMessage("Rotation sensitivity reduced & look limits applied!");
             } catch (error) {
                 logMessage("Error: " + error.message);
             }
