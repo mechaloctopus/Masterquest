@@ -11,7 +11,7 @@
             position: absolute; 
             top: 10px; 
             left: 10px; 
-            color: #00ff00; /* Neon green */
+            color: #FFA500; /* Neon orange */
             font-family: 'Courier New', monospace; 
             font-size: 14px; 
             background: rgba(0,0,0,0.8); 
@@ -84,7 +84,7 @@
                 function createGrid() {
                     const gridSize = 50;
                     const gridSpacing = 2;
-                    const color = new BABYLON.Color3(0, 1, 0.2); // Neon green
+                    const color = new BABYLON.Color3(0.75, 0, 1); // Neon purple
 
                     // Horizontal lines
                     for (let x = -gridSize; x <= gridSize; x += gridSpacing) {
@@ -113,7 +113,7 @@
                     zone: document.getElementById('leftJoystick'),
                     mode: 'static',
                     position: { left: '50%', top: '50%' },
-                    color: '#00ff00', // Neon green
+                    color: '#00ff00', // Neon green (unchanged)
                     size: 100
                 }).on('move', (evt, data) => {
                     moveVector.x = data.vector.x;
