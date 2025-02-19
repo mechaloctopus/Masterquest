@@ -42,12 +42,25 @@
 
                 // Camera
                 const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, 0), scene);
-                camera.attachControl(canvas, false); // Disable default touch movement
+                camera.attachControl(canvas, false); 
                 camera.speed = 0.15;
 
                 // Lock camera height
                 const groundY = 2;
-                const lookLimit = Math.PI / 4; // 45 degrees up/down limit
+                const lookLimit = Math.PI / 4; 
+
+                // === SKYBOX (STAR BACKGROUND) ===
+                function createSkybox() {
+                    const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 1000 }, scene);
+                    const skyboxMaterial = new BABYLON.StandardMaterial("skyBoxMat", scene);
+                    skyboxMaterial.backFaceCulling = false;
+                    skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("https://playground.babylonjs.com/textures/space", scene);
+                    skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+                    skyboxMaterial.disableLighting = true;
+                    skybox.material = skyboxMaterial;
+                }
+
+                createSkybox();
 
                 // === NEON GRID ===
                 function createGrid() {
@@ -89,7 +102,7 @@
                 }).on('end', () => moveVector = BABYLON.Vector3.Zero());
 
                 // === CAMERA ROTATION JOYSTICK (RIGHT) ===
-                const rotationSpeed = 0.015; // Further reduced sensitivity for smoother movement
+                const rotationSpeed = 0.015;
                 let rotateVector = { x: 0, y: 0 };
                 const lookJoystick = nipplejs.create({
                     zone: document.getElementById('rightJoystick'),
@@ -98,13 +111,13 @@
                     color: 'white',
                     size: 100
                 }).on('move', (evt, data) => {
-                    rotateVector.x = -data.vector.x * rotationSpeed; // Reverse left/right
-                    rotateVector.y = data.vector.y * rotationSpeed;  // Invert up/down
+                    rotateVector.x = -data.vector.x * rotationSpeed; 
+                    rotateVector.y = data.vector.y * rotationSpeed;  
                 }).on('end', () => rotateVector = { x: 0, y: 0 });
 
                 // === GAME LOOP ===
                 scene.registerBeforeRender(() => {
-                    // Move Player (Y is locked)
+                    // Move Player
                     const forward = camera.getDirection(BABYLON.Vector3.Forward());
                     const right = camera.getDirection(BABYLON.Vector3.Right());
 
@@ -113,12 +126,12 @@
                         .scale(0.1);
 
                     camera.position.addInPlace(new BABYLON.Vector3(movement.x, 0, movement.z)); 
-                    camera.position.y = groundY; // Keep camera locked to ground
+                    camera.position.y = groundY; 
 
                     // Rotate Camera
-                    camera.rotation.y -= rotateVector.x; // Left/right rotation
+                    camera.rotation.y -= rotateVector.x;
 
-                    // Limit up/down rotation to -45° to +45°
+                    // Limit up/down rotation
                     const newXRotation = camera.rotation.x + rotateVector.y;
                     camera.rotation.x = Math.max(-lookLimit, Math.min(lookLimit, newXRotation));
                 });
@@ -126,7 +139,7 @@
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
 
-                logMessage("Rotation sensitivity reduced & look limits applied!");
+                logMessage("Skybox added with space background!");
             } catch (error) {
                 logMessage("Error: " + error.message);
             }
