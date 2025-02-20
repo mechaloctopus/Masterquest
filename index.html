@@ -75,25 +75,20 @@
                 scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
                 // Camera Setup
-                const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, -10), scene);
+                const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 3, -10), scene);
                 camera.attachControl(canvas, false);
                 camera.speed = 0.15;
                 const groundY = 2;
                 const lookLimit = Math.PI / 4;
 
-                // Responsive Hands Setup
-                const isMobile = window.innerWidth < 768;
-                const handSize = 0.25; // 1/4 original size
-                const handZPos = isMobile ? 0.8 : 1.5;
-                const handXOffset = isMobile ? 0.4 : 0.8;
-                const handYPos = isMobile ? -0.8 : -0.5;
-
-                // Create hands
+                // Hands Setup
+                const handSize = 0.4; // Optimal size
                 const leftHand = BABYLON.MeshBuilder.CreateSphere("leftHand", {diameter: handSize}, scene);
                 const rightHand = BABYLON.MeshBuilder.CreateSphere("rightHand", {diameter: handSize}, scene);
                 
-                leftHand.position = new BABYLON.Vector3(-handXOffset, handYPos, handZPos);
-                rightHand.position = new BABYLON.Vector3(handXOffset, handYPos, handZPos);
+                // Position hands in front of camera
+                leftHand.position = new BABYLON.Vector3(-0.6, -0.4, 1.2);
+                rightHand.position = new BABYLON.Vector3(0.6, -0.4, 1.2);
 
                 // Hand material
                 const handMaterial = new BABYLON.StandardMaterial("handMat", scene);
@@ -113,11 +108,11 @@
                 leftHand.parent = camera;
                 rightHand.parent = camera;
 
-                // Original Skybox Setup
+                // Skybox
                 function createSkybox() {
-                    const skybox = new BABYLON.PhotoDome(
+                    new BABYLON.PhotoDome(
                         "skyDome",
-                        "IMG_2579.jpeg", // Your original equirectangular image
+                        "IMG_2579.jpeg",
                         {
                             resolution: 64,
                             size: 1000,
@@ -125,10 +120,6 @@
                         },
                         scene
                     );
-                    skybox.mesh.rotation.z = -Math.PI/2;
-                    skybox.texture.uAng = Math.PI/2;
-                    skybox.texture.wAng = Math.PI;
-                    skybox.texture.uOffset = Math.PI;
                 }
                 createSkybox();
 
@@ -160,7 +151,7 @@
                 const gravity = -0.02;
                 let isJumping = false;
                 
-                // Joysticks (Fixed rotation direction)
+                // Fixed Joystick Controls
                 const manager = nipplejs.create({
                     zone: document.getElementById('leftJoystick'),
                     mode: 'static',
@@ -181,19 +172,23 @@
                 }).on('move', (evt, data) => {
                     camera.rotation.y -= data.vector.x * 0.05;
                     camera.rotation.x = BABYLON.Scalar.Clamp(
-                        camera.rotation.x + data.vector.y * 0.05, // Fixed direction
+                        camera.rotation.x - data.vector.y * 0.05, // Fixed rotation direction
                         -lookLimit,
                         lookLimit
                     );
                 }).on('end', () => {});
 
-                // Jump button
-                document.getElementById('jumpButton').addEventListener('touchstart', () => {
+                // Fixed Jump Button (works on both mobile and desktop)
+                const jumpButton = document.getElementById('jumpButton');
+                jumpButton.addEventListener('touchstart', handleJump);
+                jumpButton.addEventListener('mousedown', handleJump);
+
+                function handleJump() {
                     if (!isJumping) {
                         jumpForce = 1.5;
                         isJumping = true;
                     }
-                });
+                }
 
                 // Game loop
                 scene.registerBeforeRender(() => {
@@ -205,11 +200,11 @@
                             .add(right.scale(moveVector.x * 0.1))
                     );
 
-                    // Responsive hand animation
+                    // Hand animation
                     const time = Date.now() * 0.001;
                     const movementFactor = moveVector.length() * 0.2;
-                    leftHand.position.z = handZPos + Math.sin(time * 10) * movementFactor;
-                    rightHand.position.z = handZPos + Math.cos(time * 10) * movementFactor;
+                    leftHand.position.z = 1.2 + Math.sin(time * 10) * movementFactor;
+                    rightHand.position.z = 1.2 + Math.cos(time * 10) * movementFactor;
 
                     // Jump mechanics
                     jumpForce += gravity;
