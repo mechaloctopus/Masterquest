@@ -129,6 +129,9 @@
                 // === CONTROL SYSTEMS ===
                 // Movement Joystick (Left)
                 let moveVector = BABYLON.Vector3.Zero();
+                let jumpForce = 0;
+                const gravity = -0.02;
+                let isJumping = false;
                 nipplejs.create({
                     zone: document.getElementById('leftJoystick'),
                     mode: 'static',
