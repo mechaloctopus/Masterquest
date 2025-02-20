@@ -73,6 +73,19 @@
                 const scene = new BABYLON.Scene(engine);
                 scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
+                // Create hands
+                const leftHand = BABYLON.MeshBuilder.CreateSphere("leftHand", {diameter: 0.3}, scene);
+                leftHand.position = new BABYLON.Vector3(-0.5, 1.5, 1);
+                leftHand.material = new BABYLON.StandardMaterial("leftHandMat", scene);
+                leftHand.material.diffuseColor = new BABYLON.Color3(0, 0.5, 1);
+
+                const rightHand = BABYLON.MeshBuilder.CreateSphere("rightHand", {diameter: 0.3}, scene);
+                rightHand.position = new BABYLON.Vector3(0.5, 1.5, 1);
+                rightHand.material = new BABYLON.StandardMaterial("rightHandMat", scene);
+                rightHand.parent = camera;
+                leftHand.parent = camera;
+                rightHand.material.diffuseColor = new BABYLON.Color3(0, 0.5, 1);
+
                 // Camera Setup
                 const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, -10), scene);
                 camera.attachControl(canvas, false);
@@ -174,6 +187,12 @@
                         forward.scale(moveVector.z * 0.1)
                                .add(right.scale(moveVector.x * 0.1))
                     );
+                    
+                    // Update hand positions based on movement
+                    leftHand.position.x = -0.5 + (moveVector.x * 0.2);
+                    leftHand.position.z = 1 + (moveVector.z * 0.2);
+                    rightHand.position.x = 0.5 + (moveVector.x * 0.2);
+                    rightHand.position.z = 1 + (moveVector.z * 0.2);
                     
                     // Jump mechanics
                     jumpForce += gravity;
