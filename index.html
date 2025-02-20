@@ -62,29 +62,18 @@
 
                 // === MILKY WAY SKYBOX ===
                 function createSkybox() {
-    // Create a sphere for the skybox
-    const skybox = BABYLON.MeshBuilder.CreateSphere("skybox", { diameter: 1000, sideOrientation: BABYLON.Mesh.BACKSIDE }, scene);
-
-    // Create a material for the skybox
-    const skyboxMaterial = new BABYLON.StandardMaterial("skyboxMaterial", scene);
-    skyboxMaterial.backFaceCulling = false; // Ensure the inside is visible
-    skyboxMaterial.diffuseTexture = new BABYLON.Texture("IMG_2579.jpeg", scene);
-    
-    // Rotate the texture 90 degrees by adjusting the texture matrix
-    skyboxMaterial.diffuseTexture.uRotation = Math.PI / 2; // Rotate texture 90 degrees counterclockwise
-    skyboxMaterial.diffuseTexture.uScale = 1;
-    skyboxMaterial.diffuseTexture.vScale = 1;
-
-    // Disable lighting and set emissive color to make it visible
-    skyboxMaterial.disableLighting = true;
-    skyboxMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
-
-    // Apply the material to the skybox
-    skybox.material = skyboxMaterial;
-
-    // Optional: Adjust the mesh rotation if needed to align with your camera
-    skybox.rotation.x = 0; // You can tweak this if the orientation needs adjustment
-}
+                    const skybox = BABYLON.MeshBuilder.CreateSphere("skybox", { diameter: 1000, sideOrientation: BABYLON.Mesh.BACKSIDE }, scene);
+                    const skyboxMaterial = new BABYLON.StandardMaterial("skyboxMaterial", scene);
+                    skyboxMaterial.diffuseTexture = new BABYLON.Texture("IMG_2579.jpeg", scene);
+                    skyboxMaterial.diffuseTexture.uRotation = Math.PI / 2; // Rotate texture 90 degrees
+                    skyboxMaterial.diffuseTexture.uScale = 1;
+                    skyboxMaterial.diffuseTexture.vScale = 1;
+                    skyboxMaterial.disableLighting = true;
+                    skyboxMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
+                    skyboxMaterial.backFaceCulling = false;
+                    skybox.material = skyboxMaterial;
+                    skybox.isPickable = false;
+                }
                 createSkybox();
 
                 // === NEON GRID ===
@@ -92,21 +81,16 @@
                     const gridSize = 50;
                     const gridSpacing = 2;
                     const color = new BABYLON.Color3(0.75, 0, 1); // Neon purple
-
-                    // Horizontal lines
                     for (let x = -gridSize; x <= gridSize; x += gridSpacing) {
                         BABYLON.MeshBuilder.CreateLines("gridX", {
                             points: [new BABYLON.Vector3(x, 0, -gridSize), new BABYLON.Vector3(x, 0, gridSize)]
                         }, scene).color = color;
                     }
-
-                    // Vertical lines
                     for (let z = -gridSize; z <= gridSize; z += gridSpacing) {
                         BABYLON.MeshBuilder.CreateLines("gridZ", {
                             points: [new BABYLON.Vector3(-gridSize, 0, z), new BABYLON.Vector3(gridSize, 0, z)]
                         }, scene).color = color;
                     }
-
                     const glowLayer = new BABYLON.GlowLayer("glow", scene);
                     glowLayer.intensity = 2.0;
                     glowLayer.blurKernelSize = 64;
@@ -114,27 +98,25 @@
                 createGrid();
 
                 // === CONTROL SYSTEMS ===
-                // Movement Joystick (Left)
                 let moveVector = BABYLON.Vector3.Zero();
                 nipplejs.create({
                     zone: document.getElementById('leftJoystick'),
                     mode: 'static',
                     position: { left: '50%', top: '50%' },
-                    color: '#00ff00', // Neon green (unchanged)
+                    color: '#00ff00',
                     size: 100
                 }).on('move', (evt, data) => {
                     moveVector.x = data.vector.x;
                     moveVector.z = data.vector.y;
                 }).on('end', () => moveVector = BABYLON.Vector3.Zero());
 
-                // Camera Joystick (Right)
                 const rotationSpeed = 0.015;
                 let rotateVector = { x: 0, y: 0 };
                 nipplejs.create({
                     zone: document.getElementById('rightJoystick'),
                     mode: 'static',
                     position: { left: '50%', top: '50%' },
-                    color: '#00ff00', // Neon green
+                    color: '#00ff00',
                     size: 100
                 }).on('move', (evt, data) => {
                     rotateVector.x = -data.vector.x * rotationSpeed;
@@ -143,7 +125,6 @@
 
                 // === GAME LOOP ===
                 scene.registerBeforeRender(() => {
-                    // Movement
                     const forward = camera.getDirection(BABYLON.Vector3.Forward());
                     const right = camera.getDirection(BABYLON.Vector3.Right());
                     camera.position.addInPlace(
@@ -151,8 +132,6 @@
                                .add(right.scale(moveVector.x * 0.1))
                     );
                     camera.position.y = groundY;
-
-                    // Rotation
                     camera.rotation.y -= rotateVector.x;
                     camera.rotation.x = BABYLON.Scalar.Clamp(
                         camera.rotation.x + rotateVector.y,
