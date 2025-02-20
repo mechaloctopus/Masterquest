@@ -82,7 +82,7 @@
                 const lookLimit = Math.PI / 4;
 
                 // Hands Setup
-                const handSize = 0.4; // Optimal size
+                const handSize = 0.1; // Reduced size for mobile visibility
                 const leftHand = BABYLON.MeshBuilder.CreateSphere("leftHand", {diameter: handSize}, scene);
                 const rightHand = BABYLON.MeshBuilder.CreateSphere("rightHand", {diameter: handSize}, scene);
                 
@@ -170,9 +170,9 @@
                     color: '#00ff00',
                     size: 100
                 }).on('move', (evt, data) => {
-                    camera.rotation.y -= data.vector.x * 0.05;
+                    camera.rotation.y += data.vector.x * 0.05;
                     camera.rotation.x = BABYLON.Scalar.Clamp(
-                        camera.rotation.x - data.vector.y * 0.05, // Fixed rotation direction
+                        camera.rotation.x + data.vector.y * 0.05, // Fixed rotation direction
                         -lookLimit,
                         lookLimit
                     );
