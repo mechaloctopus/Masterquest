@@ -118,12 +118,11 @@
 
                 // === FLOATING TITLE GRAPHIC ===
                 let titleSprite;
-                const titleManager = new BABYLON.SpriteManager("titleManager", "title.png", 1, 512, scene, { hasAlpha: true });
+                const titleManager = new BABYLON.SpriteManager("titleManager", "title.png", 1, 8192, scene, { hasAlpha: true });
                 titleSprite = new BABYLON.Sprite("titleSprite", titleManager);
-                titleSprite.size = 100; // Dramatically increased size
+                titleSprite.size = 500; // Massive distant size
                 titleSprite.invertU = 1; // Proper orientation
-                const titleOffset = new BABYLON.Vector3(0, 25, -100); // Much higher and further back
-                const titleLerpFactor = 0.02; // Even smoother movement
+                titleSprite.position = new BABYLON.Vector3(0, 150, -800); // Extremely far position
 
                 // === CONTROL SYSTEMS ===
                 // Movement Joystick (Left)
@@ -173,11 +172,7 @@
                     );
                 });
 
-                // Update title position
-                scene.registerBeforeRender(() => {
-                    const targetPos = camera.position.add(camera.getDirection(BABYLON.Vector3.Forward()).scale(3));
-                    titleSprite.position = BABYLON.Vector3.Lerp(titleSprite.position, targetPos, titleLerpFactor);
-                });
+                // Remove title position update code
 
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
