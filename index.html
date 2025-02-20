@@ -81,13 +81,19 @@
                 const groundY = 2;
                 const lookLimit = Math.PI / 4;
 
+                // Responsive Hands Setup
+                const isMobile = window.innerWidth < 768;
+                const handSize = 0.25; // 1/4 original size
+                const handZPos = isMobile ? 0.8 : 1.5;
+                const handXOffset = isMobile ? 0.4 : 0.8;
+                const handYPos = isMobile ? -0.8 : -0.5;
+
                 // Create hands
-                const handDiameter = 0.5;
-                const leftHand = BABYLON.MeshBuilder.CreateSphere("leftHand", {diameter: handDiameter}, scene);
-                const rightHand = BABYLON.MeshBuilder.CreateSphere("rightHand", {diameter: handDiameter}, scene);
+                const leftHand = BABYLON.MeshBuilder.CreateSphere("leftHand", {diameter: handSize}, scene);
+                const rightHand = BABYLON.MeshBuilder.CreateSphere("rightHand", {diameter: handSize}, scene);
                 
-                leftHand.position = new BABYLON.Vector3(-0.8, -0.5, 1.5);
-                rightHand.position = new BABYLON.Vector3(0.8, -0.5, 1.5);
+                leftHand.position = new BABYLON.Vector3(-handXOffset, handYPos, handZPos);
+                rightHand.position = new BABYLON.Vector3(handXOffset, handYPos, handZPos);
 
                 // Hand material
                 const handMaterial = new BABYLON.StandardMaterial("handMat", scene);
@@ -107,19 +113,22 @@
                 leftHand.parent = camera;
                 rightHand.parent = camera;
 
-                // Skybox
+                // Original Skybox Setup
                 function createSkybox() {
-                    const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size: 1000}, scene);
-                    const skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
-                    skyboxMaterial.backFaceCulling = false;
-                    skyboxMaterial.disableLighting = true;
-                    skybox.material = skyboxMaterial;
-                    
-                    skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
-                        "https://assets.babylonjs.com/textures/skybox", 
+                    const skybox = new BABYLON.PhotoDome(
+                        "skyDome",
+                        "IMG_2579.jpeg", // Your original equirectangular image
+                        {
+                            resolution: 64,
+                            size: 1000,
+                            useDirectMapping: false
+                        },
                         scene
                     );
-                    skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+                    skybox.mesh.rotation.z = -Math.PI/2;
+                    skybox.texture.uAng = Math.PI/2;
+                    skybox.texture.wAng = Math.PI;
+                    skybox.texture.uOffset = Math.PI;
                 }
                 createSkybox();
 
@@ -151,7 +160,7 @@
                 const gravity = -0.02;
                 let isJumping = false;
                 
-                // Joysticks
+                // Joysticks (Fixed rotation direction)
                 const manager = nipplejs.create({
                     zone: document.getElementById('leftJoystick'),
                     mode: 'static',
@@ -172,7 +181,7 @@
                 }).on('move', (evt, data) => {
                     camera.rotation.y -= data.vector.x * 0.05;
                     camera.rotation.x = BABYLON.Scalar.Clamp(
-                        camera.rotation.x + data.vector.y * 0.05,
+                        camera.rotation.x + data.vector.y * 0.05, // Fixed direction
                         -lookLimit,
                         lookLimit
                     );
@@ -196,12 +205,13 @@
                             .add(right.scale(moveVector.x * 0.1))
                     );
 
-                    // Hand animation
+                    // Responsive hand animation
                     const time = Date.now() * 0.001;
-                    leftHand.position.z = 1.5 + Math.sin(time * 10) * 0.1 * moveVector.length();
-                    rightHand.position.z = 1.5 + Math.cos(time * 10) * 0.1 * moveVector.length();
+                    const movementFactor = moveVector.length() * 0.2;
+                    leftHand.position.z = handZPos + Math.sin(time * 10) * movementFactor;
+                    rightHand.position.z = handZPos + Math.cos(time * 10) * movementFactor;
 
-                    // Jump
+                    // Jump mechanics
                     jumpForce += gravity;
                     camera.position.y += jumpForce;
                     
