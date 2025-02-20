@@ -27,7 +27,25 @@
             filter: drop-shadow(0 0 5px #00ff00); /* Glow effect */
         }
         #leftJoystick { left: 20px; }
-        #rightJoystick { right: 20px; }
+        #rightJoystick { right: 140px; }
+        #jumpButton {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(0, 255, 0, 0.2);
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            touch-action: none;
+            filter: drop-shadow(0 0 5px #00ff00);
+        }
+        #jumpButton:active {
+            background: rgba(0, 255, 0, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -35,6 +53,8 @@
     <div id="log"></div>
     <div id="leftJoystick" class="joystick-container"></div>
     <div id="rightJoystick" class="joystick-container"></div>
+    <button id="jumpButton">JUMP</button>
+    <button id="jumpButton">JUMP</button>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
@@ -109,6 +129,15 @@
                 // === CONTROL SYSTEMS ===
                 // Movement Joystick (Left)
                 let moveVector = BABYLON.Vector3.Zero();
+                let jumpForce = 0;
+                const gravity = -0.02;
+                let isJumping = false;
+                let jumpForce = 0;
+                const gravity = -0.02;
+                let isJumping = false;
+                let jumpForce = 0;
+                const gravity = -0.02;
+                let isJumping = false;
                 nipplejs.create({
                     zone: document.getElementById('leftJoystick'),
                     mode: 'static',
@@ -143,7 +172,7 @@
                         forward.scale(moveVector.z * 0.1)
                                .add(right.scale(moveVector.x * 0.1))
                     );
-                    camera.position.y = groundY;
+                    // camera.position.y = groundY; // Removed for jump mechanics
 
                     // Rotation
                     camera.rotation.y -= rotateVector.x;
