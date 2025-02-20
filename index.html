@@ -108,10 +108,10 @@
 
                 // === FLOATING TITLE GRAPHIC ===
                 let titleSprite;
-                const titleManager = new BABYLON.SpriteManager("titleManager", "title.png", 1, 128, scene);
+                const titleManager = new BABYLON.SpriteManager("titleManager", "title.png", 1, 512, scene, { hasAlpha: true });
                 titleSprite = new BABYLON.Sprite("titleSprite", titleManager);
-                titleSprite.size = 3;
-                titleSprite.invertU = -1; // Face camera
+                titleSprite.size = 10;
+                titleSprite.invertU = 1; // Proper orientation
                 const titleOffset = new BABYLON.Vector3(0, 0, -3); // 3 units in front of camera
                 const titleLerpFactor = 0.1; // Smooth follow speed
 
