@@ -27,8 +27,8 @@
             filter: drop-shadow(0 0 5px #00ff00); /* Glow effect */
         }
         #leftJoystick { left: 20px; }
-        #rightJoystick { right: 140px; }
-        #jumpButton {
+        #rightJoystick { right: 20px; }
+        /*#jumpButton {
             position: absolute;
             bottom: 20px;
             right: 20px;
@@ -129,12 +129,6 @@
                 // === CONTROL SYSTEMS ===
                 // Movement Joystick (Left)
                 let moveVector = BABYLON.Vector3.Zero();
-                let jumpForce = 0;
-                const gravity = -0.02;
-                let isJumping = false;
-                let jumpForce = 0;
-                const gravity = -0.02;
-                let isJumping = false;
                 nipplejs.create({
                     zone: document.getElementById('leftJoystick'),
                     mode: 'static',
