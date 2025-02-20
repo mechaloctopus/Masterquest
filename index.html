@@ -110,10 +110,10 @@
                 let titleSprite;
                 const titleManager = new BABYLON.SpriteManager("titleManager", "title.png", 1, 512, scene, { hasAlpha: true });
                 titleSprite = new BABYLON.Sprite("titleSprite", titleManager);
-                titleSprite.size = 10;
+                titleSprite.size = 30; // Increased size for visibility
                 titleSprite.invertU = 1; // Proper orientation
-                const titleOffset = new BABYLON.Vector3(0, 0, -3); // 3 units in front of camera
-                const titleLerpFactor = 0.1; // Smooth follow speed
+                const titleOffset = new BABYLON.Vector3(0, 15, -50); // Positioned high and far back
+                const titleLerpFactor = 0.05; // Slower, smoother movement
 
                 // === CONTROL SYSTEMS ===
                 // Movement Joystick (Left)
