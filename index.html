@@ -28,9 +28,9 @@
         }
         #leftJoystick { left: 20px; }
         #rightJoystick { right: 20px; }
-        /*#jumpButton {
+        #jumpButton {
             position: absolute;
-            bottom: 20px;
+            bottom: 140px;
             right: 20px;
             width: 80px;
             height: 80px;
@@ -42,6 +42,7 @@
             font-size: 24px;
             touch-action: none;
             filter: drop-shadow(0 0 5px #00ff00);
+            z-index: 1;
         }
         #jumpButton:active {
             background: rgba(0, 255, 0, 0.4);
@@ -53,7 +54,6 @@
     <div id="log"></div>
     <div id="leftJoystick" class="joystick-container"></div>
     <div id="rightJoystick" class="joystick-container"></div>
-    <button id="jumpButton">JUMP</button>
     <button id="jumpButton">JUMP</button>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
@@ -132,6 +132,14 @@
                 let jumpForce = 0;
                 const gravity = -0.02;
                 let isJumping = false;
+                
+                // Jump button handler
+                document.getElementById('jumpButton').addEventListener('touchstart', () => {
+                    if (!isJumping) {
+                        jumpForce = 1.5;
+                        isJumping = true;
+                    }
+                });
                 nipplejs.create({
                     zone: document.getElementById('leftJoystick'),
                     mode: 'static',
@@ -166,7 +174,17 @@
                         forward.scale(moveVector.z * 0.1)
                                .add(right.scale(moveVector.x * 0.1))
                     );
-                    // camera.position.y = groundY; // Removed for jump mechanics
+                    
+                    // Jump mechanics
+                    jumpForce += gravity;
+                    camera.position.y += jumpForce;
+                    
+                    // Ground collision
+                    if (camera.position.y <= groundY) {
+                        camera.position.y = groundY;
+                        jumpForce = 0;
+                        isJumping = false;
+                    }
 
                     // Rotation
                     camera.rotation.y -= rotateVector.x;
