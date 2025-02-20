@@ -75,9 +75,10 @@
                 scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
                 // Camera Setup
-                const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, -10), scene);
+                const camera = new BABYLON.FreeCamera("camera", new BABYLON.Vector3(0, 2, -10), scene);
                 camera.attachControl(canvas, false);
                 camera.speed = 0.15;
+                const right = BABYLON.Vector3.Cross(camera.upVector, camera.getForwardRay().direction);
                 const groundY = 2;
                 const lookLimit = Math.PI / 4;
 
