@@ -108,27 +108,10 @@
 
                 // === FLOATING TITLE GRAPHIC ===
                 let titleSprite;
-                // Dispose old sprite manager if exists
-                if (titleManager) titleManager.dispose();
-                
-                // Title graphic setup
-                const titleManager = new BABYLON.SpriteManager(
-                    "titleManager",
-                    "title.png",
-                    1,
-                    {
-                        width: 500, // Match image dimensions
-                        height: 500,
-                        hasAlpha: true,
-                        disableDepthWrite: true
-                    },
-                    scene
-                );
-                
+                const titleManager = new BABYLON.SpriteManager("titleManager", "title.png", 1, 512, scene, { hasAlpha: true });
                 titleSprite = new BABYLON.Sprite("titleSprite", titleManager);
-                titleSprite.size = 8; // Adjusted size for visibility
-                titleSprite.invertU = 1;
-                titleSprite.position.y = 2; // Elevate above grid
+                titleSprite.size = 10;
+                titleSprite.invertU = 1; // Proper orientation
                 const titleOffset = new BABYLON.Vector3(0, 0, -3); // 3 units in front of camera
                 const titleLerpFactor = 0.1; // Smooth follow speed
 
@@ -182,7 +165,7 @@
 
                 // Update title position
                 scene.registerBeforeRender(() => {
-                    const targetPos = camera.position.add(camera.getDirection(BABYLON.Vector3.Forward()).scale(30)); // Increased distance to 30 units
+                    const targetPos = camera.position.add(camera.getDirection(BABYLON.Vector3.Forward()).scale(3));
                     titleSprite.position = BABYLON.Vector3.Lerp(titleSprite.position, targetPos, titleLerpFactor);
                 });
 
