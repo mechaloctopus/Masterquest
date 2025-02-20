@@ -3,6 +3,7 @@
 <head>
     <title>Neon Grid FPS</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="icon" href="data:,"> <!-- Fix favicon error -->
     <style>
         * { margin: 0; padding: 0; touch-action: none; }
         html, body { width: 100%; height: 100%; overflow: hidden; background: black; }
@@ -69,7 +70,7 @@
 
             try {
                 const canvas = document.getElementById('renderCanvas');
-                const engine = new BABYLON.Engine(canvas, true, { disableWebGL2Support: true });
+                const engine = new BABYLON.Engine(canvas, true);
                 const scene = new BABYLON.Scene(engine);
                 scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
@@ -80,24 +81,23 @@
                 const groundY = 2;
                 const lookLimit = Math.PI / 4;
 
-                // Create hands with adjusted positions
+                // Create hands
                 const handDiameter = 0.5;
                 const leftHand = BABYLON.MeshBuilder.CreateSphere("leftHand", {diameter: handDiameter}, scene);
                 const rightHand = BABYLON.MeshBuilder.CreateSphere("rightHand", {diameter: handDiameter}, scene);
                 
-                // Position hands at bottom of screen
                 leftHand.position = new BABYLON.Vector3(-0.8, -0.5, 1.5);
                 rightHand.position = new BABYLON.Vector3(0.8, -0.5, 1.5);
 
-                // Hand material with stronger glow
+                // Hand material
                 const handMaterial = new BABYLON.StandardMaterial("handMat", scene);
                 handMaterial.diffuseColor = new BABYLON.Color3(0, 0.8, 1);
-                handMaterial.emissiveColor = new BABYLON.Color3(0, 1, 1); // Brighter emissive
+                handMaterial.emissiveColor = new BABYLON.Color3(0, 1, 1);
                 handMaterial.specularPower = 100;
                 leftHand.material = handMaterial;
                 rightHand.material = handMaterial;
 
-                // Enhanced glow effect
+                // Glow effect
                 const glowLayer = new BABYLON.GlowLayer("handsGlow", scene);
                 glowLayer.addIncludedOnlyMesh(leftHand);
                 glowLayer.addIncludedOnlyMesh(rightHand);
@@ -107,26 +107,24 @@
                 leftHand.parent = camera;
                 rightHand.parent = camera;
 
-                // === MILKY WAY SKYBOX ===
+                // Skybox
                 function createSkybox() {
-                    const skybox = new BABYLON.PhotoDome(
-                        "skyDome",
-                        "IMG_2579.jpeg",
-                        {
-                            resolution: 64,
-                            size: 1000,
-                            useDirectMapping: false
-                        },
+                    const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size: 1000}, scene);
+                    const skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+                    skyboxMaterial.backFaceCulling = false;
+                    skyboxMaterial.disableLighting = true;
+                    skybox.material = skyboxMaterial;
+                    
+                    // Use a placeholder texture
+                    skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
+                        "https://assets.babylonjs.com/textures/skybox", 
                         scene
                     );
-                    skybox.mesh.rotation.z = -Math.PI/2;
-                    skybox.texture.uAng = Math.PI/2;
-                    skybox.texture.wAng = Math.PI;
-                    skybox.texture.uOffset = Math.PI;
+                    skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
                 }
                 createSkybox();
 
-                // === NEON GRID ===
+                // Grid
                 function createGrid() {
                     const gridSize = 50;
                     const gridSpacing = 2;
@@ -148,19 +146,14 @@
                 }
                 createGrid();
 
-                // === CONTROL SYSTEMS ===
+                // Controls
                 let moveVector = BABYLON.Vector3.Zero();
                 let jumpForce = 0;
                 const gravity = -0.02;
                 let isJumping = false;
                 
-                document.getElementById('jumpButton').addEventListener('touchstart', () => {
-                    if (!isJumping) {
-                        jumpForce = 1.5;
-                        isJumping = true;
-                    }
-                });
-                nipplejs.create({
+                // Joysticks
+                const manager = nipplejs.create({
                     zone: document.getElementById('leftJoystick'),
                     mode: 'static',
                     position: { left: '50%', top: '50%' },
@@ -171,34 +164,45 @@
                     moveVector.z = data.vector.y;
                 }).on('end', () => moveVector = BABYLON.Vector3.Zero());
 
-                const rotationSpeed = 0.015;
-                let rotateVector = { x: 0, y: 0 };
-                nipplejs.create({
+                const rotateManager = nipplejs.create({
                     zone: document.getElementById('rightJoystick'),
                     mode: 'static',
                     position: { left: '50%', top: '50%' },
                     color: '#00ff00',
                     size: 100
                 }).on('move', (evt, data) => {
-                    rotateVector.x = -data.vector.x * rotationSpeed;
-                    rotateVector.y = -data.vector.y * rotationSpeed;
-                }).on('end', () => rotateVector = { x: 0, y: 0 });
+                    camera.cameraRotation.y -= data.vector.x * 0.05;
+                    camera.cameraRotation.x = BABYLON.Scalar.Clamp(
+                        camera.cameraRotation.x - data.vector.y * 0.05,
+                        -lookLimit,
+                        lookLimit
+                    );
+                }).on('end', () => {});
 
-                // === GAME LOOP ===
+                // Jump button
+                document.getElementById('jumpButton').addEventListener('touchstart', () => {
+                    if (!isJumping) {
+                        jumpForce = 1.5;
+                        isJumping = true;
+                    }
+                });
+
+                // Game loop
                 scene.registerBeforeRender(() => {
                     // Movement
-                    const forward = camera.getDirection(BABYLON.Vector3.Forward());
-                    const right = camera.getDirection(BABYLON.Vector3.Right());
+                    const forward = camera.getForwardRay().direction;
+                    const right = camera.getRightRay().direction;
                     camera.position.addInPlace(
                         forward.scale(moveVector.z * 0.1)
-                               .add(right.scale(moveVector.x * 0.1)
+                            .add(right.scale(moveVector.x * 0.1))
                     );
-                    
-                    // Hand movement effect
-                    leftHand.position.z = 1.5 + Math.sin(performance.now()/100) * 0.2 * moveVector.length();
-                    rightHand.position.z = 1.5 + Math.cos(performance.now()/100) * 0.2 * moveVector.length();
-                    
-                    // Jump mechanics
+
+                    // Hand animation
+                    const time = Date.now() * 0.001;
+                    leftHand.position.z = 1.5 + Math.sin(time * 10) * 0.1 * moveVector.length();
+                    rightHand.position.z = 1.5 + Math.cos(time * 10) * 0.1 * moveVector.length();
+
+                    // Jump
                     jumpForce += gravity;
                     camera.position.y += jumpForce;
                     
@@ -207,14 +211,6 @@
                         jumpForce = 0;
                         isJumping = false;
                     }
-
-                    // Rotation
-                    camera.rotation.y -= rotateVector.x;
-                    camera.rotation.x = BABYLON.Scalar.Clamp(
-                        camera.rotation.x + rotateVector.y,
-                        -lookLimit,
-                        lookLimit
-                    );
                 });
 
                 engine.runRenderLoop(() => scene.render());
