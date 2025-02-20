@@ -81,14 +81,21 @@
                 const lookLimit = Math.PI / 4;
 
                 // Create hands after camera initialization
-                const leftHand = BABYLON.MeshBuilder.CreateSphere("leftHand", {diameter: 0.3}, scene);
-                const rightHand = BABYLON.MeshBuilder.CreateSphere("rightHand", {diameter: 0.3}, scene);
+                const leftHand = BABYLON.MeshBuilder.CreateSphere("leftHand", {diameter: 0.5}, scene);
+                const rightHand = BABYLON.MeshBuilder.CreateSphere("rightHand", {diameter: 0.5}, scene);
                 
-                leftHand.position = new BABYLON.Vector3(-0.5, 1.5, 1);
-                rightHand.position = new BABYLON.Vector3(0.5, 1.5, 1);
+                leftHand.position = new BABYLON.Vector3(-0.8, 0.8, 0.5);
+                rightHand.position = new BABYLON.Vector3(0.8, 0.8, 0.5);
+                
+                // Add glow effect
+                const glowLayer = new BABYLON.GlowLayer("handsGlow", scene);
+                glowLayer.addIncludedOnlyMesh(leftHand);
+                glowLayer.addIncludedOnlyMesh(rightHand);
+                glowLayer.intensity = 2.0;
                 
                 const handMaterial = new BABYLON.StandardMaterial("handMat", scene);
-                handMaterial.diffuseColor = new BABYLON.Color3(0, 0.5, 1);
+                handMaterial.diffuseColor = new BABYLON.Color3(0, 0.8, 1);
+                handMaterial.emissiveColor = new BABYLON.Color3(0, 0.5, 1);
                 leftHand.material = handMaterial;
                 rightHand.material = handMaterial;
                 
