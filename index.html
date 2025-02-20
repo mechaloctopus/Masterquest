@@ -62,31 +62,26 @@
 
                 // === MILKY WAY SKYBOX ===
                 function createSkybox() {
-    // Create a skybox cube
-    const skybox = BABYLON.MeshBuilder.CreateBox("skybox", { size: 1000 }, scene);
-    const skyboxMaterial = new BABYLON.StandardMaterial("skyboxMaterial", scene);
-    
-    // Load the texture
-    skyboxMaterial.backFaceCulling = false; // Show inside of the cube
-    skyboxMaterial.diffuseTexture = new BABYLON.Texture("IMG_2579.jpeg", scene);
-    
-    // Rotate the texture coordinates to wrap vertically by adjusting the matrix
-    skyboxMaterial.diffuseTexture.uScale = 1;
-    skyboxMaterial.diffuseTexture.vScale = 1;
-    
-    // Apply a 90-degree rotation to the texture (swap U and V conceptually)
-    skyboxMaterial.diffuseTexture.coordinatesMode = BABYLON.Texture.SPHERICAL_MODE;
-    skyboxMaterial.diffuseTexture.level = 1;
-    
-    // Disable lighting effects
-    skyboxMaterial.disableLighting = true;
-    skyboxMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
+    const skybox = new BABYLON.PhotoDome(
+        "skyDome",
+        "IMG_2579.jpeg",
+        {
+            resolution: 64,
+            size: 1000,
+            useDirectMapping: false
+        },
+        scene
+    );
 
-    // Assign material to skybox
-    skybox.material = skyboxMaterial;
+    // Rotate the mesh 90 degrees around the X-axis to reorient the poles
+    skybox.mesh.rotation.x = Math.PI / 2; // 90 degrees tilt
 
-    // Rotate the skybox mesh itself to align the texture vertically
-    skybox.rotation.x = Math.PI / 2; // Tilt 90 degrees
+    // Since PhotoDome uses equirectangular mapping, we need to adjust texture rotation
+    // Reset angular offsets to default and rely on mesh rotation
+    skybox.texture.uAng = 0;  // Reset U (horizontal) angular offset
+    skybox.texture.wAng = 0;  // Reset W (vertical) angular offset
+    skybox.texture.uOffset = 0;  // Reset U offset
+    skybox.texture.vOffset = 0;  // Reset V offset
 }
                 createSkybox();
 
