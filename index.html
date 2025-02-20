@@ -62,26 +62,28 @@
 
                 // === MILKY WAY SKYBOX ===
                 function createSkybox() {
-    const skybox = new BABYLON.PhotoDome(
-        "skyDome",
-        "IMG_2579.jpeg",
-        {
-            resolution: 64,
-            size: 1000,
-            useDirectMapping: false
-        },
-        scene
-    );
+    // Create a sphere for the skybox
+    const skybox = BABYLON.MeshBuilder.CreateSphere("skybox", { diameter: 1000, sideOrientation: BABYLON.Mesh.BACKSIDE }, scene);
 
-    // Rotate the mesh 90 degrees around the X-axis to reorient the poles
-    skybox.mesh.rotation.x = Math.PI / 2; // 90 degrees tilt
+    // Create a material for the skybox
+    const skyboxMaterial = new BABYLON.StandardMaterial("skyboxMaterial", scene);
+    skyboxMaterial.backFaceCulling = false; // Ensure the inside is visible
+    skyboxMaterial.diffuseTexture = new BABYLON.Texture("IMG_2579.jpeg", scene);
+    
+    // Rotate the texture 90 degrees by adjusting the texture matrix
+    skyboxMaterial.diffuseTexture.uRotation = Math.PI / 2; // Rotate texture 90 degrees counterclockwise
+    skyboxMaterial.diffuseTexture.uScale = 1;
+    skyboxMaterial.diffuseTexture.vScale = 1;
 
-    // Since PhotoDome uses equirectangular mapping, we need to adjust texture rotation
-    // Reset angular offsets to default and rely on mesh rotation
-    skybox.texture.uAng = 0;  // Reset U (horizontal) angular offset
-    skybox.texture.wAng = 0;  // Reset W (vertical) angular offset
-    skybox.texture.uOffset = 0;  // Reset U offset
-    skybox.texture.vOffset = 0;  // Reset V offset
+    // Disable lighting and set emissive color to make it visible
+    skyboxMaterial.disableLighting = true;
+    skyboxMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
+
+    // Apply the material to the skybox
+    skybox.material = skyboxMaterial;
+
+    // Optional: Adjust the mesh rotation if needed to align with your camera
+    skybox.rotation.x = 0; // You can tweak this if the orientation needs adjustment
 }
                 createSkybox();
 
