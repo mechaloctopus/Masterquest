@@ -3,7 +3,7 @@
 <head>
     <title>Neon Grid FPS</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="icon" href="data:,"> <!-- Fix favicon error -->
+    <link rel="icon" href="data:,">
     <style>
         * { margin: 0; padding: 0; touch-action: none; }
         html, body { width: 100%; height: 100%; overflow: hidden; background: black; }
@@ -75,10 +75,9 @@
                 scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
                 // Camera Setup
-                const camera = new BABYLON.FreeCamera("camera", new BABYLON.Vector3(0, 2, -10), scene);
+                const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, -10), scene);
                 camera.attachControl(canvas, false);
                 camera.speed = 0.15;
-                const right = BABYLON.Vector3.Cross(camera.upVector, camera.getForwardRay().direction);
                 const groundY = 2;
                 const lookLimit = Math.PI / 4;
 
@@ -116,7 +115,6 @@
                     skyboxMaterial.disableLighting = true;
                     skybox.material = skyboxMaterial;
                     
-                    // Use a placeholder texture
                     skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
                         "https://assets.babylonjs.com/textures/skybox", 
                         scene
@@ -172,9 +170,9 @@
                     color: '#00ff00',
                     size: 100
                 }).on('move', (evt, data) => {
-                    camera.cameraRotation.y -= data.vector.x * 0.05;
-                    camera.cameraRotation.x = BABYLON.Scalar.Clamp(
-                        camera.cameraRotation.x - data.vector.y * 0.05,
+                    camera.rotation.y -= data.vector.x * 0.05;
+                    camera.rotation.x = BABYLON.Scalar.Clamp(
+                        camera.rotation.x + data.vector.y * 0.05,
                         -lookLimit,
                         lookLimit
                     );
@@ -191,8 +189,8 @@
                 // Game loop
                 scene.registerBeforeRender(() => {
                     // Movement
-                    const forward = camera.getForwardRay().direction;
-                    const right = camera.getRightRay().direction;
+                    const forward = camera.getDirection(BABYLON.Vector3.Forward());
+                    const right = camera.getDirection(BABYLON.Vector3.Right());
                     camera.position.addInPlace(
                         forward.scale(moveVector.z * 0.1)
                             .add(right.scale(moveVector.x * 0.1))
