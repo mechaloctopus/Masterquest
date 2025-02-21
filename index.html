@@ -102,9 +102,15 @@
                 const updateHandPositions = () => {
                     const engine = scene.getEngine();
                     
-                    // Get joystick positions in screen space
-                    const leftJoystickRect = document.getElementById('leftJoystick').getBoundingClientRect();
-                    const rightJoystickRect = document.getElementById('rightJoystick').getBoundingClientRect();
+                    // Safely get joystick positions
+                    const leftJoystick = document.getElementById('leftJoystick');
+                    const rightJoystick = document.getElementById('rightJoystick');
+                    if (!leftJoystick || !rightJoystick) {
+                        console.error('Joystick elements not found');
+                        return;
+                    }
+                    const leftJoystickRect = leftJoystick.getBoundingClientRect();
+                    const rightJoystickRect = rightJoystick.getBoundingClientRect();
                     
                     // Create screen position vectors
                     const leftScreenPos = new BABYLON.Vector3(
@@ -119,33 +125,37 @@
                         0.5
                     );
 
-                    // Safely convert to 3D space with null checks
-                    if (leftTracker && rightTracker) {
-                        BABYLON.Vector3.ProjectToRef(
-                            leftScreenPos,
-                            BABYLON.Matrix.Identity(),
-                            scene.getTransformMatrix(),
-                            leftScreenPos
-                        );
-                        
-                        BABYLON.Vector3.ProjectToRef(
-                            rightScreenPos,
-                            BABYLON.Matrix.Identity(),
-                            scene.getTransformMatrix(),
-                            rightScreenPos
-                        );
+                    // Safely convert to 3D space with enhanced error handling
+                    try {
+                        if (leftTracker && rightTracker && leftScreenPos && rightScreenPos) {
+                            BABYLON.Vector3.ProjectToRef(
+                                leftScreenPos,
+                                BABYLON.Matrix.Identity(),
+                                scene.getTransformMatrix(),
+                                leftScreenPos
+                            );
+                            
+                            BABYLON.Vector3.ProjectToRef(
+                                rightScreenPos,
+                                BABYLON.Matrix.Identity(),
+                                scene.getTransformMatrix(),
+                                rightScreenPos
+                            );
 
-                        // Update positions with fallback values
-                        leftTracker.position = new BABYLON.Vector3(
-                            leftScreenPos.x || -0.8,
-                            leftScreenPos.y || -1.0,
-                            1.2
-                        );
-                        rightTracker.position = new BABYLON.Vector3(
-                            rightScreenPos.x || 0.8,
-                            rightScreenPos.y || -1.0,
-                            1.2
-                        );
+                            // Update positions with explicit number conversion
+                            leftTracker.position = new BABYLON.Vector3(
+                                Number(leftScreenPos.x) || -0.8,
+                                Number(leftScreenPos.y) || -1.0,
+                                1.2
+                            );
+                            rightTracker.position = new BABYLON.Vector3(
+                                Number(rightScreenPos.x) || 0.8,
+                                Number(rightScreenPos.y) || -1.0,
+                                1.2
+                            );
+                        }
+                    } catch (error) {
+                        console.error('Hand position update error:', error);
                     }
 
                     // Reset hand local positions
@@ -174,9 +184,7 @@
                 glowLayer.intensity = 5.0;
                 glowLayer.blurKernelSize = 64;
 
-                leftHand.parent = camera;
-                rightHand.parent = camera;
-
+                // Remove direct camera parenting
                 // Skybox
                 function createSkybox() {
                     new BABYLON.PhotoDome(
