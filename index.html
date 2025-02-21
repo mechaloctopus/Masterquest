@@ -86,9 +86,46 @@
                 const leftHand = BABYLON.MeshBuilder.CreateSphere("leftHand", {diameter: handSize}, scene);
                 const rightHand = BABYLON.MeshBuilder.CreateSphere("rightHand", {diameter: handSize}, scene);
                 
-                // Position hands under joysticks
-                leftHand.position = new BABYLON.Vector3(-0.8, -1.0, 0.8);
-                rightHand.position = new BABYLON.Vector3(0.8, -1.0, 0.8);
+                // Create position trackers parented to camera
+                const leftTracker = new BABYLON.TransformNode("leftTracker", scene);
+                const rightTracker = new BABYLON.TransformNode("rightTracker", scene);
+                leftTracker.parent = camera;
+                rightTracker.parent = camera;
+                
+                // Position hands relative to trackers
+                leftHand.parent = leftTracker;
+                rightHand.parent = rightTracker;
+                leftHand.position = new BABYLON.Vector3(0, -0.5, 1);
+                rightHand.position = new BABYLON.Vector3(0, -0.5, 1);
+
+                // Update positions based on joystick screen coordinates
+                const updateHandPositions = () => {
+                    const engine = scene.getEngine();
+                    
+                    // Get joystick positions in screen space
+                    const leftJoystickRect = document.getElementById('leftJoystick').getBoundingClientRect();
+                    const rightJoystickRect = document.getElementById('rightJoystick').getBoundingClientRect();
+                    
+                    // Convert to normalized device coordinates
+                    const leftX = (leftJoystickRect.left + leftJoystickRect.width/2) / engine.getRenderWidth() * 2 - 1;
+                    const leftY = 1 - (leftJoystickRect.top + leftJoystickRect.height/2) / engine.getRenderHeight() * 2;
+                    const rightX = (rightJoystickRect.left + rightJoystickRect.width/2) / engine.getRenderWidth() * 2 - 1;
+                    const rightY = 1 - (rightJoystickRect.top + rightJoystickRect.height/2) / engine.getRenderHeight() * 2;
+
+                    // Convert to 3D positions relative to camera
+                    const leftPos = new BABYLON.Vector3(leftX, leftY, 1);
+                    const rightPos = new BABYLON.Vector3(rightX, rightY, 1);
+                    
+                    // Update tracker positions (adjust Z depth as needed)
+                    leftTracker.position = leftPos.scale(2);
+                    rightTracker.position = rightPos.scale(2);
+                };
+
+                // Initial position update
+                updateHandPositions();
+                
+                // Update positions on resize
+                window.addEventListener('resize', updateHandPositions);
 
                 // Hand material
                 const handMaterial = new BABYLON.StandardMaterial("handMat", scene);
