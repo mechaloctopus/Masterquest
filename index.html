@@ -172,7 +172,7 @@
                 }).on('move', (evt, data) => {
                     camera.rotation.y += data.vector.x * 0.05;
                     camera.rotation.x = BABYLON.Scalar.Clamp(
-                        camera.rotation.x + data.vector.y * 0.05, // Fixed rotation direction
+                        camera.rotation.x - data.vector.y * 0.05, // Fixed rotation direction (inverted Y axis)
                         -lookLimit,
                         lookLimit
                     );
