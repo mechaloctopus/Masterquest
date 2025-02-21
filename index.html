@@ -82,13 +82,13 @@
                 const lookLimit = Math.PI / 4;
 
                 // Hands Setup
-                const handSize = 0.1; // Reduced size for mobile visibility
+                const handSize = 0.05; // Further reduced size
                 const leftHand = BABYLON.MeshBuilder.CreateSphere("leftHand", {diameter: handSize}, scene);
                 const rightHand = BABYLON.MeshBuilder.CreateSphere("rightHand", {diameter: handSize}, scene);
                 
-                // Position hands in front of camera
-                leftHand.position = new BABYLON.Vector3(-0.6, -0.4, 1.2);
-                rightHand.position = new BABYLON.Vector3(0.6, -0.4, 1.2);
+                // Position hands under joysticks
+                leftHand.position = new BABYLON.Vector3(-0.8, -1.0, 0.8);
+                rightHand.position = new BABYLON.Vector3(0.8, -1.0, 0.8);
 
                 // Hand material
                 const handMaterial = new BABYLON.StandardMaterial("handMat", scene);
