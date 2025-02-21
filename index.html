@@ -119,24 +119,34 @@
                         0.5
                     );
 
-                    // Convert to 3D space relative to camera
-                    BABYLON.Vector3.ProjectToRef(
-                        leftScreenPos,
-                        BABYLON.Matrix.Identity(),
-                        scene.getTransformMatrix(),
-                        leftScreenPos
-                    );
-                    
-                    BABYLON.Vector3.ProjectToRef(
-                        rightScreenPos,
-                        BABYLON.Matrix.Identity(),
-                        scene.getTransformMatrix(),
-                        rightScreenPos
-                    );
+                    // Safely convert to 3D space with null checks
+                    if (leftTracker && rightTracker) {
+                        BABYLON.Vector3.ProjectToRef(
+                            leftScreenPos,
+                            BABYLON.Matrix.Identity(),
+                            scene.getTransformMatrix(),
+                            leftScreenPos
+                        );
+                        
+                        BABYLON.Vector3.ProjectToRef(
+                            rightScreenPos,
+                            BABYLON.Matrix.Identity(),
+                            scene.getTransformMatrix(),
+                            rightScreenPos
+                        );
 
-                    // Update tracker positions with Z offset
-                    leftTracker.position = new BABYLON.Vector3(leftScreenPos.x, leftScreenPos.y, 1.2);
-                    rightTracker.position = new BABYLON.Vector3(rightScreenPos.x, rightScreenPos.y, 1.2);
+                        // Update positions with fallback values
+                        leftTracker.position = new BABYLON.Vector3(
+                            leftScreenPos.x || -0.8,
+                            leftScreenPos.y || -1.0,
+                            1.2
+                        );
+                        rightTracker.position = new BABYLON.Vector3(
+                            rightScreenPos.x || 0.8,
+                            rightScreenPos.y || -1.0,
+                            1.2
+                        );
+                    }
 
                     // Reset hand local positions
                     leftHand.position = BABYLON.Vector3.Zero();
