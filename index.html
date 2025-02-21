@@ -106,19 +106,41 @@
                     const leftJoystickRect = document.getElementById('leftJoystick').getBoundingClientRect();
                     const rightJoystickRect = document.getElementById('rightJoystick').getBoundingClientRect();
                     
-                    // Convert to normalized device coordinates
-                    const leftX = (leftJoystickRect.left + leftJoystickRect.width/2) / engine.getRenderWidth() * 2 - 1;
-                    const leftY = 1 - (leftJoystickRect.top + leftJoystickRect.height/2) / engine.getRenderHeight() * 2;
-                    const rightX = (rightJoystickRect.left + rightJoystickRect.width/2) / engine.getRenderWidth() * 2 - 1;
-                    const rightY = 1 - (rightJoystickRect.top + rightJoystickRect.height/2) / engine.getRenderHeight() * 2;
-
-                    // Convert to 3D positions relative to camera
-                    const leftPos = new BABYLON.Vector3(leftX, leftY, 1);
-                    const rightPos = new BABYLON.Vector3(rightX, rightY, 1);
+                    // Create screen position vectors
+                    const leftScreenPos = new BABYLON.Vector3(
+                        (leftJoystickRect.left + leftJoystickRect.width/2),
+                        (leftJoystickRect.top + leftJoystickRect.height/2),
+                        0.5 // Normalized depth
+                    );
                     
-                    // Update tracker positions (adjust Z depth as needed)
-                    leftTracker.position = leftPos.scale(2);
-                    rightTracker.position = rightPos.scale(2);
+                    const rightScreenPos = new BABYLON.Vector3(
+                        (rightJoystickRect.left + rightJoystickRect.width/2),
+                        (rightJoystickRect.top + rightJoystickRect.height/2),
+                        0.5
+                    );
+
+                    // Convert to 3D space relative to camera
+                    BABYLON.Vector3.ProjectToRef(
+                        leftScreenPos,
+                        BABYLON.Matrix.Identity(),
+                        scene.getTransformMatrix(),
+                        leftScreenPos
+                    );
+                    
+                    BABYLON.Vector3.ProjectToRef(
+                        rightScreenPos,
+                        BABYLON.Matrix.Identity(),
+                        scene.getTransformMatrix(),
+                        rightScreenPos
+                    );
+
+                    // Update tracker positions with Z offset
+                    leftTracker.position = new BABYLON.Vector3(leftScreenPos.x, leftScreenPos.y, 1.2);
+                    rightTracker.position = new BABYLON.Vector3(rightScreenPos.x, rightScreenPos.y, 1.2);
+
+                    // Reset hand local positions
+                    leftHand.position = BABYLON.Vector3.Zero();
+                    rightHand.position = BABYLON.Vector3.Zero();
                 };
 
                 // Initial position update
