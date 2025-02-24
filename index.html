@@ -94,14 +94,6 @@
             }
         };
 
-        // System State
-        const state = {
-            moveVector: new BABYLON.Vector3(0, 0, 0),
-            jumpForce: 0,
-            bobTime: 0,
-            grounded: true
-        };
-
         // Core System Functions
         function initializeScene(engine) {
             const scene = new BABYLON.Scene(engine);
@@ -174,7 +166,7 @@
             return [gui.controls[0], gui.controls[1]]; // Return the hand controls directly
         }
 
-        function setupControls(scene, camera) {
+        function setupControls(scene, camera, state) {
             // Joystick setup
             const createJoystick = (element, onMove) => {
                 return nipplejs.create({
@@ -244,11 +236,19 @@
                 const engine = new BABYLON.Engine(canvas, true);
                 const scene = initializeScene(engine);
                 
+                // Initialize state after BABYLON is loaded
+                const state = {
+                    moveVector: new BABYLON.Vector3(0, 0, 0),
+                    jumpForce: 0,
+                    bobTime: 0,
+                    grounded: true
+                };
+
                 createGrid(scene);
                 createSkybox(scene);
                 const camera = setupCamera(scene, canvas);
                 const hands = createHandsGUI();
-                setupControls(scene, camera);
+                setupControls(scene, camera, state);
                 registerUpdateLoop(scene, camera, hands);
 
                 engine.runRenderLoop(() => scene.render());
