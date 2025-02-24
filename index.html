@@ -80,6 +80,40 @@
             const scene = new BABYLON.Scene(engine);
             scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
+            // Grid Setup
+            function createGrid() {
+                const gridSize = 50;
+                const gridSpacing = 2;
+                const gridColor = new BABYLON.Color3(0.75, 0, 1); // Neon purple
+                
+                // Create grid lines
+                for(let x = -gridSize; x <= gridSize; x += gridSpacing) {
+                    BABYLON.MeshBuilder.CreateLines("gridX", {
+                        points: [
+                            new BABYLON.Vector3(x, 0, -gridSize),
+                            new BABYLON.Vector3(x, 0, gridSize)
+                        ]
+                    }, scene).color = gridColor;
+                }
+
+                for(let z = -gridSize; z <= gridSize; z += gridSpacing) {
+                    BABYLON.MeshBuilder.CreateLines("gridZ", {
+                        points: [
+                            new BABYLON.Vector3(-gridSize, 0, z),
+                            new BABYLON.Vector3(gridSize, 0, z)
+                        ]
+                    }, scene).color = gridColor;
+                }
+
+                // Add grid glow
+                const gridGlow = new BABYLON.GlowLayer("gridGlow", scene);
+                gridGlow.intensity = 2.0;
+            }
+            createGrid();
+
+            // Skybox
+            new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+
             // Camera Setup
             const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, 0), scene);
             camera.attachControl(canvas, true);
@@ -139,6 +173,20 @@
                     grounded = false;
                 }
             });
+
+            // Skybox with stars
+            const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size: 1000}, scene);
+            const skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+            skyboxMaterial.backFaceCulling = false;
+            skyboxMaterial.disableLighting = true;
+            skybox.material = skyboxMaterial;
+            
+            // Use space texture from BabylonJS assets
+            skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
+                "https://assets.babylonjs.com/textures/skybox/space/space", 
+                scene
+            );
+            skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
 
             // Game loop
             scene.registerBeforeRender(() => {
