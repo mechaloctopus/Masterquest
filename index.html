@@ -65,167 +65,166 @@
             document.getElementById('log').innerText += msg + "\n";
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            logMessage("> SYSTEM INITIALIZING...");
-            logMessage("> LOADING NEON GRID PROTOCOL...");
+        // Since our scripts are at the bottom of the body, the DOM is already loaded.
+        logMessage("> SYSTEM INITIALIZING...");
+        logMessage("> LOADING NEON GRID PROTOCOL...");
 
-            try {
-                const canvas = document.getElementById('renderCanvas');
-                const engine = new BABYLON.Engine(canvas, true);
-                const scene = new BABYLON.Scene(engine);
-                scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
+        try {
+            const canvas = document.getElementById('renderCanvas');
+            const engine = new BABYLON.Engine(canvas, true);
+            const scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
-                // Camera Setup
-                const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 3, -10), scene);
-                camera.attachControl(canvas, false);
-                camera.speed = 0.15;
-                const groundY = 2;
-                const lookLimit = Math.PI / 4;
+            // Camera Setup
+            const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 3, -10), scene);
+            camera.attachControl(canvas, false);
+            camera.speed = 0.15;
+            const groundY = 2;
+            const lookLimit = Math.PI / 4;
 
-                // Skybox
-                function createSkybox() {
-                    new BABYLON.PhotoDome(
-                        "skyDome",
-                        "IMG_2579.jpeg",
-                        {
-                            resolution: 64,
-                            size: 1000,
-                            useDirectMapping: false
-                        },
-                        scene
-                    );
-                }
-                createSkybox();
-
-                // Grid
-                function createGrid() {
-                    const gridSize = 50;
-                    const gridSpacing = 2;
-                    const color = new BABYLON.Color3(0.75, 0, 1);
-
-                    for (let x = -gridSize; x <= gridSize; x += gridSpacing) {
-                        BABYLON.MeshBuilder.CreateLines("gridX", {
-                            points: [new BABYLON.Vector3(x, 0, -gridSize), new BABYLON.Vector3(x, 0, gridSize)]
-                        }, scene).color = color;
-                    }
-
-                    for (let z = -gridSize; z <= gridSize; z += gridSpacing) {
-                        BABYLON.MeshBuilder.CreateLines("gridZ", {
-                            points: [new BABYLON.Vector3(-gridSize, 0, z), new BABYLON.Vector3(gridSize, 0, z)]
-                        }, scene).color = color;
-                    }
-
-                    new BABYLON.GlowLayer("gridGlow", scene).intensity = 2.0;
-                }
-                createGrid();
-
-                // Controls
-                let moveVector = BABYLON.Vector3.Zero();
-                let jumpForce = 0;
-                const gravity = -0.02;
-                let isJumping = false;
-                
-                // Fixed Joystick Controls
-                const manager = nipplejs.create({
-                    zone: document.getElementById('leftJoystick'),
-                    mode: 'static',
-                    position: { left: '50%', top: '50%' },
-                    color: '#00ff00',
-                    size: 100
-                }).on('move', (evt, data) => {
-                    moveVector.x = data.vector.x;
-                    moveVector.z = data.vector.y;
-                }).on('end', () => moveVector = BABYLON.Vector3.Zero());
-
-                const rotateManager = nipplejs.create({
-                    zone: document.getElementById('rightJoystick'),
-                    mode: 'static',
-                    position: { left: '50%', top: '50%' },
-                    color: '#00ff00',
-                    size: 100
-                }).on('move', (evt, data) => {
-                    camera.rotation.y += data.vector.x * 0.05;
-                    camera.rotation.x = BABYLON.Scalar.Clamp(
-                        camera.rotation.x - data.vector.y * 0.05, // Fixed rotation direction (inverted Y axis)
-                        -lookLimit,
-                        lookLimit
-                    );
-                }).on('end', () => {});
-
-                // Fixed Jump Button (works on both mobile and desktop)
-                const jumpButton = document.getElementById('jumpButton');
-                jumpButton.addEventListener('touchstart', handleJump);
-                jumpButton.addEventListener('mousedown', handleJump);
-
-                function handleJump() {
-                    if (!isJumping) {
-                        jumpForce = 1.5;
-                        isJumping = true;
-                    }
-                }
-
-                // Create HUD for hands using Babylon GUI (glowing neon blue orbs)
-                const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
-
-                const leftHandUI = new BABYLON.GUI.Ellipse();
-                leftHandUI.width = "80px";
-                leftHandUI.height = "80px";
-                leftHandUI.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
-                leftHandUI.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
-                leftHandUI.left = "20px";
-                leftHandUI.bottom = "20px";
-                leftHandUI.background = "rgba(0,255,255,0.2)"; // subtle blue tint
-                leftHandUI.thickness = 4;
-                leftHandUI.color = "#00ffff"; // neon blue/cyan
-                // Optionally, you could add further styling like shadow properties here
-                advancedTexture.addControl(leftHandUI);
-
-                const rightHandUI = new BABYLON.GUI.Ellipse();
-                rightHandUI.width = "80px";
-                rightHandUI.height = "80px";
-                rightHandUI.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
-                rightHandUI.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
-                rightHandUI.right = "20px";
-                rightHandUI.bottom = "20px";
-                rightHandUI.background = "rgba(0,255,255,0.2)";
-                rightHandUI.thickness = 4;
-                rightHandUI.color = "#00ffff";
-                advancedTexture.addControl(rightHandUI);
-
-                // Game loop
-                scene.registerBeforeRender(() => {
-                    // Movement
-                    const forward = camera.getDirection(BABYLON.Vector3.Forward());
-                    const right = camera.getDirection(BABYLON.Vector3.Right());
-                    camera.position.addInPlace(
-                        forward.scale(moveVector.z * 0.1)
-                            .add(right.scale(moveVector.x * 0.1))
-                    );
-
-                    // Jump mechanics
-                    jumpForce += gravity;
-                    camera.position.y += jumpForce;
-                    
-                    if (camera.position.y <= groundY) {
-                        camera.position.y = groundY;
-                        jumpForce = 0;
-                        isJumping = false;
-                    }
-                });
-
-                engine.runRenderLoop(() => {
-                    scene.render();
-                    // Optionally, if later you wish to animate the GUI hands (for example, during a strike),
-                    // update their properties (size, color, position) here.
-                });
-                window.addEventListener('resize', () => engine.resize());
-
-                logMessage("> SYSTEM READY");
-                logMessage("> INITIALIZE GRID NAVIGATION...");
-            } catch (error) {
-                logMessage(`!! SYSTEM ERROR: ${error.message}`);
+            // Skybox
+            function createSkybox() {
+                new BABYLON.PhotoDome(
+                    "skyDome",
+                    "IMG_2579.jpeg",
+                    {
+                        resolution: 64,
+                        size: 1000,
+                        useDirectMapping: false
+                    },
+                    scene
+                );
             }
-        });
+            createSkybox();
+
+            // Grid
+            function createGrid() {
+                const gridSize = 50;
+                const gridSpacing = 2;
+                const color = new BABYLON.Color3(0.75, 0, 1);
+
+                for (let x = -gridSize; x <= gridSize; x += gridSpacing) {
+                    BABYLON.MeshBuilder.CreateLines("gridX", {
+                        points: [new BABYLON.Vector3(x, 0, -gridSize), new BABYLON.Vector3(x, 0, gridSize)]
+                    }, scene).color = color;
+                }
+
+                for (let z = -gridSize; z <= gridSize; z += gridSpacing) {
+                    BABYLON.MeshBuilder.CreateLines("gridZ", {
+                        points: [new BABYLON.Vector3(-gridSize, 0, z), new BABYLON.Vector3(gridSize, 0, z)]
+                    }, scene).color = color;
+                }
+
+                new BABYLON.GlowLayer("gridGlow", scene).intensity = 2.0;
+            }
+            createGrid();
+
+            // Controls
+            let moveVector = BABYLON.Vector3.Zero();
+            let jumpForce = 0;
+            const gravity = -0.02;
+            let isJumping = false;
+            
+            // Fixed Joystick Controls
+            const manager = nipplejs.create({
+                zone: document.getElementById('leftJoystick'),
+                mode: 'static',
+                position: { left: '50%', top: '50%' },
+                color: '#00ff00',
+                size: 100
+            }).on('move', (evt, data) => {
+                moveVector.x = data.vector.x;
+                moveVector.z = data.vector.y;
+            }).on('end', () => moveVector = BABYLON.Vector3.Zero());
+
+            const rotateManager = nipplejs.create({
+                zone: document.getElementById('rightJoystick'),
+                mode: 'static',
+                position: { left: '50%', top: '50%' },
+                color: '#00ff00',
+                size: 100
+            }).on('move', (evt, data) => {
+                camera.rotation.y += data.vector.x * 0.05;
+                camera.rotation.x = BABYLON.Scalar.Clamp(
+                    camera.rotation.x - data.vector.y * 0.05, // Fixed rotation direction (inverted Y axis)
+                    -lookLimit,
+                    lookLimit
+                );
+            }).on('end', () => {});
+
+            // Fixed Jump Button (works on both mobile and desktop)
+            const jumpButton = document.getElementById('jumpButton');
+            jumpButton.addEventListener('touchstart', handleJump);
+            jumpButton.addEventListener('mousedown', handleJump);
+
+            function handleJump() {
+                if (!isJumping) {
+                    jumpForce = 1.5;
+                    isJumping = true;
+                }
+            }
+
+            // Create HUD for hands using Babylon GUI (glowing neon blue orbs)
+            const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+            const leftHandUI = new BABYLON.GUI.Ellipse();
+            leftHandUI.width = "80px";
+            leftHandUI.height = "80px";
+            leftHandUI.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+            leftHandUI.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+            leftHandUI.left = "20px";
+            leftHandUI.bottom = "20px";
+            leftHandUI.background = "rgba(0,255,255,0.2)"; // subtle blue tint
+            leftHandUI.thickness = 4;
+            leftHandUI.color = "#00ffff"; // neon blue/cyan
+            // Optionally, you could add further styling like shadow properties here
+            advancedTexture.addControl(leftHandUI);
+
+            const rightHandUI = new BABYLON.GUI.Ellipse();
+            rightHandUI.width = "80px";
+            rightHandUI.height = "80px";
+            rightHandUI.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+            rightHandUI.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+            rightHandUI.right = "20px";
+            rightHandUI.bottom = "20px";
+            rightHandUI.background = "rgba(0,255,255,0.2)";
+            rightHandUI.thickness = 4;
+            rightHandUI.color = "#00ffff";
+            advancedTexture.addControl(rightHandUI);
+
+            // Game loop
+            scene.registerBeforeRender(() => {
+                // Movement
+                const forward = camera.getDirection(BABYLON.Vector3.Forward());
+                const right = camera.getDirection(BABYLON.Vector3.Right());
+                camera.position.addInPlace(
+                    forward.scale(moveVector.z * 0.1)
+                        .add(right.scale(moveVector.x * 0.1))
+                );
+
+                // Jump mechanics
+                jumpForce += gravity;
+                camera.position.y += jumpForce;
+                
+                if (camera.position.y <= groundY) {
+                    camera.position.y = groundY;
+                    jumpForce = 0;
+                    isJumping = false;
+                }
+            });
+
+            engine.runRenderLoop(() => {
+                scene.render();
+                // Optionally, if later you wish to animate the GUI hands (for example, during a strike),
+                // update their properties (size, color, position) here.
+            });
+            window.addEventListener('resize', () => engine.resize());
+
+            logMessage("> SYSTEM READY");
+            logMessage("> INITIALIZE GRID NAVIGATION...");
+        } catch (error) {
+            logMessage(`!! SYSTEM ERROR: ${error.message}`);
+        }
     </script>
 </body>
 </html>
