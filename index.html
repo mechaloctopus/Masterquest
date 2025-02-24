@@ -63,6 +63,12 @@
     <button id="jumpButton">JUMP</button>
 
     <script>
+        // Logging system
+        function logMessage(msg) {
+            const logElement = document.getElementById('log');
+            logElement.innerHTML += msg + '<br>';
+        }
+
         // Configuration Constants
         const CONFIG = {
             CAMERA: {
