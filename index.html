@@ -58,9 +58,11 @@
     <div id="rightJoystick" class="joystick-container"></div>
     <button id="jumpButton">JUMP</button>
 
-    <script src="https://cdn.jsdelivr.net/npm/@babylonjs/core@5.0.0/dist/babylon.max.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@babylonjs/gui@5.0.0/dist/babylon.gui.min.js"></script>
+    <!-- Use raw.githack.com CDN for Babylon.js -->
+    <script src="https://raw.githack.com/BabylonJS/Babylon.js/master/dist/babylon.js"></script>
+    <script src="https://raw.githack.com/BabylonJS/Babylon.js/master/dist/gui/babylon.gui.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
+
     <script>
         function logMessage(msg) {
             document.getElementById('log').innerText += msg + "\n";
@@ -71,6 +73,8 @@
         logMessage("> LOADING NEON GRID PROTOCOL...");
 
         try {
+            // Initialize engine first to verify BABYLON exists
+            console.log('BABYLON exists?', typeof BABYLON !== 'undefined');
             const canvas = document.getElementById('renderCanvas');
             const engine = new BABYLON.Engine(canvas, true);
             const scene = new BABYLON.Scene(engine);
