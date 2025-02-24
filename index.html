@@ -143,8 +143,8 @@
             // Game loop
             scene.registerBeforeRender(() => {
                 // Movement
-                const forward = camera.getForwardRay().direction.scale(moveVector.z * 0.1);
-                const right = camera.getRightRay().direction.scale(moveVector.x * 0.1);
+                const forward = camera.getForwardVector().scale(moveVector.z * 0.1);
+                const right = camera.getRightVector().scale(moveVector.x * 0.1);
                 camera.position.addInPlace(forward.add(right));
 
                 // Jump
