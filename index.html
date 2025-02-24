@@ -72,14 +72,14 @@
         // Configuration Constants
         const CONFIG = {
             CAMERA: {
-                START_POSITION: new BABYLON.Vector3(0, 1.6, 0),
+                START_POSITION: {x: 0, y: 1.6, z: 0},
                 SPEED: 0.1,
                 GROUND_Y: 1.6
             },
             GRID: {
                 SIZE: 50,
                 SPACING: 2,
-                COLOR: new BABYLON.Color3(0.75, 0, 1)
+                COLOR: {r: 0.75, g: 0, b: 1}
             },
             HANDS: {
                 SIZE: "80px",
@@ -110,7 +110,11 @@
         }
 
         function setupCamera(scene, canvas) {
-            const camera = new BABYLON.UniversalCamera("camera", CONFIG.CAMERA.START_POSITION, scene);
+            const camera = new BABYLON.UniversalCamera("camera", 
+                new BABYLON.Vector3(
+                    CONFIG.CAMERA.START_POSITION.x,
+                    CONFIG.CAMERA.START_POSITION.y,
+                    CONFIG.CAMERA.START_POSITION.z), scene);
             camera.attachControl(canvas, true);
             camera.speed = CONFIG.CAMERA.SPEED;
             return camera;
@@ -118,19 +122,20 @@
 
         function createGrid(scene) {
             const { SIZE, SPACING, COLOR } = CONFIG.GRID;
+            const gridColor = new BABYLON.Color3(COLOR.r, COLOR.g, COLOR.b);
             
             // Horizontal lines
             for(let x = -SIZE; x <= SIZE; x += SPACING) {
                 BABYLON.MeshBuilder.CreateLines("gridX", {
                     points: [new BABYLON.Vector3(x, 0, -SIZE), new BABYLON.Vector3(x, 0, SIZE)]
-                }, scene).color = COLOR;
+                }, scene).color = gridColor;
             }
 
             // Vertical lines
             for(let z = -SIZE; z <= SIZE; z += SPACING) {
                 BABYLON.MeshBuilder.CreateLines("gridZ", {
                     points: [new BABYLON.Vector3(-SIZE, 0, z), new BABYLON.Vector3(SIZE, 0, z)]
-                }, scene).color = COLOR;
+                }, scene).color = gridColor;
             }
 
             // Grid glow effect
