@@ -51,8 +51,8 @@
         }
     </style>
     <!-- RELIABLE CDN SOURCES -->
-    <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babylonjs/core@5.0.0/dist/babylon.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babylonjs/gui@5.0.0/dist/babylon.gui.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
 </head>
 <body>
@@ -145,7 +145,7 @@
             }, scene);
         }
 
-        function createHandsGUI(scene) {
+        function createHandsGUI() {
             const gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
             const { SIZE, COLOR, SIDE_OFFSET, BOTTOM_OFFSET, BACKGROUND } = CONFIG.HANDS;
 
@@ -166,7 +166,7 @@
             gui.addControl(createHand(BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT));
             gui.addControl(createHand(BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT));
 
-            return gui;
+            return [gui.controls[0], gui.controls[1]]; // Return the hand controls directly
         }
 
         function setupControls(scene, camera) {
@@ -200,7 +200,7 @@
             });
         }
 
-        function registerUpdateLoop(scene, camera) {
+        function registerUpdateLoop(scene, camera, hands) {
             scene.registerBeforeRender(() => {
                 const engine = scene.getEngine();
                 // Movement
@@ -220,15 +220,14 @@
 
                 // Hand animation
                 const movementIntensity = state.moveVector.length();
-                state.bobTime += engine.getDeltaTime() / 1000; // Convert to seconds
-                const bobAmount = Math.sin(state.bobTime * 10) * 5 * movementIntensity;
-                
-                // Animate hands
-                const guiTexture = scene.getTextureByName("UI");
-                if (guiTexture && guiTexture.controls.length >= 2) {
+                state.bobTime += engine.getDeltaTime() / 1000;
+                const bobAmount = Math.sin(state.bobTime * 10) * 8 * movementIntensity;
+
+                // Update hand positions
+                if (hands && hands.length >= 2) {
                     const baseOffset = parseFloat(CONFIG.HANDS.BOTTOM_OFFSET);
-                    guiTexture.controls[0].top = baseOffset + bobAmount;
-                    guiTexture.controls[1].top = baseOffset - bobAmount;
+                    hands[0].top = baseOffset + bobAmount;
+                    hands[1].top = baseOffset - bobAmount;
                 }
             });
         }
@@ -243,9 +242,9 @@
                 createGrid(scene);
                 createSkybox(scene);
                 const camera = setupCamera(scene, canvas);
-                createHandsGUI(scene);
+                const hands = createHandsGUI();
+                registerUpdateLoop(scene, camera, hands);
                 setupControls(scene, camera);
-                registerUpdateLoop(scene, camera);
 
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
