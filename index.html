@@ -58,9 +58,9 @@
     <div id="rightJoystick" class="joystick-container"></div>
     <button id="jumpButton">JUMP</button>
 
-    <!-- Use raw.githack.com CDN for Babylon.js -->
-    <script src="https://raw.githack.com/BabylonJS/Babylon.js/master/dist/babylon.js"></script>
-    <script src="https://raw.githack.com/BabylonJS/Babylon.js/master/dist/gui/babylon.gui.min.js"></script>
+    <!-- RELIABLE CDN SOURCES -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
 
     <script>
@@ -81,140 +81,80 @@
             scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
             // Camera Setup
-            const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, -10), scene);
-            camera.attachControl(canvas, false);
-            camera.speed = 0.15;
-            const groundY = 2;
-            const lookLimit = Math.PI / 4;
+            const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, 0), scene);
+            camera.attachControl(canvas, true);
+            camera.speed = 0.1;
 
-            // Skybox
-            function createSkybox() {
-                new BABYLON.PhotoDome(
-                    "skyDome",
-                    "IMG_2579.jpeg",
-                    {
-                        resolution: 64,
-                        size: 1000,
-                        useDirectMapping: false
-                    },
-                    scene
-                );
-            }
-            createSkybox();
-
-            // Grid
-            function createGrid() {
-                const gridSize = 50;
-                const gridSpacing = 2;
-                const color = new BABYLON.Color3(0.75, 0, 1);
-
-                for (let x = -gridSize; x <= gridSize; x += gridSpacing) {
-                    BABYLON.MeshBuilder.CreateLines("gridX", {
-                        points: [new BABYLON.Vector3(x, 0, -gridSize), new BABYLON.Vector3(x, 0, gridSize)]
-                    }, scene).color = color;
-                }
-
-                for (let z = -gridSize; z <= gridSize; z += gridSpacing) {
-                    BABYLON.MeshBuilder.CreateLines("gridZ", {
-                        points: [new BABYLON.Vector3(-gridSize, 0, z), new BABYLON.Vector3(gridSize, 0, z)]
-                    }, scene).color = color;
-                }
-
-                new BABYLON.GlowLayer("gridGlow", scene).intensity = 2.0;
-            }
-            createGrid();
+            // Create HUD for hands using Babylon GUI (glowing neon blue orbs)
+            const gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+            const createHand = (side) => {
+                const hand = new BABYLON.GUI.Ellipse();
+                hand.width = "80px";
+                hand.height = "80px";
+                hand.color = "#0ff";
+                hand.thickness = 4;
+                hand.background = "rgba(0,255,255,0.2)";
+                hand.horizontalAlignment = side === 'left' 
+                    ? BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
+                    : BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+                hand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+                hand.left = hand.right = "20px";
+                hand.bottom = "20px";
+                return hand;
+            };
+            gui.addControl(createHand('left'));
+            gui.addControl(createHand('right'));
 
             // Controls
-            let moveVector = BABYLON.Vector3.Zero();
+            let moveVector = new BABYLON.Vector3(0, 0, 0);
             let jumpForce = 0;
             const gravity = -0.02;
-            let isJumping = false;
+            let grounded = true;
             
-            // Fixed Joystick Controls
-            const manager = nipplejs.create({
+            // Left joystick (movement)
+            nipplejs.create({
                 zone: document.getElementById('leftJoystick'),
                 mode: 'static',
-                position: { left: '50%', top: '50%' },
-                color: '#00ff00',
-                size: 100
+                position: { left: '50%', top: '50%' }
             }).on('move', (evt, data) => {
                 moveVector.x = data.vector.x;
                 moveVector.z = data.vector.y;
-            }).on('end', () => moveVector = BABYLON.Vector3.Zero());
+            }).on('end', () => moveVector.set(0, 0, 0));
 
-            const rotateManager = nipplejs.create({
+            // Right joystick (look)
+            nipplejs.create({
                 zone: document.getElementById('rightJoystick'),
                 mode: 'static',
-                position: { left: '50%', top: '50%' },
-                color: '#00ff00',
-                size: 100
+                position: { left: '50%', top: '50%' }
             }).on('move', (evt, data) => {
                 camera.rotation.y += data.vector.x * 0.05;
-                camera.rotation.x = BABYLON.Scalar.Clamp(
-                    camera.rotation.x - data.vector.y * 0.05, // Fixed rotation direction (inverted Y axis)
-                    -lookLimit,
-                    lookLimit
-                );
-            }).on('end', () => {});
+                camera.rotation.x -= data.vector.y * 0.05;
+            });
 
-            // Fixed Jump Button (works on both mobile and desktop)
+            // Jump button
             const jumpButton = document.getElementById('jumpButton');
-            jumpButton.addEventListener('touchstart', handleJump);
-            jumpButton.addEventListener('mousedown', handleJump);
-
-            function handleJump() {
-                if (!isJumping) {
-                    jumpForce = 1.5;
-                    isJumping = true;
+            jumpButton.addEventListener('pointerdown', () => {
+                if (grounded) {
+                    jumpForce = 0.8;
+                    grounded = false;
                 }
-            }
-
-            // Create HUD for hands using Babylon GUI (glowing neon blue orbs)
-            const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
-
-            const leftHandUI = new BABYLON.GUI.Ellipse();
-            leftHandUI.width = "80px";
-            leftHandUI.height = "80px";
-            leftHandUI.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
-            leftHandUI.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
-            leftHandUI.left = "20px";
-            leftHandUI.bottom = "20px";
-            leftHandUI.background = "rgba(0,255,255,0.2)"; // subtle blue tint
-            leftHandUI.thickness = 4;
-            leftHandUI.color = "#00ffff"; // neon blue/cyan
-            // Optionally, you could add further styling like shadow properties here
-            advancedTexture.addControl(leftHandUI);
-
-            const rightHandUI = new BABYLON.GUI.Ellipse();
-            rightHandUI.width = "80px";
-            rightHandUI.height = "80px";
-            rightHandUI.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
-            rightHandUI.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
-            rightHandUI.right = "20px";
-            rightHandUI.bottom = "20px";
-            rightHandUI.background = "rgba(0,255,255,0.2)";
-            rightHandUI.thickness = 4;
-            rightHandUI.color = "#00ffff";
-            advancedTexture.addControl(rightHandUI);
+            });
 
             // Game loop
             scene.registerBeforeRender(() => {
                 // Movement
-                const forward = camera.getForwardRay().direction;
-                const right = camera.getRightRay().direction;
-                camera.position.addInPlace(
-                    forward.scale(moveVector.z * 0.1)
-                        .add(right.scale(moveVector.x * 0.1))
-                );
+                const forward = camera.getForwardRay().direction.scale(moveVector.z * 0.1);
+                const right = camera.getRightRay().direction.scale(moveVector.x * 0.1);
+                camera.position.addInPlace(forward.add(right));
 
-                // Jump mechanics
-                jumpForce += gravity;
+                // Jump
                 camera.position.y += jumpForce;
+                jumpForce += gravity;
                 
-                if (camera.position.y <= groundY) {
-                    camera.position.y = groundY;
+                if (camera.position.y <= 1.6) {
+                    camera.position.y = 1.6;
                     jumpForce = 0;
-                    isJumping = false;
+                    grounded = true;
                 }
             });
 
