@@ -82,7 +82,7 @@
                 const lookLimit = Math.PI / 4;
 
                 // Hands Setup
-                const handSize = 0.05; // Further reduced size
+                const handSize = 0.15; // Increased hand size for better visibility
                 const leftHand = BABYLON.MeshBuilder.CreateSphere("leftHand", {diameter: handSize}, scene);
                 const rightHand = BABYLON.MeshBuilder.CreateSphere("rightHand", {diameter: handSize}, scene);
                 
@@ -98,17 +98,11 @@
                 leftHand.position = new BABYLON.Vector3(0, -0.5, 1);
                 rightHand.position = new BABYLON.Vector3(0, -0.5, 1);
 
-                // Update positions based on joystick screen coordinates
+                // Update positions based on anchor positions for joysticks
                 const updateHandPositions = () => {
-                    const engine = scene.getEngine();
-                    
-                    // Set fixed positions relative to camera (lower left/right)
-                    leftTracker.position = new BABYLON.Vector3(-0.8, -1.0, 1.2);
-                    rightTracker.position = new BABYLON.Vector3(0.8, -1.0, 1.2);
-
-                    // Reset hand local positions
-                    leftHand.position = BABYLON.Vector3.Zero();
-                    rightHand.position = BABYLON.Vector3.Zero();
+                    // Adjusted positions for visibility on mobile, anchored near joysticks
+                    leftTracker.position = new BABYLON.Vector3(-0.6, -0.5, 1);
+                    rightTracker.position = new BABYLON.Vector3(0.6, -0.5, 1);
                 };
 
                 // Initial position update
@@ -229,12 +223,13 @@
                     const movementFactor = moveVector.length() * 0.2;
                     const bobSpeed = 10;
                     const bobIntensity = 0.1;
-                    
-                    // Animate hands in walking motion
-                    leftHand.position.z = 1.2 + Math.sin(engine.getDeltaTime() * bobSpeed) * bobIntensity * movementFactor;
-                    rightHand.position.z = 1.2 + Math.cos(engine.getDeltaTime() * bobSpeed) * bobIntensity * movementFactor;
-                    leftHand.position.y = Math.cos(engine.getDeltaTime() * bobSpeed) * bobIntensity * movementFactor;
-                    rightHand.position.y = Math.sin(engine.getDeltaTime() * bobSpeed) * bobIntensity * movementFactor;
+                    // Accumulate time for a smooth bob effect (engine.getDeltaTime() returns ms, so convert to seconds)
+                    let bobTime = 0;
+                    // Animate hands, using the tracker offsets as the base
+                    leftHand.position.z = 1 + Math.sin(bobTime * bobSpeed) * bobIntensity * movementFactor;
+                    rightHand.position.z = 1 + Math.cos(bobTime * bobSpeed) * bobIntensity * movementFactor;
+                    leftHand.position.y = -0.5 + Math.cos(bobTime * bobSpeed) * bobIntensity * movementFactor;
+                    rightHand.position.y = -0.5 + Math.sin(bobTime * bobSpeed) * bobIntensity * movementFactor;
 
                     // Jump mechanics
                     jumpForce += gravity;
