@@ -50,6 +50,10 @@
             background: rgba(0, 255, 0, 0.4);
         }
     </style>
+    <!-- RELIABLE CDN SOURCES -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
 </head>
 <body>
     <canvas id="renderCanvas"></canvas>
@@ -58,161 +62,182 @@
     <div id="rightJoystick" class="joystick-container"></div>
     <button id="jumpButton">JUMP</button>
 
-    <!-- RELIABLE CDN SOURCES -->
-    <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
-
     <script>
-        function logMessage(msg) {
-            document.getElementById('log').innerText += msg + "\n";
-        }
+        // Configuration Constants
+        const CONFIG = {
+            CAMERA: {
+                START_POSITION: new BABYLON.Vector3(0, 1.6, 0),
+                SPEED: 0.1,
+                GROUND_Y: 1.6
+            },
+            GRID: {
+                SIZE: 50,
+                SPACING: 2,
+                COLOR: new BABYLON.Color3(0.75, 0, 1)
+            },
+            HANDS: {
+                SIZE: "80px",
+                COLOR: "#0ff",
+                OFFSET: "20px",
+                BACKGROUND: "rgba(0,255,255,0.2)"
+            },
+            PHYSICS: {
+                GRAVITY: -0.02,
+                JUMP_FORCE: 0.8
+            }
+        };
 
-        // Since our scripts are at the bottom of the body, the DOM is already loaded.
-        logMessage("> SYSTEM INITIALIZING...");
-        logMessage("> LOADING NEON GRID PROTOCOL...");
+        // System State
+        const state = {
+            moveVector: new BABYLON.Vector3(0, 0, 0),
+            jumpForce: 0,
+            grounded: true
+        };
 
-        try {
-            // Initialize engine first to verify BABYLON exists
-            console.log('BABYLON exists?', typeof BABYLON !== 'undefined');
-            const canvas = document.getElementById('renderCanvas');
-            const engine = new BABYLON.Engine(canvas, true);
+        // Core System Functions
+        function initializeScene(engine) {
             const scene = new BABYLON.Scene(engine);
             scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
+            return scene;
+        }
 
-            // Grid Setup
-            function createGrid() {
-                const gridSize = 50;
-                const gridSpacing = 2;
-                const gridColor = new BABYLON.Color3(0.75, 0, 1); // Neon purple
-                
-                // Create grid lines
-                for(let x = -gridSize; x <= gridSize; x += gridSpacing) {
-                    BABYLON.MeshBuilder.CreateLines("gridX", {
-                        points: [
-                            new BABYLON.Vector3(x, 0, -gridSize),
-                            new BABYLON.Vector3(x, 0, gridSize)
-                        ]
-                    }, scene).color = gridColor;
-                }
-
-                for(let z = -gridSize; z <= gridSize; z += gridSpacing) {
-                    BABYLON.MeshBuilder.CreateLines("gridZ", {
-                        points: [
-                            new BABYLON.Vector3(-gridSize, 0, z),
-                            new BABYLON.Vector3(gridSize, 0, z)
-                        ]
-                    }, scene).color = gridColor;
-                }
-
-                // Add grid glow
-                const gridGlow = new BABYLON.GlowLayer("gridGlow", scene);
-                gridGlow.intensity = 2.0;
-            }
-            createGrid();
-
-            // Skybox
-            new BABYLON.PhotoDome(
-                "skyDome",
-                "IMG_2579.jpeg",
-                {
-                    resolution: 64,
-                    size: 1000,
-                    useDirectMapping: false
-                },
-                scene
-            );
-
-            // Camera Setup
-            const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, 0), scene);
+        function setupCamera(scene, canvas) {
+            const camera = new BABYLON.UniversalCamera("camera", CONFIG.CAMERA.START_POSITION, scene);
             camera.attachControl(canvas, true);
-            camera.speed = 0.1;
+            camera.speed = CONFIG.CAMERA.SPEED;
+            return camera;
+        }
 
-            // Create HUD for hands using Babylon GUI (glowing neon blue orbs)
+        function createGrid(scene) {
+            const { SIZE, SPACING, COLOR } = CONFIG.GRID;
+            
+            // Horizontal lines
+            for(let x = -SIZE; x <= SIZE; x += SPACING) {
+                BABYLON.MeshBuilder.CreateLines("gridX", {
+                    points: [new BABYLON.Vector3(x, 0, -SIZE), new BABYLON.Vector3(x, 0, SIZE)]
+                }, scene).color = COLOR;
+            }
+
+            // Vertical lines
+            for(let z = -SIZE; z <= SIZE; z += SPACING) {
+                BABYLON.MeshBuilder.CreateLines("gridZ", {
+                    points: [new BABYLON.Vector3(-SIZE, 0, z), new BABYLON.Vector3(SIZE, 0, z)]
+                }, scene).color = COLOR;
+            }
+
+            // Grid glow effect
+            new BABYLON.GlowLayer("gridGlow", scene).intensity = 2.0;
+        }
+
+        function createSkybox(scene) {
+            new BABYLON.PhotoDome("skyDome", "IMG_2579.jpeg", {
+                resolution: 64,
+                size: 1000,
+                useDirectMapping: false
+            }, scene);
+        }
+
+        function createHandsGUI() {
             const gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
-            const createHand = (side) => {
+            const { SIZE, COLOR, OFFSET, BACKGROUND } = CONFIG.HANDS;
+
+            const createHand = (alignment) => {
                 const hand = new BABYLON.GUI.Ellipse();
-                hand.width = "80px";
-                hand.height = "80px";
-                hand.color = "#0ff";
+                hand.width = SIZE;
+                hand.height = SIZE;
+                hand.color = COLOR;
                 hand.thickness = 4;
-                hand.background = "rgba(0,255,255,0.2)";
-                hand.horizontalAlignment = side === 'left' 
-                    ? BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
-                    : BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+                hand.background = BACKGROUND;
+                hand.horizontalAlignment = alignment;
                 hand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
-                hand.left = hand.right = "20px";
-                hand.bottom = "20px";
+                hand.left = hand.right = OFFSET;
+                hand.bottom = OFFSET;
                 return hand;
             };
-            gui.addControl(createHand('left'));
-            gui.addControl(createHand('right'));
 
-            // Controls
-            let moveVector = new BABYLON.Vector3(0, 0, 0);
-            let jumpForce = 0;
-            const gravity = -0.02;
-            let grounded = true;
-            
-            // Left joystick (movement)
-            nipplejs.create({
-                zone: document.getElementById('leftJoystick'),
-                mode: 'static',
-                position: { left: '50%', top: '50%' }
-            }).on('move', (evt, data) => {
-                moveVector.x = data.vector.x;
-                moveVector.z = data.vector.y;
-            }).on('end', () => moveVector.set(0, 0, 0));
+            gui.addControl(createHand(BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT));
+            gui.addControl(createHand(BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT));
+        }
 
-            // Right joystick (look)
-            nipplejs.create({
-                zone: document.getElementById('rightJoystick'),
-                mode: 'static',
-                position: { left: '50%', top: '50%' }
-            }).on('move', (evt, data) => {
+        function setupControls(scene, camera) {
+            // Joystick setup
+            const createJoystick = (element, onMove) => {
+                return nipplejs.create({
+                    zone: element,
+                    mode: 'static',
+                    position: { left: '50%', top: '50%' }
+                }).on('move', onMove);
+            };
+
+            // Movement joystick
+            createJoystick(document.getElementById('leftJoystick'), (evt, data) => {
+                state.moveVector.x = data.vector.x;
+                state.moveVector.z = data.vector.y;
+            }).on('end', () => state.moveVector.set(0, 0, 0));
+
+            // Look joystick
+            createJoystick(document.getElementById('rightJoystick'), (evt, data) => {
                 camera.rotation.y += data.vector.x * 0.05;
                 camera.rotation.x -= data.vector.y * 0.05;
             });
 
             // Jump button
-            const jumpButton = document.getElementById('jumpButton');
-            jumpButton.addEventListener('pointerdown', () => {
-                if (grounded) {
-                    jumpForce = 0.8;
-                    grounded = false;
+            document.getElementById('jumpButton').addEventListener('pointerdown', () => {
+                if (state.grounded) {
+                    state.jumpForce = CONFIG.PHYSICS.JUMP_FORCE;
+                    state.grounded = false;
                 }
             });
+        }
 
-            // Game loop
+        function registerUpdateLoop(scene, camera) {
             scene.registerBeforeRender(() => {
                 // Movement
-                const forward = new BABYLON.Vector3(0, 0, 1).scale(moveVector.z * 0.1);
-                const right = new BABYLON.Vector3(1, 0, 0).scale(moveVector.x * 0.1);
+                const forward = new BABYLON.Vector3(0, 0, 1).scale(state.moveVector.z * 0.1);
+                const right = new BABYLON.Vector3(1, 0, 0).scale(state.moveVector.x * 0.1);
                 camera.position.addInPlace(forward.add(right));
 
-                // Jump
-                camera.position.y += jumpForce;
-                jumpForce += gravity;
+                // Jump physics
+                camera.position.y += state.jumpForce;
+                state.jumpForce += CONFIG.PHYSICS.GRAVITY;
                 
-                if (camera.position.y <= 1.6) {
-                    camera.position.y = 1.6;
-                    jumpForce = 0;
-                    grounded = true;
+                if (camera.position.y <= CONFIG.CAMERA.GROUND_Y) {
+                    camera.position.y = CONFIG.CAMERA.GROUND_Y;
+                    state.jumpForce = 0;
+                    state.grounded = true;
                 }
             });
-
-            engine.runRenderLoop(() => {
-                scene.render();
-                // Optionally, if later you wish to animate the GUI hands (for example, during a strike),
-                // update their properties (size, color, position) here.
-            });
-            window.addEventListener('resize', () => engine.resize());
-
-            logMessage("> SYSTEM READY");
-            logMessage("> INITIALIZE GRID NAVIGATION...");
-        } catch (error) {
-            logMessage(`!! SYSTEM ERROR: ${error.message}`);
         }
+
+        // Main Initialization
+        function initGame() {
+            try {
+                const canvas = document.getElementById('renderCanvas');
+                const engine = new BABYLON.Engine(canvas, true);
+                const scene = initializeScene(engine);
+                
+                createGrid(scene);
+                createSkybox(scene);
+                const camera = setupCamera(scene, canvas);
+                createHandsGUI();
+                setupControls(scene, camera);
+                registerUpdateLoop(scene, camera);
+
+                engine.runRenderLoop(() => scene.render());
+                window.addEventListener('resize', () => engine.resize());
+
+                logMessage("> SYSTEM READY");
+                logMessage("> INITIALIZE GRID NAVIGATION...");
+
+            } catch (error) {
+                logMessage(`!! SYSTEM ERROR: ${error.message}`);
+            }
+        }
+
+        // Start the system
+        logMessage("> SYSTEM INITIALIZING...");
+        logMessage("> LOADING NEON GRID PROTOCOL...");
+        initGame();
     </script>
 </body>
 </html>
