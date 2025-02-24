@@ -224,8 +224,12 @@
                 const bobAmount = Math.sin(state.bobTime * 10) * 5 * movementIntensity;
                 
                 // Animate hands
-                const hands = document.querySelectorAll('.babylonGUIEllipse');
-                hands.forEach((hand, index) => hand.style.top = `${20 + (index % 2 ? -bobAmount : bobAmount)}px`);
+                const hands = scene.getMeshByName("UI").children;
+                if(hands.length >= 2) {
+                    const baseOffset = 20;
+                    hands[0].top = `${baseOffset + bobAmount}px`;
+                    hands[1].top = `${baseOffset - bobAmount}px`;
+                }
             });
         }
 
