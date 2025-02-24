@@ -49,6 +49,7 @@
             background: rgba(0, 255, 0, 0.4);
         }
     </style>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
 </head>
 <body>
     <canvas id="renderCanvas"></canvas>
@@ -81,52 +82,6 @@
                 const groundY = 2;
                 const lookLimit = Math.PI / 4;
 
-                // Hands Setup
-                const handSize = 0.15; // Increased hand size for better visibility
-                const leftHand = BABYLON.MeshBuilder.CreateSphere("leftHand", {diameter: handSize}, scene);
-                const rightHand = BABYLON.MeshBuilder.CreateSphere("rightHand", {diameter: handSize}, scene);
-                
-                // Create position trackers parented to camera
-                const leftTracker = new BABYLON.TransformNode("leftTracker", scene);
-                const rightTracker = new BABYLON.TransformNode("rightTracker", scene);
-                leftTracker.parent = camera;
-                rightTracker.parent = camera;
-                
-                // Position hands relative to trackers
-                leftHand.parent = leftTracker;
-                rightHand.parent = rightTracker;
-                leftHand.position = new BABYLON.Vector3(0, -0.5, 1);
-                rightHand.position = new BABYLON.Vector3(0, -0.5, 1);
-
-                // Update positions based on anchor positions for joysticks
-                const updateHandPositions = () => {
-                    // Adjusted positions for visibility on mobile, anchored near joysticks
-                    leftTracker.position = new BABYLON.Vector3(-0.6, -0.5, 1);
-                    rightTracker.position = new BABYLON.Vector3(0.6, -0.5, 1);
-                };
-
-                // Initial position update
-                updateHandPositions();
-                
-                // Update positions on resize
-                window.addEventListener('resize', updateHandPositions);
-
-                // Hand material
-                const handMaterial = new BABYLON.StandardMaterial("handMat", scene);
-                handMaterial.diffuseColor = new BABYLON.Color3(0, 0.8, 1);
-                handMaterial.emissiveColor = new BABYLON.Color3(0, 1, 1);
-                handMaterial.specularPower = 100;
-                leftHand.material = handMaterial;
-                rightHand.material = handMaterial;
-
-                // Glow effect
-                const glowLayer = new BABYLON.GlowLayer("handsGlow", scene);
-                glowLayer.addIncludedOnlyMesh(leftHand);
-                glowLayer.addIncludedOnlyMesh(rightHand);
-                glowLayer.intensity = 5.0;
-                glowLayer.blurKernelSize = 64;
-
-                // Remove direct camera parenting
                 // Skybox
                 function createSkybox() {
                     new BABYLON.PhotoDome(
@@ -209,6 +164,34 @@
                     }
                 }
 
+                // Create HUD for hands using Babylon GUI (glowing neon blue orbs)
+                const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+                const leftHandUI = new BABYLON.GUI.Ellipse();
+                leftHandUI.width = "80px";
+                leftHandUI.height = "80px";
+                leftHandUI.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+                leftHandUI.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+                leftHandUI.left = "20px";
+                leftHandUI.bottom = "20px";
+                leftHandUI.background = "rgba(0,255,255,0.2)"; // subtle blue tint
+                leftHandUI.thickness = 4;
+                leftHandUI.color = "#00ffff"; // neon blue/cyan
+                // Optionally, you could add further styling like shadow properties here
+                advancedTexture.addControl(leftHandUI);
+
+                const rightHandUI = new BABYLON.GUI.Ellipse();
+                rightHandUI.width = "80px";
+                rightHandUI.height = "80px";
+                rightHandUI.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+                rightHandUI.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+                rightHandUI.right = "20px";
+                rightHandUI.bottom = "20px";
+                rightHandUI.background = "rgba(0,255,255,0.2)";
+                rightHandUI.thickness = 4;
+                rightHandUI.color = "#00ffff";
+                advancedTexture.addControl(rightHandUI);
+
                 // Game loop
                 scene.registerBeforeRender(() => {
                     // Movement
@@ -218,18 +201,6 @@
                         forward.scale(moveVector.z * 0.1)
                             .add(right.scale(moveVector.x * 0.1))
                     );
-
-                    // Hand animation based on movement
-                    const movementFactor = moveVector.length() * 0.2;
-                    const bobSpeed = 10;
-                    const bobIntensity = 0.1;
-                    // Accumulate time for a smooth bob effect (engine.getDeltaTime() returns ms, so convert to seconds)
-                    let bobTime = 0;
-                    // Animate hands, using the tracker offsets as the base
-                    leftHand.position.z = 1 + Math.sin(bobTime * bobSpeed) * bobIntensity * movementFactor;
-                    rightHand.position.z = 1 + Math.cos(bobTime * bobSpeed) * bobIntensity * movementFactor;
-                    leftHand.position.y = -0.5 + Math.cos(bobTime * bobSpeed) * bobIntensity * movementFactor;
-                    rightHand.position.y = -0.5 + Math.sin(bobTime * bobSpeed) * bobIntensity * movementFactor;
 
                     // Jump mechanics
                     jumpForce += gravity;
@@ -242,7 +213,11 @@
                     }
                 });
 
-                engine.runRenderLoop(() => scene.render());
+                engine.runRenderLoop(() => {
+                    scene.render();
+                    // Optionally, if later you wish to animate the GUI hands (for example, during a strike),
+                    // update their properties (size, color, position) here.
+                });
                 window.addEventListener('resize', () => engine.resize());
 
                 logMessage("> SYSTEM READY");
