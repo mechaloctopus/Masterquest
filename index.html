@@ -102,61 +102,9 @@
                 const updateHandPositions = () => {
                     const engine = scene.getEngine();
                     
-                    // Safely get joystick positions
-                    const leftJoystick = document.getElementById('leftJoystick');
-                    const rightJoystick = document.getElementById('rightJoystick');
-                    if (!leftJoystick || !rightJoystick) {
-                        console.error('Joystick elements not found');
-                        return;
-                    }
-                    const leftJoystickRect = leftJoystick.getBoundingClientRect();
-                    const rightJoystickRect = rightJoystick.getBoundingClientRect();
-                    
-                    // Create screen position vectors
-                    const leftScreenPos = new BABYLON.Vector3(
-                        (leftJoystickRect.left + leftJoystickRect.width/2),
-                        (leftJoystickRect.top + leftJoystickRect.height/2),
-                        0.5 // Normalized depth
-                    );
-                    
-                    const rightScreenPos = new BABYLON.Vector3(
-                        (rightJoystickRect.left + rightJoystickRect.width/2),
-                        (rightJoystickRect.top + rightJoystickRect.height/2),
-                        0.5
-                    );
-
-                    // Safely convert to 3D space with enhanced error handling
-                    try {
-                        if (leftTracker && rightTracker && leftScreenPos && rightScreenPos) {
-                            BABYLON.Vector3.ProjectToRef(
-                                leftScreenPos,
-                                BABYLON.Matrix.Identity(),
-                                scene.getTransformMatrix(),
-                                leftScreenPos
-                            );
-                            
-                            BABYLON.Vector3.ProjectToRef(
-                                rightScreenPos,
-                                BABYLON.Matrix.Identity(),
-                                scene.getTransformMatrix(),
-                                rightScreenPos
-                            );
-
-                            // Update positions with explicit number conversion
-                            leftTracker.position = new BABYLON.Vector3(
-                                Number(leftScreenPos.x) || -0.8,
-                                Number(leftScreenPos.y) || -1.0,
-                                1.2
-                            );
-                            rightTracker.position = new BABYLON.Vector3(
-                                Number(rightScreenPos.x) || 0.8,
-                                Number(rightScreenPos.y) || -1.0,
-                                1.2
-                            );
-                        }
-                    } catch (error) {
-                        console.error('Hand position update error:', error);
-                    }
+                    // Set fixed positions relative to camera (lower left/right)
+                    leftTracker.position = new BABYLON.Vector3(-0.8, -1.0, 1.2);
+                    rightTracker.position = new BABYLON.Vector3(0.8, -1.0, 1.2);
 
                     // Reset hand local positions
                     leftHand.position = BABYLON.Vector3.Zero();
@@ -277,11 +225,16 @@
                             .add(right.scale(moveVector.x * 0.1))
                     );
 
-                    // Hand animation
-                    const time = Date.now() * 0.001;
+                    // Hand animation based on movement
                     const movementFactor = moveVector.length() * 0.2;
-                    leftHand.position.z = 1.2 + Math.sin(time * 10) * movementFactor;
-                    rightHand.position.z = 1.2 + Math.cos(time * 10) * movementFactor;
+                    const bobSpeed = 10;
+                    const bobIntensity = 0.1;
+                    
+                    // Animate hands in walking motion
+                    leftHand.position.z = 1.2 + Math.sin(engine.getDeltaTime() * bobSpeed) * bobIntensity * movementFactor;
+                    rightHand.position.z = 1.2 + Math.cos(engine.getDeltaTime() * bobSpeed) * bobIntensity * movementFactor;
+                    leftHand.position.y = Math.cos(engine.getDeltaTime() * bobSpeed) * bobIntensity * movementFactor;
+                    rightHand.position.y = Math.sin(engine.getDeltaTime() * bobSpeed) * bobIntensity * movementFactor;
 
                     // Jump mechanics
                     jumpForce += gravity;
