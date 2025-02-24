@@ -243,8 +243,8 @@
                 createSkybox(scene);
                 const camera = setupCamera(scene, canvas);
                 const hands = createHandsGUI();
-                registerUpdateLoop(scene, camera, hands);
                 setupControls(scene, camera);
+                registerUpdateLoop(scene, camera, hands);
 
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
