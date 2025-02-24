@@ -224,8 +224,8 @@
                 const bobAmount = Math.sin(state.bobTime * 10) * 5 * movementIntensity;
                 
                 // Animate hands
-                const hands = document.getElementsByClassName('babylonGUIEllipse');
-                if(hands.length > 1) hands[0].style.top = hands[1].style.top = `${20 + bobAmount}px`;
+                const hands = document.querySelectorAll('.babylonGUIEllipse');
+                hands.forEach((hand, index) => hand.style.top = `${20 + (index % 2 ? -bobAmount : bobAmount)}px`);
             });
         }
 
