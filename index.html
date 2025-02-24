@@ -224,11 +224,11 @@
                 const bobAmount = Math.sin(state.bobTime * 10) * 5 * movementIntensity;
                 
                 // Animate hands
-                const hands = scene.getMeshByName("UI").children;
-                if(hands.length >= 2) {
-                    const baseOffset = 20;
-                    hands[0].top = `${baseOffset + bobAmount}px`;
-                    hands[1].top = `${baseOffset - bobAmount}px`;
+                const guiTexture = scene.getTextureByName("UI");
+                if (guiTexture && guiTexture.controls.length >= 2) {
+                    const baseOffset = parseFloat(CONFIG.HANDS.BOTTOM_OFFSET);
+                    guiTexture.controls[0].top = baseOffset + bobAmount;
+                    guiTexture.controls[1].top = baseOffset - bobAmount;
                 }
             });
         }
