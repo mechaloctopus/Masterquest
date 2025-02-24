@@ -112,7 +112,16 @@
             createGrid();
 
             // Skybox
-            new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+            new BABYLON.PhotoDome(
+                "skyDome",
+                "IMG_2579.jpeg",
+                {
+                    resolution: 64,
+                    size: 1000,
+                    useDirectMapping: false
+                },
+                scene
+            );
 
             // Camera Setup
             const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, 0), scene);
@@ -173,20 +182,6 @@
                     grounded = false;
                 }
             });
-
-            // Skybox with stars
-            const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size: 1000}, scene);
-            const skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
-            skyboxMaterial.backFaceCulling = false;
-            skyboxMaterial.disableLighting = true;
-            skybox.material = skyboxMaterial;
-            
-            // Use space texture from BabylonJS assets
-            skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
-                "https://assets.babylonjs.com/textures/skybox/space/space", 
-                scene
-            );
-            skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
 
             // Game loop
             scene.registerBeforeRender(() => {
