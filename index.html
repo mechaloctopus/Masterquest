@@ -7,6 +7,7 @@
     <style>
         * { margin: 0; padding: 0; touch-action: none; }
         html, body { width: 100%; height: 100%; overflow: hidden; background: black; }
+        canvas { width: 100%; height: 100%; }
         #renderCanvas { width: 100%; height: 100%; display: block; z-index: 0; }
         #log { 
             position: absolute; 
@@ -57,7 +58,7 @@
     <div id="rightJoystick" class="joystick-container"></div>
     <button id="jumpButton">JUMP</button>
 
-    <script src="https://cdn.jsdelivr.net/npm/@babylonjs/core@5.0.0/dist/babylon.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babylonjs/core@5.0.0/dist/babylon.max.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@babylonjs/gui@5.0.0/dist/babylon.gui.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
     <script>
@@ -76,7 +77,7 @@
             scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
             // Camera Setup
-            const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 3, -10), scene);
+            const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 2, -10), scene);
             camera.attachControl(canvas, false);
             camera.speed = 0.15;
             const groundY = 2;
@@ -195,8 +196,8 @@
             // Game loop
             scene.registerBeforeRender(() => {
                 // Movement
-                const forward = camera.getDirection(BABYLON.Vector3.Forward());
-                const right = camera.getDirection(BABYLON.Vector3.Right());
+                const forward = camera.getForwardRay().direction;
+                const right = camera.getRightRay().direction;
                 camera.position.addInPlace(
                     forward.scale(moveVector.z * 0.1)
                         .add(right.scale(moveVector.x * 0.1))
