@@ -14,8 +14,12 @@ const ControlSystem = {
         
         // Unified function to handle movement vector updates
         const updateMovementVector = (x, z) => {
+            // Ensure we're setting a proper Vector3 with good magnitude
             state.moveVector.x = x;
             state.moveVector.z = z;
+            
+            // Debug to console to verify movement vector is working
+            console.debug(`Move vector: ${x.toFixed(2)}, ${z.toFixed(2)}, length: ${state.moveVector.length().toFixed(2)}`);
             
             // Update walking state and sounds
             const isMoving = state.moveVector.length() > 0.1;

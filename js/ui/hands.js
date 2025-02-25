@@ -51,22 +51,29 @@ const HandsSystem = {
             const movementIntensity = state.moveVector.length();
             
             // Apply easing to movement intensity for smoother transitions
-            // Simple smoothing since Scalar.Lerp might not be available
             state.smoothedMovementIntensity = state.smoothedMovementIntensity || 0;
             state.smoothedMovementIntensity += (movementIntensity - state.smoothedMovementIntensity) * (deltaTime * 5);
             
-            const bobAmount = Math.sin(state.bobTime * 8) * 10 * state.smoothedMovementIntensity;
+            // Increase bobbing amount for more visibility
+            const bobAmount = Math.sin(state.bobTime * 10) * 20 * state.smoothedMovementIntensity;
+            const swayAmount = Math.cos(state.bobTime * 8) * 15 * state.smoothedMovementIntensity;
             
             // Apply bobbing to left hand (always bobs)
             if (leftHand && typeof leftHand.bottom !== 'undefined') {
                 leftHand.bottom = baseBottomOffset + bobAmount + "px";
+                leftHand.left = (parseInt(CONFIG.HANDS.SIDE_OFFSET) + swayAmount) + "px";
+                
+                // Add slight rotation for more dynamic movement
+                if (typeof leftHand.rotation !== 'undefined') {
+                    leftHand.rotation = Math.sin(state.bobTime * 6) * 0.2 * state.smoothedMovementIntensity;
+                }
             }
             
             // Handle strike animation for right hand
             if (rightHand) {
                 if (state.striking) {
                     // Update strike progress
-                    state.strikeProgress += deltaTime * 0.8; // Strike speed
+                    state.strikeProgress += deltaTime * 2.5; // Increased strike speed
                     
                     if (state.strikeProgress <= 1) {
                         // Determine forward/backward phase
@@ -79,15 +86,30 @@ const HandsSystem = {
                             animationPhase = 2 - (state.strikeProgress * 2);
                         }
                         
-                        // Position right hand for strike
-                        const strikeDistance = 100 * animationPhase;
-                        if (typeof rightHand.right !== 'undefined') {
-                            rightHand.right = (strikeBaseSideOffset - strikeDistance) + "px";
+                        // Calculate how far toward center to move (0 = edge, 1 = center)
+                        const centerRatio = animationPhase;
+                        
+                        // Move hand toward center of screen
+                        if (typeof rightHand.horizontalAlignment !== 'undefined') {
+                            // Adjust horizontal position - this creates the center motion effect
+                            const screenWidth = window.innerWidth;
+                            const handWidth = parseInt(CONFIG.HANDS.SIZE);
+                            const maxRight = screenWidth / 2 - handWidth / 2;
+                            
+                            rightHand.right = (strikeBaseSideOffset + (maxRight * centerRatio)) + "px";
+                            
+                            // Also move slightly up for a more natural punch motion
+                            rightHand.bottom = (baseBottomOffset + 30 * centerRatio) + "px";
+                            
+                            // Add rotation for more dynamic movement
+                            rightHand.rotation = centerRatio * -0.3;
                         }
                     } else {
                         // Reset after animation completes
                         if (typeof rightHand.right !== 'undefined') {
                             rightHand.right = CONFIG.HANDS.SIDE_OFFSET;
+                            rightHand.bottom = baseBottomOffset + "px";
+                            rightHand.rotation = 0;
                         }
                         state.striking = false;
                         state.strikeProgress = 0;
@@ -96,6 +118,12 @@ const HandsSystem = {
                     // Apply normal bobbing to right hand when not striking
                     if (typeof rightHand.bottom !== 'undefined') {
                         rightHand.bottom = baseBottomOffset - bobAmount + "px";
+                        rightHand.right = (parseInt(CONFIG.HANDS.SIDE_OFFSET) + swayAmount) + "px";
+                        
+                        // Add slight rotation for more dynamic movement
+                        if (typeof rightHand.rotation !== 'undefined') {
+                            rightHand.rotation = Math.sin(state.bobTime * 6) * -0.2 * state.smoothedMovementIntensity;
+                        }
                     }
                 }
             }
