@@ -64,6 +64,16 @@
             z-index: 1;
             filter: drop-shadow(0 0 5px #ff00ff);
         }
+        #audioControls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border: 1px solid #00ff00;
+        }
     </style>
     <!-- VERIFIED WORKING CDN SOURCES -->
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
@@ -77,6 +87,12 @@
     <div id="rightJoystick" class="joystick-container"></div>
     <button id="strikeButton">STRIKE</button>
     <button id="jumpButton">JUMP</button>
+    <div id="audioControls">
+        <input type="range" id="musicVolume" min="0" max="100" value="50">
+        <label for="musicVolume">MUSIC</label><br>
+        <input type="range" id="sfxVolume" min="0" max="100" value="70">
+        <label for="sfxVolume">SFX</label>
+    </div>
 
     <script>
         // Logging system
@@ -113,6 +129,26 @@
                 GRAVITY: -0.02,
                 JUMP_FORCE: 0.8
             },
+            AUDIO: {
+                MUSIC: {
+                    URL: "https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3",
+                    VOLUME: 0.5
+                },
+                SFX: {
+                    FOOTSTEPS: {
+                        URL: "https://assets.mixkit.co/sfx/preview/mixkit-fast-small-sweep-transition-166.mp3",
+                        VOLUME: 0.3
+                    },
+                    JUMP: {
+                        URL: "https://assets.mixkit.co/sfx/preview/mixkit-player-jumping-in-a-video-game-2043.mp3",
+                        VOLUME: 0.6
+                    },
+                    STRIKE: {
+                        URL: "https://assets.mixkit.co/sfx/preview/mixkit-swift-sword-strike-2166.mp3",
+                        VOLUME: 0.7
+                    }
+                }
+            },
             ANIMATION_SPEED: 10 // Controls bobbing speed
         };
 
@@ -121,6 +157,64 @@
             const scene = new BABYLON.Scene(engine);
             scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
             return scene;
+        }
+
+        function setupAudioSystem() {
+            // Create audio system
+            const audioSystem = {
+                context: new (window.AudioContext || window.webkitAudioContext)(),
+                music: null,
+                sfx: {
+                    footsteps: null,
+                    jump: null,
+                    strike: null
+                },
+                volumes: {
+                    music: CONFIG.AUDIO.MUSIC.VOLUME,
+                    sfx: 0.7
+                },
+                isWalking: false
+            };
+
+            // Load background music
+            const loadMusic = () => {
+                const music = new Audio(CONFIG.AUDIO.MUSIC.URL);
+                music.loop = true;
+                music.volume = audioSystem.volumes.music;
+                audioSystem.music = music;
+                return music.play();
+            };
+
+            // Load sound effects
+            const loadSoundEffect = (url) => {
+                const sound = new Audio(url);
+                sound.volume = audioSystem.volumes.sfx;
+                return sound;
+            };
+
+            // Initialize all sound effects
+            audioSystem.sfx.footsteps = loadSoundEffect(CONFIG.AUDIO.SFX.FOOTSTEPS.URL);
+            audioSystem.sfx.footsteps.loop = true;
+            audioSystem.sfx.jump = loadSoundEffect(CONFIG.AUDIO.SFX.JUMP.URL);
+            audioSystem.sfx.strike = loadSoundEffect(CONFIG.AUDIO.SFX.STRIKE.URL);
+
+            // Set up volume controls
+            document.getElementById('musicVolume').addEventListener('input', (e) => {
+                audioSystem.volumes.music = e.target.value / 100;
+                if (audioSystem.music) audioSystem.music.volume = audioSystem.volumes.music;
+            });
+
+            document.getElementById('sfxVolume').addEventListener('input', (e) => {
+                audioSystem.volumes.sfx = e.target.value / 100;
+                Object.values(audioSystem.sfx).forEach(sfx => {
+                    sfx.volume = audioSystem.volumes.sfx;
+                });
+            });
+
+            // Start background music (requires user interaction first on most browsers)
+            document.addEventListener('click', () => loadMusic(), {once: true});
+            
+            return audioSystem;
         }
 
         function setupCamera(scene, canvas) {
@@ -195,7 +289,7 @@
             return [leftHand, rightHand]; // Return direct references to hand controls
         }
 
-        function setupControls(scene, camera, state) {
+        function setupControls(scene, camera, state, audioSystem) {
             // Joystick setup
             const createJoystick = (element, onMove) => {
                 return nipplejs.create({
@@ -209,6 +303,17 @@
             createJoystick(document.getElementById('leftJoystick'), (evt, data) => {
                 state.moveVector.x = data.vector.x;
                 state.moveVector.z = -data.vector.y;
+                
+                // Play footstep sounds when moving
+                const isMoving = state.moveVector.length() > 0.1;
+                if (isMoving && !audioSystem.isWalking && state.grounded) {
+                    audioSystem.sfx.footsteps.play();
+                    audioSystem.isWalking = true;
+                } else if (!isMoving && audioSystem.isWalking) {
+                    audioSystem.sfx.footsteps.pause();
+                    audioSystem.sfx.footsteps.currentTime = 0;
+                    audioSystem.isWalking = false;
+                }
             }).on('end', () => state.moveVector.set(0, 0, 0));
 
             // Look joystick
@@ -230,6 +335,9 @@
             // Jump button
             document.getElementById('jumpButton').addEventListener('pointerdown', () => {
                 if (state.grounded) {
+                    // Play jump sound
+                    audioSystem.sfx.jump.currentTime = 0;
+                    audioSystem.sfx.jump.play();
                     state.jumpForce = CONFIG.PHYSICS.JUMP_FORCE;
                     state.grounded = false;
                 }
@@ -240,14 +348,16 @@
                 if (!state.striking) {
                     state.striking = true;
                     state.strikeProgress = 0;
-                    // Visual feedback
-                    document.getElementById('strikeButton').style.background = "rgba(255, 0, 255, 0.4)";
-                    setTimeout(() => document.getElementById('strikeButton').style.background = "rgba(255, 0, 255, 0.2)", 100);
+                    // Play strike sound
+                    audioSystem.sfx.strike.currentTime = 0;
+                    audioSystem.sfx.strike.play();
+                    document.getElementById('strikeButton').style.background = "rgba(255, 0, 255, 0.4)"; 
+                    setTimeout(() => document.getElementById('strikeButton').style.background = "rgba(255, 0, 255, 0.2)", 100); 
                 }
             });
         }
 
-        function registerUpdateLoop(scene, camera, hands, state) {
+        function registerUpdateLoop(scene, camera, hands, state, audioSystem) {
             scene.registerBeforeRender(() => {
                 const engine = scene.getEngine();
 
@@ -305,8 +415,12 @@
                     hand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
                     hand.left = undefined; // Clear the left position that was set during strike
                     hand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+                    hand.left = undefined; // Clear the left position that was set during strike
+                    hand.centerX = undefined; // Clear any center positioning
+                    hand.centerY = undefined; // Clear any center positioning
                     hand.right = CONFIG.HANDS.SIDE_OFFSET;
                     hand.bottom = CONFIG.HANDS.BOTTOM_OFFSET;
+                    hand.top = parseFloat(CONFIG.HANDS.BOTTOM_OFFSET); // Reset top position
                 };
 
                 // Update hands if they exist
@@ -341,12 +455,13 @@
                     strikeProgress: 0
                 };
 
+                const audioSystem = setupAudioSystem();
                 createGrid(scene);
                 createSkybox(scene);
                 const camera = setupCamera(scene, canvas);
                 const hands = createHandsGUI();
-                setupControls(scene, camera, state);
-                registerUpdateLoop(scene, camera, hands, state);
+                setupControls(scene, camera, state, audioSystem);
+                registerUpdateLoop(scene, camera, hands, state, audioSystem);
 
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
