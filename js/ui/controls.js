@@ -156,9 +156,8 @@ const ControlSystem = {
             return;
         }
         
-        // Set strike state
+        // Set strike state but don't rely on hands animation
         state.striking = true;
-        state.strikeProgress = 0;
         
         // Play sound
         if (audioSystem && audioSystem.sfx && audioSystem.sfx.strike) {
@@ -185,10 +184,9 @@ const ControlSystem = {
             }, 200);
         }
         
-        // Reset strike state after a delay (since we're not animating hands anymore)
+        // Reset strike state after a delay
         setTimeout(() => {
             state.striking = false;
-            state.strikeProgress = 0;
         }, 500);
         
         console.log("Strike action completed");

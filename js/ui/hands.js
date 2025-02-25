@@ -1,4 +1,4 @@
-// Hands UI System - DISABLED
+// Empty implementation of HandsSystem to prevent errors
 const HandsSystem = {
     create: function() {
         console.log("Hands system disabled");

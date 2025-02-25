@@ -93,9 +93,12 @@ function initGame() {
             try {
                 const deltaTime = engine.getDeltaTime() / 1000;
                 
-                // Update all systems (hands removed)
+                // Update systems, remove ALL hands references
                 MovementSystem.update(camera, state, deltaTime);
                 AudioSystem.update(state, audioSystem);
+                
+                // Update animation time for other possible uses
+                state.bobTime += deltaTime;
             } catch (e) {
                 // Don't log every frame to avoid console spam
                 console.error("Update loop error:", e);
