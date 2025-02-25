@@ -44,6 +44,11 @@ const HandsSystem = {
             const leftHand = handControls[0];
             const rightHand = handControls[1];
             
+            // Add debug logging to check state
+            if (state.striking) {
+                console.log("Strike in progress:", state.strikeProgress);
+            }
+            
             // Update bobbing time
             state.bobTime += deltaTime;
 
@@ -89,34 +94,34 @@ const HandsSystem = {
                         // Calculate how far toward center to move (0 = edge, 1 = center)
                         const centerRatio = animationPhase;
                         
-                        // Move hand toward center of screen - use right property instead of horizontalAlignment check
-                        if (typeof rightHand.right !== 'undefined') {
-                            // Adjust horizontal position - this creates the center motion effect
-                            const screenWidth = window.innerWidth;
-                            const handWidth = parseInt(CONFIG.HANDS.SIZE);
-                            const maxRight = screenWidth / 2 - handWidth / 2;
-                            
-                            rightHand.right = (strikeBaseSideOffset + (maxRight * centerRatio)) + "px";
-                            
-                            // Also move slightly up for a more natural punch motion
-                            rightHand.bottom = (baseBottomOffset + 30 * centerRatio) + "px";
-                            
-                            // Add rotation for more dynamic movement
-                            if (typeof rightHand.rotation !== 'undefined') {
-                                rightHand.rotation = centerRatio * -0.3;
-                            }
+                        // Calculate actual pixel values for movement
+                        const screenWidth = window.innerWidth;
+                        const maxMove = screenWidth / 3; // Don't go all the way to center
+                        const moveAmount = maxMove * centerRatio;
+                        
+                        // Debug the movement
+                        console.log(`Strike move: ${moveAmount.toFixed(0)}px, phase: ${centerRatio.toFixed(2)}`);
+                        
+                        // Move hand toward center of screen
+                        rightHand.right = (strikeBaseSideOffset + moveAmount) + "px";
+                        
+                        // Also move slightly up for a more natural punch motion
+                        rightHand.bottom = (baseBottomOffset + 30 * centerRatio) + "px";
+                        
+                        // Add rotation for more dynamic movement
+                        if (typeof rightHand.rotation !== 'undefined') {
+                            rightHand.rotation = centerRatio * -0.3;
                         }
                     } else {
                         // Reset after animation completes
-                        if (typeof rightHand.right !== 'undefined') {
-                            rightHand.right = CONFIG.HANDS.SIDE_OFFSET;
-                            rightHand.bottom = baseBottomOffset + "px";
-                            if (typeof rightHand.rotation !== 'undefined') {
-                                rightHand.rotation = 0;
-                            }
+                        rightHand.right = CONFIG.HANDS.SIDE_OFFSET;
+                        rightHand.bottom = baseBottomOffset + "px";
+                        if (typeof rightHand.rotation !== 'undefined') {
+                            rightHand.rotation = 0;
                         }
                         state.striking = false;
                         state.strikeProgress = 0;
+                        console.log("Strike complete");
                     }
                 } else {
                     // Apply normal bobbing to right hand when not striking

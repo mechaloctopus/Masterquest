@@ -88,8 +88,32 @@ const ControlSystem = {
         
         // Setup strike button
         const strikeButton = document.getElementById('strikeButton');
-        strikeButton.addEventListener('touchstart', () => this.triggerStrike(state, audioSystem));
-        strikeButton.addEventListener('mousedown', () => this.triggerStrike(state, audioSystem));
+        if (strikeButton) {
+            console.log("Setting up strike button handlers");
+            
+            // Remove any existing handlers first
+            const newStrikeButton = strikeButton.cloneNode(true);
+            strikeButton.parentNode.replaceChild(newStrikeButton, strikeButton);
+            
+            // Add our handlers
+            newStrikeButton.addEventListener('touchstart', () => {
+                console.log("Strike button touched");
+                this.triggerStrike(state, audioSystem);
+            });
+            
+            newStrikeButton.addEventListener('mousedown', () => {
+                console.log("Strike button clicked");
+                this.triggerStrike(state, audioSystem);
+            });
+            
+            // Also add keyboard handler (for testing)
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'KeyF') {
+                    console.log("Strike key pressed");
+                    this.triggerStrike(state, audioSystem);
+                }
+            });
+        }
         
         // Process keyboard movement
         scene.registerBeforeRender(() => {
@@ -124,14 +148,43 @@ const ControlSystem = {
     },
     
     triggerStrike: function(state, audioSystem) {
-        if (state.striking) return;
+        // Debug that the function was called
+        console.log("Strike triggered");
+        
+        if (state.striking) {
+            console.log("Already striking, ignoring");
+            return;
+        }
+        
+        // Set strike state
         state.striking = true;
         state.strikeProgress = 0;
-        if (audioSystem.loaded && audioSystem.loaded.strike) {
-            audioSystem.sfx.strike.currentTime = 0;
-            audioSystem.playSound(audioSystem.sfx.strike, 'strike');
+        
+        // Play sound
+        if (audioSystem && audioSystem.sfx && audioSystem.sfx.strike) {
+            if (audioSystem.sfx.strike.currentTime) {
+                audioSystem.sfx.strike.currentTime = 0;
+            }
+            if (audioSystem.playSound) {
+                audioSystem.playSound(audioSystem.sfx.strike, 'strike');
+            } else if (audioSystem.sfx.strike.play) {
+                audioSystem.sfx.strike.play().catch(e => console.warn("Strike sound error:", e));
+            }
         }
-        document.getElementById('strikeButton').style.background = "rgba(255, 0, 255, 0.4)"; 
-        setTimeout(() => document.getElementById('strikeButton').style.background = "rgba(255, 0, 255, 0.2)", 100);
+        
+        // Visual feedback on button
+        const strikeButton = document.getElementById('strikeButton');
+        if (strikeButton) {
+            strikeButton.style.background = "rgba(255, 0, 255, 0.4)";
+            
+            // Reset button after a short delay
+            setTimeout(() => {
+                if (strikeButton) {
+                    strikeButton.style.background = "rgba(255, 0, 255, 0.2)";
+                }
+            }, 100);
+        }
+        
+        console.log("Strike state set:", state.striking);
     }
 }; 
