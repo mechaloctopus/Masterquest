@@ -302,7 +302,7 @@
             // Movement joystick
             createJoystick(document.getElementById('leftJoystick'), (evt, data) => {
                 state.moveVector.x = data.vector.x;
-                state.moveVector.z = -data.vector.y;
+                state.moveVector.z = data.vector.y;
                 
                 // Play footstep sounds when moving
                 const isMoving = state.moveVector.length() > 0.1;
@@ -318,7 +318,7 @@
 
             // Look joystick
             createJoystick(document.getElementById('rightJoystick'), (evt, data) => {
-                camera.rotation.y -= data.vector.x * 0.02;
+                camera.rotation.y += data.vector.x * 0.02;
                 
                 const newRotationX = camera.rotation.x + data.vector.y * 0.02;
                 
@@ -397,7 +397,7 @@
 
                 // Movement
                 const forward = camera.getDirection(BABYLON.Vector3.Forward()).scale(state.moveVector.z * 0.1);
-                const right = camera.getDirection(BABYLON.Vector3.Right()).scale(state.moveVector.x * 0.1);
+                const right = camera.getDirection(BABYLON.Vector3.Right()).scale(-state.moveVector.x * 0.1);
                 camera.position.addInPlace(forward.add(right));
 
                 // Jump physics
