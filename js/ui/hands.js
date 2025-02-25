@@ -86,10 +86,10 @@ const HandsSystem = {
                     rotation: Math.sin(state.bobTime * 6) * 0.2 * state.smoothedMovementIntensity
                 });
                 
-                // Right hand animation (opposite bobbing pattern)
+                // Right hand animation: mirror left hand by using addition 
                 this.setHandPosition(rightHand, {
-                    bottom: baseOffset - bobAmount,
-                    right: sideOffset - swayAmount,
+                    bottom: baseOffset + bobAmount,
+                    right: sideOffset + swayAmount,
                     rotation: Math.sin(state.bobTime * 6) * -0.2 * state.smoothedMovementIntensity
                 });
             } else {
@@ -113,10 +113,10 @@ const HandsSystem = {
                     const screenWidth = window.innerWidth;
                     const moveAmount = (screenWidth / 2.5) * phase;
                     
-                    // Animate right hand for strike
+                    // Animate right hand for strike: change subtraction to addition
                     this.setHandPosition(rightHand, {
                         bottom: baseOffset + (40 * phase),
-                        right: sideOffset - moveAmount,
+                        right: sideOffset + moveAmount,
                         rotation: phase * -0.5
                     });
                 } else {
