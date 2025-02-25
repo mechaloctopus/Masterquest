@@ -89,8 +89,8 @@ const HandsSystem = {
                         // Calculate how far toward center to move (0 = edge, 1 = center)
                         const centerRatio = animationPhase;
                         
-                        // Move hand toward center of screen
-                        if (typeof rightHand.horizontalAlignment !== 'undefined') {
+                        // Move hand toward center of screen - use right property instead of horizontalAlignment check
+                        if (typeof rightHand.right !== 'undefined') {
                             // Adjust horizontal position - this creates the center motion effect
                             const screenWidth = window.innerWidth;
                             const handWidth = parseInt(CONFIG.HANDS.SIZE);
@@ -102,14 +102,18 @@ const HandsSystem = {
                             rightHand.bottom = (baseBottomOffset + 30 * centerRatio) + "px";
                             
                             // Add rotation for more dynamic movement
-                            rightHand.rotation = centerRatio * -0.3;
+                            if (typeof rightHand.rotation !== 'undefined') {
+                                rightHand.rotation = centerRatio * -0.3;
+                            }
                         }
                     } else {
                         // Reset after animation completes
                         if (typeof rightHand.right !== 'undefined') {
                             rightHand.right = CONFIG.HANDS.SIDE_OFFSET;
                             rightHand.bottom = baseBottomOffset + "px";
-                            rightHand.rotation = 0;
+                            if (typeof rightHand.rotation !== 'undefined') {
+                                rightHand.rotation = 0;
+                            }
                         }
                         state.striking = false;
                         state.strikeProgress = 0;
@@ -118,7 +122,7 @@ const HandsSystem = {
                     // Apply normal bobbing to right hand when not striking
                     if (typeof rightHand.bottom !== 'undefined') {
                         rightHand.bottom = baseBottomOffset - bobAmount + "px";
-                        rightHand.right = (parseInt(CONFIG.HANDS.SIDE_OFFSET) + swayAmount) + "px";
+                        rightHand.right = (parseInt(CONFIG.HANDS.SIDE_OFFSET) - swayAmount) + "px"; // Note the MINUS here!
                         
                         // Add slight rotation for more dynamic movement
                         if (typeof rightHand.rotation !== 'undefined') {
