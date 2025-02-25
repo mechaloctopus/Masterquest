@@ -146,24 +146,31 @@
             const gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
             const { SIZE, COLOR, SIDE_OFFSET, BOTTOM_OFFSET, BACKGROUND } = CONFIG.HANDS;
 
-            const createHand = (alignment) => {
-                const hand = new BABYLON.GUI.Ellipse();
-                hand.width = SIZE;
-                hand.height = SIZE;
-                hand.color = COLOR;
-                hand.thickness = 4;
-                hand.background = BACKGROUND;
-                hand.horizontalAlignment = alignment;
-                hand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
-                hand.left = hand.right = SIDE_OFFSET;
-                hand.bottom = BOTTOM_OFFSET;
-                return hand;
-            };
+            const leftHand = new BABYLON.GUI.Ellipse();
+            leftHand.width = SIZE;
+            leftHand.height = SIZE;
+            leftHand.color = COLOR;
+            leftHand.thickness = 4;
+            leftHand.background = BACKGROUND;
+            leftHand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+            leftHand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+            leftHand.left = SIDE_OFFSET;
+            leftHand.bottom = BOTTOM_OFFSET;
+            gui.addControl(leftHand);
+            
+            const rightHand = new BABYLON.GUI.Ellipse();
+            rightHand.width = SIZE;
+            rightHand.height = SIZE;
+            rightHand.color = COLOR;
+            rightHand.thickness = 4;
+            rightHand.background = BACKGROUND;
+            rightHand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+            rightHand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+            rightHand.right = SIDE_OFFSET;
+            rightHand.bottom = BOTTOM_OFFSET;
+            gui.addControl(rightHand);
 
-            gui.addControl(createHand(BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT));
-            gui.addControl(createHand(BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT));
-
-            return [gui.controls[0], gui.controls[1]]; // Return the hand controls directly
+            return [leftHand, rightHand]; // Return direct references to hand controls
         }
 
         function setupControls(scene, camera, state) {
@@ -197,7 +204,7 @@
             });
         }
 
-        function registerUpdateLoop(scene, camera, hands) {
+        function registerUpdateLoop(scene, camera, hands, state) {
             scene.registerBeforeRender(() => {
                 const engine = scene.getEngine();
                 // Movement
@@ -249,7 +256,7 @@
                 const camera = setupCamera(scene, canvas);
                 const hands = createHandsGUI();
                 setupControls(scene, camera, state);
-                registerUpdateLoop(scene, camera, hands);
+                registerUpdateLoop(scene, camera, hands, state);
 
                 engine.runRenderLoop(() => scene.render());
                 window.addEventListener('resize', () => engine.resize());
