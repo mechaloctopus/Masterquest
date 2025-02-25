@@ -186,13 +186,23 @@
             // Movement joystick
             createJoystick(document.getElementById('leftJoystick'), (evt, data) => {
                 state.moveVector.x = data.vector.x;
-                state.moveVector.z = data.vector.y;
+                state.moveVector.z = -data.vector.y;
             }).on('end', () => state.moveVector.set(0, 0, 0));
 
             // Look joystick
             createJoystick(document.getElementById('rightJoystick'), (evt, data) => {
-                camera.rotation.y += data.vector.x * 0.05;
-                camera.rotation.x -= data.vector.y * 0.05;
+                camera.rotation.y -= data.vector.x * 0.02;
+                
+                const newRotationX = camera.rotation.x + data.vector.y * 0.02;
+                
+                const maxLookUp = Math.PI * 0.45;
+                const maxLookDown = -Math.PI * 0.45;
+                
+                if (newRotationX < maxLookUp && newRotationX > maxLookDown) {
+                    camera.rotation.x = newRotationX;
+                }
+                
+                camera.rotation.z = 0;
             });
 
             // Jump button
@@ -208,8 +218,8 @@
             scene.registerBeforeRender(() => {
                 const engine = scene.getEngine();
                 // Movement
-                const forward = new BABYLON.Vector3(0, 0, 1).scale(state.moveVector.z * 0.1);
-                const right = new BABYLON.Vector3(1, 0, 0).scale(state.moveVector.x * 0.1);
+                const forward = camera.getDirection(BABYLON.Vector3.Forward()).scale(state.moveVector.z * 0.1);
+                const right = camera.getDirection(BABYLON.Vector3.Right()).scale(state.moveVector.x * 0.1);
                 camera.position.addInPlace(forward.add(right));
 
                 // Jump physics
