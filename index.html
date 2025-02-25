@@ -303,6 +303,7 @@
                 // Helper function to reset hand to corner position
                 const resetHandPosition = (hand) => {
                     hand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+                    hand.left = undefined; // Clear the left position that was set during strike
                     hand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
                     hand.right = CONFIG.HANDS.SIDE_OFFSET;
                     hand.bottom = CONFIG.HANDS.BOTTOM_OFFSET;
