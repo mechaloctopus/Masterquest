@@ -38,57 +38,69 @@ const HandsSystem = {
     },
     
     updateHands: function(handControls, state, deltaTime) {
-        const baseBottomOffset = parseInt(CONFIG.HANDS.BOTTOM_OFFSET);
-        const strikeBaseSideOffset = parseInt(CONFIG.HANDS.SIDE_OFFSET);
-        const leftHand = handControls[0];
-        const rightHand = handControls[1];
-        
-        // Update bobbing time
-        state.bobTime += deltaTime;
-
-        // Calculate bobbing based on movement intensity
-        const movementIntensity = state.moveVector.length();
-        
-        // Apply easing to movement intensity for smoother transitions
-        state.smoothedMovementIntensity = BABYLON.Scalar.Lerp(
-            state.smoothedMovementIntensity || 0, 
-            movementIntensity,
-            deltaTime * 5
-        );
-        
-        const bobAmount = Math.sin(state.bobTime * 8) * 10 * state.smoothedMovementIntensity;
-        
-        // Apply bobbing to left hand (always bobs)
-        leftHand.bottom = baseBottomOffset + bobAmount + "px";
-        
-        // Handle strike animation for right hand
-        if (state.striking) {
-            // Update strike progress
-            state.strikeProgress += deltaTime * 0.8; // Strike speed
+        try {
+            const baseBottomOffset = parseInt(CONFIG.HANDS.BOTTOM_OFFSET);
+            const strikeBaseSideOffset = parseInt(CONFIG.HANDS.SIDE_OFFSET);
+            const leftHand = handControls[0];
+            const rightHand = handControls[1];
             
-            if (state.strikeProgress <= 1) {
-                // Determine forward/backward phase
-                let animationPhase;
-                if (state.strikeProgress < 0.5) {
-                    // Forward punch (0->0.5 becomes 0->1)
-                    animationPhase = state.strikeProgress * 2;
-                } else {
-                    // Return punch (0.5->1 becomes 1->0)
-                    animationPhase = 2 - (state.strikeProgress * 2);
-                }
-                
-                // Position right hand for strike
-                const strikeDistance = 100 * animationPhase;
-                rightHand.right = (strikeBaseSideOffset - strikeDistance) + "px";
-            } else {
-                // Reset after animation completes
-                rightHand.right = CONFIG.HANDS.SIDE_OFFSET;
-                state.striking = false;
-                state.strikeProgress = 0;
+            // Update bobbing time
+            state.bobTime += deltaTime;
+
+            // Calculate bobbing based on movement intensity
+            const movementIntensity = state.moveVector.length();
+            
+            // Apply easing to movement intensity for smoother transitions
+            // Simple smoothing since Scalar.Lerp might not be available
+            state.smoothedMovementIntensity = state.smoothedMovementIntensity || 0;
+            state.smoothedMovementIntensity += (movementIntensity - state.smoothedMovementIntensity) * (deltaTime * 5);
+            
+            const bobAmount = Math.sin(state.bobTime * 8) * 10 * state.smoothedMovementIntensity;
+            
+            // Apply bobbing to left hand (always bobs)
+            if (leftHand && typeof leftHand.bottom !== 'undefined') {
+                leftHand.bottom = baseBottomOffset + bobAmount + "px";
             }
-        } else {
-            // Apply normal bobbing to right hand when not striking
-            rightHand.bottom = baseBottomOffset - bobAmount + "px";
+            
+            // Handle strike animation for right hand
+            if (rightHand) {
+                if (state.striking) {
+                    // Update strike progress
+                    state.strikeProgress += deltaTime * 0.8; // Strike speed
+                    
+                    if (state.strikeProgress <= 1) {
+                        // Determine forward/backward phase
+                        let animationPhase;
+                        if (state.strikeProgress < 0.5) {
+                            // Forward punch (0->0.5 becomes 0->1)
+                            animationPhase = state.strikeProgress * 2;
+                        } else {
+                            // Return punch (0.5->1 becomes 1->0)
+                            animationPhase = 2 - (state.strikeProgress * 2);
+                        }
+                        
+                        // Position right hand for strike
+                        const strikeDistance = 100 * animationPhase;
+                        if (typeof rightHand.right !== 'undefined') {
+                            rightHand.right = (strikeBaseSideOffset - strikeDistance) + "px";
+                        }
+                    } else {
+                        // Reset after animation completes
+                        if (typeof rightHand.right !== 'undefined') {
+                            rightHand.right = CONFIG.HANDS.SIDE_OFFSET;
+                        }
+                        state.striking = false;
+                        state.strikeProgress = 0;
+                    }
+                } else {
+                    // Apply normal bobbing to right hand when not striking
+                    if (typeof rightHand.bottom !== 'undefined') {
+                        rightHand.bottom = baseBottomOffset - bobAmount + "px";
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Hand update error:", e);
         }
     }
 }; 

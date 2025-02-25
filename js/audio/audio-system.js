@@ -14,7 +14,13 @@ const AudioSystem = {
                 music: CONFIG.AUDIO.MUSIC.VOLUME,
                 sfx: 0.7
             },
-            isWalking: false
+            isWalking: false,
+            loaded: {
+                music: false,
+                footsteps: false,
+                jump: false,
+                strike: false
+            }
         };
 
         // Load background music
@@ -22,19 +28,26 @@ const AudioSystem = {
             const music = new Audio(CONFIG.AUDIO.MUSIC.URL);
             music.loop = true;
             music.volume = audioSystem.volumes.music;
+            music.addEventListener('canplaythrough', () => {
+                audioSystem.loaded.music = true;
+                Logger.log("> MUSIC READY");
+            });
             music.addEventListener('error', () => 
                 Logger.warning("Background music failed to load"));
             audioSystem.music = music;
-            return music.play();
+            return music.play().catch(e => {
+                Logger.warning("Music autoplay prevented: " + e.message);
+            });
         };
 
         // Load sound effects
-        const loadSoundEffect = (url) => {
+        const loadSoundEffect = (url, type) => {
             const sound = new Audio(url);
+            sound.addEventListener('canplaythrough', () => {
+                audioSystem.loaded[type] = true;
+            });
             sound.onerror = () => {
                 Logger.warning(`Sound effect failed to load: ${url}`);
-                // Create a dummy audio element to prevent errors
-                return new Audio();
             };
             sound.addEventListener('error', () => 
                 Logger.warning(`Sound effect failed to load: ${url}`));
@@ -43,10 +56,10 @@ const AudioSystem = {
         };
 
         // Initialize all sound effects
-        audioSystem.sfx.footsteps = loadSoundEffect(CONFIG.AUDIO.SFX.FOOTSTEPS.URL);
+        audioSystem.sfx.footsteps = loadSoundEffect(CONFIG.AUDIO.SFX.FOOTSTEPS.URL, 'footsteps');
         audioSystem.sfx.footsteps.loop = true;
-        audioSystem.sfx.jump = loadSoundEffect(CONFIG.AUDIO.SFX.JUMP.URL);
-        audioSystem.sfx.strike = loadSoundEffect(CONFIG.AUDIO.SFX.STRIKE.URL);
+        audioSystem.sfx.jump = loadSoundEffect(CONFIG.AUDIO.SFX.JUMP.URL, 'jump');
+        audioSystem.sfx.strike = loadSoundEffect(CONFIG.AUDIO.SFX.STRIKE.URL, 'strike');
 
         // Set up volume controls
         document.getElementById('musicVolume').addEventListener('input', (e) => {
@@ -70,18 +83,27 @@ const AudioSystem = {
                 Logger.warning("Audio context interrupted");
         });
         
+        // Helper function to safely play sounds
+        audioSystem.playSound = function(sound, type) {
+            if (sound && audioSystem.loaded[type]) {
+                return sound.play().catch(e => {
+                    console.warn("Could not play sound:", e);
+                });
+            }
+            return Promise.resolve(); // Return resolved promise if sound can't be played
+        };
+
         return audioSystem;
     },
     
     update: function(state, audioSystem) {
         // Handle footstep sounds
         if (state.moveVector.length() > 0.1 && state.grounded) {
-            if (!audioSystem.isWalking && audioSystem.sfx.footsteps.readyState >= 2) {
-                audioSystem.sfx.footsteps.play()
-                    .catch(e => console.warn("Could not play footsteps:", e));
+            if (!audioSystem.isWalking && audioSystem.loaded.footsteps) {
+                audioSystem.playSound(audioSystem.sfx.footsteps, 'footsteps');
                 audioSystem.isWalking = true;
             }
-        } else if (audioSystem.isWalking && audioSystem.sfx.footsteps.readyState >= 2) {
+        } else if (audioSystem.isWalking && audioSystem.loaded.footsteps) {
             audioSystem.sfx.footsteps.pause();
             audioSystem.sfx.footsteps.currentTime = 0;
             audioSystem.isWalking = false;

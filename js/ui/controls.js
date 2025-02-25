@@ -111,8 +111,10 @@ const ControlSystem = {
     
     triggerJump: function(state, audioSystem) {
         if (!state.grounded) return;
-        audioSystem.sfx.jump.currentTime = 0;
-        audioSystem.sfx.jump.play().catch(e => {});
+        if (audioSystem.loaded && audioSystem.loaded.jump) {
+            audioSystem.sfx.jump.currentTime = 0;
+            audioSystem.playSound(audioSystem.sfx.jump, 'jump');
+        }
         state.jumpForce = CONFIG.PHYSICS.JUMP_FORCE;
         state.grounded = false;
     },
@@ -121,8 +123,10 @@ const ControlSystem = {
         if (state.striking) return;
         state.striking = true;
         state.strikeProgress = 0;
-        audioSystem.sfx.strike.currentTime = 0;
-        audioSystem.sfx.strike.play().catch(e => {});
+        if (audioSystem.loaded && audioSystem.loaded.strike) {
+            audioSystem.sfx.strike.currentTime = 0;
+            audioSystem.playSound(audioSystem.sfx.strike, 'strike');
+        }
         document.getElementById('strikeButton').style.background = "rgba(255, 0, 255, 0.4)"; 
         setTimeout(() => document.getElementById('strikeButton').style.background = "rgba(255, 0, 255, 0.2)", 100);
     }
