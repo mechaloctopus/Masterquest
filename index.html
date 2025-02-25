@@ -61,6 +61,7 @@
             color: #ff00ff;
             font-family: 'Courier New', monospace;
             font-size: 18px;
+            touch-action: manipulation;
             z-index: 1;
             filter: drop-shadow(0 0 5px #ff00ff);
         }
@@ -132,7 +133,8 @@
             AUDIO: {
                 MUSIC: {
                     URL: "https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3",
-                    VOLUME: 0.5
+                    VOLUME: 0.5,
+                    AUTOPLAY: true
                 },
                 SFX: {
                     FOOTSTEPS: {
@@ -181,6 +183,8 @@
                 const music = new Audio(CONFIG.AUDIO.MUSIC.URL);
                 music.loop = true;
                 music.volume = audioSystem.volumes.music;
+                music.addEventListener('error', () => 
+                    logMessage("! AUDIO WARNING: Background music failed to load"));
                 audioSystem.music = music;
                 return music.play();
             };
@@ -188,6 +192,8 @@
             // Load sound effects
             const loadSoundEffect = (url) => {
                 const sound = new Audio(url);
+                sound.addEventListener('error', () => 
+                    logMessage(`! AUDIO WARNING: Sound effect failed to load: ${url}`));
                 sound.volume = audioSystem.volumes.sfx;
                 return sound;
             };
@@ -214,6 +220,10 @@
             // Start background music (requires user interaction first on most browsers)
             document.addEventListener('click', () => loadMusic(), {once: true});
             
+            // Add a general error handler for audio context issues
+            audioSystem.context.addEventListener('statechange', () => {
+                if (audioSystem.context.state === 'interrupted') logMessage("! AUDIO WARNING: Audio context interrupted");
+            });
             return audioSystem;
         }
 
@@ -290,37 +300,42 @@
         }
 
         function setupControls(scene, camera, state, audioSystem) {
-            // Joystick setup
+            // Joystick setup with improved event handling
             const createJoystick = (element, onMove) => {
-                return nipplejs.create({
-                    zone: element,
-                    mode: 'static',
-                    position: { left: '50%', top: '50%' }
-                }).on('move', onMove);
-            };
-
-            // Movement joystick
-            createJoystick(document.getElementById('leftJoystick'), (evt, data) => {
-                state.moveVector.x = data.vector.x;
-                state.moveVector.z = data.vector.y;
+                const joystick = nipplejs.create({
+                });
                 
-                // Play footstep sounds when moving
+                joystick.on('move', onMove);
+                return joystick;
+            };
+            
+            // Unified function to handle movement vector updates
+            const updateMovementVector = (x, z) => {
+                state.moveVector.x = x;
+                state.moveVector.z = z;
+                
+                // Update walking state and sounds
                 const isMoving = state.moveVector.length() > 0.1;
                 if (isMoving && !audioSystem.isWalking && state.grounded) {
-                    audioSystem.sfx.footsteps.play();
+                    audioSystem.sfx.footsteps.play().catch(e => console.warn("Audio play failed:", e));
                     audioSystem.isWalking = true;
                 } else if (!isMoving && audioSystem.isWalking) {
                     audioSystem.sfx.footsteps.pause();
                     audioSystem.sfx.footsteps.currentTime = 0;
                     audioSystem.isWalking = false;
                 }
+            };
+
+            // Movement joystick
+            createJoystick(document.getElementById('leftJoystick'), (evt, data) => {
+                updateMovementVector(data.vector.x, data.vector.y);
             }).on('end', () => state.moveVector.set(0, 0, 0));
 
             // Look joystick
             createJoystick(document.getElementById('rightJoystick'), (evt, data) => {
                 camera.rotation.y += data.vector.x * 0.02;
                 
-                const newRotationX = camera.rotation.x + data.vector.y * 0.02;
+                const newRotationX = camera.rotation.x + data.vector.y * 0.1;
                 
                 const maxLookUp = Math.PI * 0.45;
                 const maxLookDown = -Math.PI * 0.45;
@@ -332,43 +347,88 @@
                 camera.rotation.z = 0;
             });
 
-            // Jump button
-            document.getElementById('jumpButton').addEventListener('touchstart', () => {
-                if (state.grounded) {
-                    // Play jump sound
-                    audioSystem.sfx.jump.currentTime = 0;
-                    audioSystem.sfx.jump.play();
-                    state.jumpForce = CONFIG.PHYSICS.JUMP_FORCE;
-                    state.grounded = false;
+            // Add keyboard controls for desktop users
+            const keyState = {};
+            document.addEventListener('keydown', (e) => {
+                keyState[e.code] = true;
+                if (e.code === 'Space' && state.grounded) {
+                    triggerJump();
+                }
+                if (e.code === 'KeyF') {
+                    triggerStrike();
                 }
             });
 
-            // Strike button
-            document.getElementById('strikeButton').addEventListener('touchstart', () => {
-                if (!state.striking) {
-                    state.striking = true;
-                    state.strikeProgress = 0;
-                    // Play strike sound
-                    audioSystem.sfx.strike.currentTime = 0;
-                    audioSystem.sfx.strike.play();
-                    document.getElementById('strikeButton').style.background = "rgba(255, 0, 255, 0.4)"; 
-                    setTimeout(() => document.getElementById('strikeButton').style.background = "rgba(255, 0, 255, 0.2)", 100); 
+            // Jump button
+            const triggerJump = () => {
+                if (!state.grounded) return;
+                audioSystem.sfx.jump.currentTime = 0;
+                audioSystem.sfx.jump.play().catch(e => {});
+                state.jumpForce = CONFIG.PHYSICS.JUMP_FORCE;
+                state.grounded = false;
+            };
+            
+            // Add both touch and click events for better cross-platform support
+            const jumpButton = document.getElementById('jumpButton');
+            jumpButton.addEventListener('touchstart', triggerJump);
+            jumpButton.addEventListener('mousedown', triggerJump);
+            
+            // Strike function and button
+            const triggerStrike = () => {
+                if (state.striking) return;
+                state.striking = true;
+                state.strikeProgress = 0;
+                audioSystem.sfx.strike.currentTime = 0;
+                audioSystem.sfx.strike.play().catch(e => {});
+                document.getElementById('strikeButton').style.background = "rgba(255, 0, 255, 0.4)"; 
+                setTimeout(() => document.getElementById('strikeButton').style.background = "rgba(255, 0, 255, 0.2)", 100);
+            };
+            
+            const strikeButton = document.getElementById('strikeButton');
+            strikeButton.addEventListener('touchstart', triggerStrike);
+            strikeButton.addEventListener('mousedown', triggerStrike);
+            
+            // Add this function to the update loop to process keyboard movement
+            scene.registerBeforeRender(() => {
+                // Handle keyboard movement for desktop
+                let xMove = 0, zMove = 0;
+                if (keyState['KeyW'] || keyState['ArrowUp']) zMove += 1;
+                if (keyState['KeyS'] || keyState['ArrowDown']) zMove -= 1;
+                if (keyState['KeyA'] || keyState['ArrowLeft']) xMove -= 1;
+                if (keyState['KeyD'] || keyState['ArrowRight']) xMove += 1;
+                
+                // Only update if keys are pressed (preserve joystick values otherwise)
+                if (xMove !== 0 || zMove !== 0) {
+                    // Normalize for diagonal movement
+                    const length = Math.sqrt(xMove*xMove + zMove*zMove);
+                    if (length > 0) {
+                        xMove /= length;
+                        zMove /= length;
+                    }
+                    updateMovementVector(xMove, zMove);
                 }
             });
         }
 
         function registerUpdateLoop(scene, camera, handControls, state, audioSystem) {
+            // Pre-calculate constants to avoid doing it every frame
+            const baseBottomOffset = parseInt(CONFIG.HANDS.BOTTOM_OFFSET);
+            const strikeBaseSideOffset = parseInt(CONFIG.HANDS.SIDE_OFFSET);
+            
             scene.registerBeforeRender(() => {
                 const engine = scene.getEngine();
                 const deltaTime = engine.getDeltaTime() / 1000;
                 const leftHand = handControls[0];
                 const rightHand = handControls[1];
 
+                // Performance optimization: Skip processing if engine is paused
+                if (!engine.isPointerLock) return;
+
                 // --- MOVEMENT ---
                 const forward = camera.getDirection(BABYLON.Vector3.Forward())
                                     .scale(state.moveVector.z * 0.1);
                 const right = camera.getDirection(BABYLON.Vector3.Right())
-                                    .scale(-state.moveVector.x * 0.1);
+                                    .scale(state.moveVector.x * 0.1);
                 const combinedMovement = forward.add(right);
                 camera.position.addInPlace(combinedMovement);
 
@@ -388,11 +448,17 @@
 
                 // Calculate bobbing based on movement intensity
                 const movementIntensity = state.moveVector.length();
-                const bobAmount = Math.sin(state.bobTime * 8) * 10 * movementIntensity;
+                // Apply easing to movement intensity for smoother transitions
+                state.smoothedMovementIntensity = BABYLON.Scalar.Lerp(
+                    state.smoothedMovementIntensity || 0, 
+                    movementIntensity,
+                    deltaTime * 5
+                );
+                
+                const bobAmount = Math.sin(state.bobTime * 8) * 10 * state.smoothedMovementIntensity;
                 
                 // Apply bobbing to left hand (always bobs)
-                const baseBottomOffset = parseInt(CONFIG.HANDS.BOTTOM_OFFSET);
-                leftHand.bottom = `${baseBottomOffset + bobAmount}px`;
+                leftHand.bottom = baseBottomOffset + bobAmount + "px";
                 
                 // Handle strike animation for right hand
                 if (state.striking) {
@@ -412,8 +478,7 @@
                         
                         // Position right hand for strike
                         const strikeDistance = 100 * animationPhase;
-                        rightHand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
-                        rightHand.right = `${parseInt(CONFIG.HANDS.SIDE_OFFSET) - strikeDistance}px`;
+                        rightHand.right = (strikeBaseSideOffset - strikeDistance) + "px";
                     } else {
                         // Reset after animation completes
                         rightHand.right = CONFIG.HANDS.SIDE_OFFSET;
@@ -422,17 +487,18 @@
                     }
                 } else {
                     // Apply normal bobbing to right hand when not striking
-                    rightHand.bottom = `${baseBottomOffset - bobAmount}px`;
+                    rightHand.bottom = baseBottomOffset - bobAmount + "px";
                 }
                 
                 // --- AUDIO UPDATES ---
                 // Handle footstep sounds
                 if (state.moveVector.length() > 0.1 && state.grounded) {
-                    if (!audioSystem.isWalking) {
-                        audioSystem.sfx.footsteps.play();
+                    if (!audioSystem.isWalking && audioSystem.sfx.footsteps.readyState >= 2) {
+                        audioSystem.sfx.footsteps.play()
+                            .catch(e => console.warn("Could not play footsteps:", e));
                         audioSystem.isWalking = true;
                     }
-                } else if (audioSystem.isWalking) {
+                } else if (audioSystem.isWalking && audioSystem.sfx.footsteps.readyState >= 2) {
                     audioSystem.sfx.footsteps.pause();
                     audioSystem.sfx.footsteps.currentTime = 0;
                     audioSystem.isWalking = false;
@@ -453,6 +519,7 @@
                     jumpForce: 0,
                     bobTime: 0,
                     grounded: true,
+                    smoothedMovementIntensity: 0,
                     striking: false,
                     strikeProgress: 0
                 };
@@ -471,6 +538,21 @@
                 logMessage("> SYSTEM READY");
                 logMessage("> INITIALIZE GRID NAVIGATION...");
 
+                // Centralize error handling for Babylon
+                engine.onErrorObservable.add((e) => {
+                    logMessage(`! GRAPHICS ERROR: ${e.message}`);
+                });
+
+                // Add performance monitoring
+                let fpsDiv = document.createElement('div');
+                fpsDiv.style.position = 'absolute';
+                fpsDiv.style.bottom = '10px';
+                fpsDiv.style.left = '10px';
+                fpsDiv.style.color = '#0f0';
+                fpsDiv.style.fontFamily = 'monospace';
+                document.body.appendChild(fpsDiv);
+                scene.registerBeforeRender(() => fpsDiv.textContent = `FPS: ${engine.getFps().toFixed(2)}`);
+
             } catch (error) {
                 logMessage(`!! SYSTEM ERROR: ${error.message}`);
             }
@@ -480,6 +562,18 @@
         logMessage("> SYSTEM INITIALIZING...");
         logMessage("> LOADING NEON GRID PROTOCOL...");
         initGame();
+
+        // Add PWA support
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(
+                    function(registration) {
+                        console.log('ServiceWorker registration successful');
+                    },
+                    function(err) { console.log('ServiceWorker registration failed: ', err); }
+                );
+            });
+        }
     </script>
 </body>
 </html>
