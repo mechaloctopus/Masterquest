@@ -302,11 +302,13 @@
         function setupControls(scene, camera, state, audioSystem) {
             // Joystick setup with improved event handling
             const createJoystick = (element, onMove) => {
-                const joystick = nipplejs.create({
+                return nipplejs.create({
+                    zone: element,
+                    mode: 'static',
+                    position: { left: '50%', top: '50%' },
+                    color: '#00ff00',
+                    size: 80
                 });
-                
-                joystick.on('move', onMove);
-                return joystick;
             };
             
             // Unified function to handle movement vector updates
@@ -327,12 +329,14 @@
             };
 
             // Movement joystick
-            createJoystick(document.getElementById('leftJoystick'), (evt, data) => {
+            const leftStick = createJoystick(document.getElementById('leftJoystick'));
+            leftStick.on('move', (evt, data) => {
                 updateMovementVector(data.vector.x, data.vector.y);
-            }).on('end', () => state.moveVector.set(0, 0, 0));
+            });
+            leftStick.on('end', () => state.moveVector.set(0, 0, 0));
 
             // Look joystick
-            createJoystick(document.getElementById('rightJoystick'), (evt, data) => {
+            const rightStick = createJoystick(document.getElementById('rightJoystick'), (evt, data) => {
                 camera.rotation.y += data.vector.x * 0.02;
                 
                 const newRotationX = camera.rotation.x + data.vector.y * 0.1;
@@ -424,13 +428,15 @@
                 // Performance optimization: Skip processing if engine is paused
                 if (!engine.isPointerLock) return;
 
-                // --- MOVEMENT ---
-                const forward = camera.getDirection(BABYLON.Vector3.Forward())
-                                    .scale(state.moveVector.z * 0.1);
-                const right = camera.getDirection(BABYLON.Vector3.Right())
-                                    .scale(state.moveVector.x * 0.1);
-                const combinedMovement = forward.add(right);
-                camera.position.addInPlace(combinedMovement);
+                // --- MOVEMENT --- 
+                // Safely handle movement vector
+                if (state.moveVector) {
+                    const forward = camera.getDirection(BABYLON.Vector3.Forward())
+                                        .scale(state.moveVector.z || 0 * 0.1);
+                    const right = camera.getDirection(BABYLON.Vector3.Right())
+                                        .scale(state.moveVector.x * 0.1);
+                    camera.position.addInPlace(forward.add(right));
+                }
 
                 // --- JUMP PHYSICS ---
                 camera.position.y += state.jumpForce;
