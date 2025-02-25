@@ -34,7 +34,15 @@ const ControlSystem = {
         leftStick.on('move', (evt, data) => {
             updateMovementVector(data.vector.x, data.vector.y);
         });
-        leftStick.on('end', () => state.moveVector.set(0, 0, 0));
+        leftStick.on('end', () => {
+            // Check if moveVector exists and has the set method
+            if (state.moveVector && typeof state.moveVector.set === 'function') {
+                state.moveVector.set(0, 0, 0);
+            } else {
+                // Fallback in case moveVector isn't properly initialized
+                state.moveVector = new BABYLON.Vector3(0, 0, 0);
+            }
+        });
 
         // Look joystick
         const rightStick = createJoystick(document.getElementById('rightJoystick'));

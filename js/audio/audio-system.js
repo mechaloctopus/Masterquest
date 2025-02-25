@@ -31,6 +31,11 @@ const AudioSystem = {
         // Load sound effects
         const loadSoundEffect = (url) => {
             const sound = new Audio(url);
+            sound.onerror = () => {
+                Logger.warning(`Sound effect failed to load: ${url}`);
+                // Create a dummy audio element to prevent errors
+                return new Audio();
+            };
             sound.addEventListener('error', () => 
                 Logger.warning(`Sound effect failed to load: ${url}`));
             sound.volume = audioSystem.volumes.sfx;

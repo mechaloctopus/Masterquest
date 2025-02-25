@@ -8,6 +8,12 @@ function initGame() {
         // Initialize core systems
         const canvas = document.getElementById('renderCanvas');
         const engine = new BABYLON.Engine(canvas, true);
+        
+        // Add some error handling for the engine initialization
+        engine.onError = function(e) {
+            Logger.error("Engine error: " + e.message);
+        };
+        
         const scene = SceneManager.create(engine);
         
         // Initialize game state
@@ -61,11 +67,12 @@ initGame();
 // Add PWA support
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js').then(
+        // Comment out for now since sw.js doesn't exist yet
+        /* navigator.serviceWorker.register('./sw.js').then(
             function(registration) {
                 console.log('ServiceWorker registration successful');
             },
             function(err) { console.log('ServiceWorker registration failed: ', err); }
-        );
+        ); */
     });
 } 
