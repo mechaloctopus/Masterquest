@@ -49,6 +49,21 @@
         #jumpButton:active {
             background: rgba(0, 255, 0, 0.4);
         }
+        #strikeButton {
+            position: absolute;
+            bottom: 140px;
+            right: 120px;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 0, 255, 0.2);
+            border: 2px solid #ff00ff;
+            color: #ff00ff;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            z-index: 1;
+            filter: drop-shadow(0 0 5px #ff00ff);
+        }
     </style>
     <!-- VERIFIED WORKING CDN SOURCES -->
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
@@ -60,6 +75,7 @@
     <div id="log"></div>
     <div id="leftJoystick" class="joystick-container"></div>
     <div id="rightJoystick" class="joystick-container"></div>
+    <button id="strikeButton">STRIKE</button>
     <button id="jumpButton">JUMP</button>
 
     <script>
@@ -86,12 +102,18 @@
                 COLOR: "#0ff",
                 BOTTOM_OFFSET: "20px",
                 SIDE_OFFSET: "20px",
-                BACKGROUND: "rgba(0,255,255,0.2)"
+                BACKGROUND: "rgba(0,255,255,0.2)",
+                STRIKE: {
+                    SPEED: 0.005,
+                    DISTANCE: 200,
+                    EASING: "sine" // "sine", "elastic", "bounce"
+                }
             },
             PHYSICS: {
                 GRAVITY: -0.02,
                 JUMP_FORCE: 0.8
-            }
+            },
+            ANIMATION_SPEED: 10 // Controls bobbing speed
         };
 
         // Core System Functions
@@ -212,11 +234,57 @@
                     state.grounded = false;
                 }
             });
+
+            // Strike button
+            document.getElementById('strikeButton').addEventListener('pointerdown', () => {
+                if (!state.striking) {
+                    state.striking = true;
+                    state.strikeProgress = 0;
+                    // Visual feedback
+                    document.getElementById('strikeButton').style.background = "rgba(255, 0, 255, 0.4)";
+                    setTimeout(() => document.getElementById('strikeButton').style.background = "rgba(255, 0, 255, 0.2)", 100);
+                }
+            });
         }
 
         function registerUpdateLoop(scene, camera, hands, state) {
             scene.registerBeforeRender(() => {
                 const engine = scene.getEngine();
+
+                // Update animation timers
+                const deltaTime = engine.getDeltaTime() / 1000;
+                state.bobTime += deltaTime;
+
+                // Animation helper functions
+                const applyBobAnimation = (hand, isLeft) => {
+                    const movementIntensity = state.moveVector.length();
+                    const bobAmount = Math.sin(state.bobTime * CONFIG.ANIMATION_SPEED) * 5 * movementIntensity;
+                    hand.top = parseFloat(CONFIG.HANDS.BOTTOM_OFFSET) + (isLeft ? bobAmount : -bobAmount);
+                };
+
+                const applyStrikeAnimation = (hand) => {
+                    // Progress the strike animation
+                    state.strikeProgress += deltaTime * CONFIG.HANDS.STRIKE.SPEED;
+                    
+                    if (state.strikeProgress <= 1) {
+                        // First half: punch out, Second half: retract
+                        const progress = state.strikeProgress <= 0.5 ? 
+                            state.strikeProgress * 2 : // 0 to 1 during first half
+                            (1 - (state.strikeProgress - 0.5) * 2); // 1 to 0 during second half
+                        
+                        // Convert to center positioning during strike
+                        hand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+                        hand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+                        
+                        // Apply easing for more natural motion
+                        const easedProgress = Math.sin(progress * Math.PI/2);
+                        hand.left = `${CONFIG.HANDS.STRIKE.DISTANCE * easedProgress}px`;
+                    } else {
+                        resetHandPosition(hand);
+                        state.striking = false;
+                    }
+                };
+
                 // Movement
                 const forward = camera.getDirection(BABYLON.Vector3.Forward()).scale(state.moveVector.z * 0.1);
                 const right = camera.getDirection(BABYLON.Vector3.Right()).scale(state.moveVector.x * 0.1);
@@ -232,16 +300,25 @@
                     state.grounded = true;
                 }
 
-                // Hand animation
-                const movementIntensity = state.moveVector.length();
-                state.bobTime += engine.getDeltaTime() / 1000;
-                const bobAmount = Math.sin(state.bobTime * 10) * 8 * movementIntensity;
+                // Helper function to reset hand to corner position
+                const resetHandPosition = (hand) => {
+                    hand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+                    hand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+                    hand.right = CONFIG.HANDS.SIDE_OFFSET;
+                    hand.bottom = CONFIG.HANDS.BOTTOM_OFFSET;
+                };
 
-                // Update hand positions
+                // Update hands if they exist
                 if (hands && hands.length >= 2) {
-                    const baseOffset = parseFloat(CONFIG.HANDS.BOTTOM_OFFSET);
-                    hands[0].top = baseOffset + bobAmount;
-                    hands[1].top = baseOffset - bobAmount;
+                    // Left hand always has bob animation
+                    applyBobAnimation(hands[0], true);
+                    
+                    // Right hand either strikes or bobs
+                    if (state.striking) {
+                        applyStrikeAnimation(hands[1]);
+                    } else {
+                        applyBobAnimation(hands[1], false);
+                    }
                 }
             });
         }
@@ -258,7 +335,9 @@
                     moveVector: new BABYLON.Vector3(0, 0, 0),
                     jumpForce: 0,
                     bobTime: 0,
-                    grounded: true
+                    grounded: true,
+                    striking: false,
+                    strikeProgress: 0
                 };
 
                 createGrid(scene);
