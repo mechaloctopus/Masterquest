@@ -45,15 +45,15 @@ const HandsSystem = {
             const rightHand = handControls[1];
             
             // Add debug logging to check state
-            if (state.striking) {
-                console.log("Strike in progress:", state.strikeProgress);
+            if (state.striking && state.strikeProgress === 0) {
+                console.log("Strike starting");
             }
             
             // Update bobbing time
             state.bobTime += deltaTime;
 
             // Calculate bobbing based on movement intensity
-            const movementIntensity = state.moveVector.length();
+            const movementIntensity = state.moveVector ? state.moveVector.length() : 0;
             
             // Apply easing to movement intensity for smoother transitions
             state.smoothedMovementIntensity = state.smoothedMovementIntensity || 0;
@@ -63,60 +63,51 @@ const HandsSystem = {
             const bobAmount = Math.sin(state.bobTime * 10) * 20 * state.smoothedMovementIntensity;
             const swayAmount = Math.cos(state.bobTime * 8) * 15 * state.smoothedMovementIntensity;
             
-            // Apply bobbing to left hand (always bobs)
-            if (leftHand && typeof leftHand.bottom !== 'undefined') {
+            // Apply bobbing to left hand
+            if (leftHand && leftHand.bottom !== undefined) {
                 leftHand.bottom = baseBottomOffset + bobAmount + "px";
                 leftHand.left = (parseInt(CONFIG.HANDS.SIDE_OFFSET) + swayAmount) + "px";
                 
-                // Add slight rotation for more dynamic movement
-                if (typeof leftHand.rotation !== 'undefined') {
+                if (leftHand.rotation !== undefined) {
                     leftHand.rotation = Math.sin(state.bobTime * 6) * 0.2 * state.smoothedMovementIntensity;
                 }
             }
             
-            // Handle strike animation for right hand
+            // Handle right hand (strike animation or normal bobbing)
             if (rightHand) {
                 if (state.striking) {
                     // Update strike progress
-                    state.strikeProgress += deltaTime * 2.5; // Increased strike speed
+                    state.strikeProgress += deltaTime * 3.5; // Faster strike animation
                     
                     if (state.strikeProgress <= 1) {
                         // Determine forward/backward phase
-                        let animationPhase;
-                        if (state.strikeProgress < 0.5) {
-                            // Forward punch (0->0.5 becomes 0->1)
-                            animationPhase = state.strikeProgress * 2;
-                        } else {
-                            // Return punch (0.5->1 becomes 1->0)
-                            animationPhase = 2 - (state.strikeProgress * 2);
-                        }
+                        const animationPhase = state.strikeProgress < 0.5 ? 
+                            state.strikeProgress * 2 : // Forward punch (0->0.5 becomes 0->1)
+                            2 - (state.strikeProgress * 2); // Return punch (0.5->1 becomes 1->0)
                         
                         // Calculate how far toward center to move (0 = edge, 1 = center)
                         const centerRatio = animationPhase;
                         
                         // Calculate actual pixel values for movement
                         const screenWidth = window.innerWidth;
-                        const maxMove = screenWidth / 3; // Don't go all the way to center
+                        const maxMove = screenWidth / 2.5; // Move closer to center
                         const moveAmount = maxMove * centerRatio;
                         
-                        // Debug the movement
-                        console.log(`Strike move: ${moveAmount.toFixed(0)}px, phase: ${centerRatio.toFixed(2)}`);
-                        
                         // Move hand toward center of screen
-                        rightHand.right = (strikeBaseSideOffset + moveAmount) + "px";
+                        rightHand.right = (strikeBaseSideOffset - moveAmount) + "px";
                         
                         // Also move slightly up for a more natural punch motion
                         rightHand.bottom = (baseBottomOffset + 30 * centerRatio) + "px";
                         
                         // Add rotation for more dynamic movement
-                        if (typeof rightHand.rotation !== 'undefined') {
+                        if (rightHand.rotation !== undefined) {
                             rightHand.rotation = centerRatio * -0.3;
                         }
                     } else {
                         // Reset after animation completes
                         rightHand.right = CONFIG.HANDS.SIDE_OFFSET;
                         rightHand.bottom = baseBottomOffset + "px";
-                        if (typeof rightHand.rotation !== 'undefined') {
+                        if (rightHand.rotation !== undefined) {
                             rightHand.rotation = 0;
                         }
                         state.striking = false;
@@ -125,14 +116,11 @@ const HandsSystem = {
                     }
                 } else {
                     // Apply normal bobbing to right hand when not striking
-                    if (typeof rightHand.bottom !== 'undefined') {
-                        rightHand.bottom = baseBottomOffset - bobAmount + "px";
-                        rightHand.right = (parseInt(CONFIG.HANDS.SIDE_OFFSET) - swayAmount) + "px"; // Note the MINUS here!
-                        
-                        // Add slight rotation for more dynamic movement
-                        if (typeof rightHand.rotation !== 'undefined') {
-                            rightHand.rotation = Math.sin(state.bobTime * 6) * -0.2 * state.smoothedMovementIntensity;
-                        }
+                    rightHand.bottom = (baseBottomOffset - bobAmount) + "px";
+                    rightHand.right = (parseInt(CONFIG.HANDS.SIDE_OFFSET) - swayAmount) + "px";
+                    
+                    if (rightHand.rotation !== undefined) {
+                        rightHand.rotation = Math.sin(state.bobTime * 6) * -0.2 * state.smoothedMovementIntensity;
                     }
                 }
             }
