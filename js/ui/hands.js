@@ -1,179 +1,159 @@
-// Hands UI System
+// Hands UI System - Complete Rebuild
 const HandsSystem = {
     create: function() {
         try {
+            // Create full-screen UI
             const gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
-            const { SIZE, COLOR, SIDE_OFFSET, BOTTOM_OFFSET, BACKGROUND } = CONFIG.HANDS;
-
-            // Extract numeric values from CSS strings
-            const sideOffsetValue = parseInt(SIDE_OFFSET);
-            const bottomOffsetValue = parseInt(BOTTOM_OFFSET);
-
-            // Left hand creation
+            
+            // Create a container for better control
+            const leftContainer = new BABYLON.GUI.Rectangle("leftHandContainer");
+            leftContainer.width = "100px";
+            leftContainer.height = "100px";
+            leftContainer.cornerRadius = 50;
+            leftContainer.thickness = 0;
+            leftContainer.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+            leftContainer.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+            leftContainer.left = "20px";
+            leftContainer.bottom = "20px";
+            gui.addControl(leftContainer);
+            
+            // Create left hand inside container
             const leftHand = new BABYLON.GUI.Ellipse("leftHand");
-            leftHand.width = SIZE;
-            leftHand.height = SIZE;
-            leftHand.color = COLOR;
+            leftHand.width = "80px";
+            leftHand.height = "80px";
+            leftHand.color = "#0ff";
             leftHand.thickness = 4;
-            leftHand.background = BACKGROUND;
-            leftHand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
-            leftHand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
-            leftHand.left = sideOffsetValue + "px"; // Explicitly add px
-            leftHand.bottom = bottomOffsetValue + "px"; // Explicitly add px
-            gui.addControl(leftHand);
+            leftHand.background = "rgba(0,255,255,0.2)";
+            leftContainer.addControl(leftHand);
             
-            // Right hand creation
+            // Create container for right hand
+            const rightContainer = new BABYLON.GUI.Rectangle("rightHandContainer");
+            rightContainer.width = "100px";
+            rightContainer.height = "100px";
+            rightContainer.cornerRadius = 50;
+            rightContainer.thickness = 0;
+            rightContainer.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+            rightContainer.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+            rightContainer.right = "20px";
+            rightContainer.bottom = "20px";
+            gui.addControl(rightContainer);
+            
+            // Create right hand inside container
             const rightHand = new BABYLON.GUI.Ellipse("rightHand");
-            rightHand.name = "rightHand"; // Add explicit name for debugging
-            rightHand.width = SIZE;
-            rightHand.height = SIZE;
-            rightHand.color = COLOR;
+            rightHand.width = "80px";
+            rightHand.height = "80px";
+            rightHand.color = "#0ff";
             rightHand.thickness = 4;
-            rightHand.background = BACKGROUND;
-            rightHand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
-            rightHand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
-            rightHand.right = sideOffsetValue + "px"; // Explicitly add px
-            rightHand.bottom = bottomOffsetValue + "px"; // Explicitly add px
-            gui.addControl(rightHand);
-
-            // Verify hand positioning
-            console.log("Hands created - Left:", leftHand.left, leftHand.bottom, "Right:", rightHand.right, rightHand.bottom);
+            rightHand.background = "rgba(0,255,255,0.2)";
+            rightContainer.addControl(rightHand);
             
-            return { leftHand, rightHand };
+            console.log("NEW HANDS SYSTEM CREATED");
+            
+            return {
+                leftContainer,
+                rightContainer,
+                leftHand,
+                rightHand
+            };
         } catch (error) {
-            Logger.error("Failed to create hands: " + error.message);
-            console.error("Hands creation error:", error);
-            
-            // Return dummy object that won't cause errors when animated
-            return { 
-                leftHand: { bottom: 0, left: 0 },
-                rightHand: { bottom: 0, right: 0 }
+            console.error("Failed to create new hands:", error);
+            return {
+                leftContainer: null,
+                rightContainer: null,
+                leftHand: null,
+                rightHand: null 
             };
         }
     },
     
     updateHands: function(hands, state, deltaTime) {
+        if (!hands || !hands.leftContainer || !hands.rightContainer) {
+            return;
+        }
+        
         try {
-            // Early exit if hands aren't valid
-            if (!hands || !hands.leftHand || !hands.rightHand) {
-                console.warn("Invalid hand controls:", hands);
-                return;
-            }
-            
-            const { leftHand, rightHand } = hands;
-            const baseOffset = parseInt(CONFIG.HANDS.BOTTOM_OFFSET);
-            const sideOffset = parseInt(CONFIG.HANDS.SIDE_OFFSET);
-            
-            // Debug log every few seconds
-            if (Math.floor(state.bobTime) % 5 === 0 && Math.floor(state.bobTime * 10) % 10 === 0) {
-                console.log("Hand controls:", leftHand, rightHand);
-                console.log("Movement intensity:", state.smoothedMovementIntensity);
-            }
-            
-            // Update bobbing time
+            // Update animation time
             state.bobTime += deltaTime;
             
             // Calculate movement intensity
             const movementIntensity = state.moveVector ? state.moveVector.length() : 0;
-            state.smoothedMovementIntensity = state.smoothedMovementIntensity || 0;
+            if (state.smoothedMovementIntensity === undefined) {
+                state.smoothedMovementIntensity = 0;
+            }
             state.smoothedMovementIntensity += (movementIntensity - state.smoothedMovementIntensity) * (deltaTime * 5);
             
-            // Calculate animation values
+            // Base values
+            const baseOffset = 20;
+            const sideOffset = 20;
+            
+            // Calculate bob and sway
             const bobAmount = Math.sin(state.bobTime * 10) * 20 * state.smoothedMovementIntensity;
             const swayAmount = Math.cos(state.bobTime * 8) * 15 * state.smoothedMovementIntensity;
             
-            // Handle normal movement animation for both hands
+            // Every 30 frames, print debug info
+            if (Math.floor(state.bobTime * 30) % 30 === 0) {
+                console.log("Animation values:", {
+                    bobAmount,
+                    swayAmount,
+                    intensity: state.smoothedMovementIntensity
+                });
+            }
+            
+            // Handle normal bobbing animation
             if (!state.striking) {
-                // Left hand animation
-                this.setHandPosition(leftHand, {
-                    bottom: baseOffset + bobAmount,
-                    left: sideOffset + swayAmount,
-                    rotation: Math.sin(state.bobTime * 6) * 0.2 * state.smoothedMovementIntensity
-                });
+                // Update left hand container
+                hands.leftContainer.left = (sideOffset + swayAmount) + "px";
+                hands.leftContainer.bottom = (baseOffset + bobAmount) + "px";
+                hands.leftHand.rotation = Math.sin(state.bobTime * 6) * 0.2 * state.smoothedMovementIntensity;
                 
-                // Right hand animation (mirror left hand movement)
-                this.setHandPosition(rightHand, {
-                    bottom: baseOffset + bobAmount,
-                    right: sideOffset - swayAmount,
-                    rotation: Math.sin(state.bobTime * 6) * -0.2 * state.smoothedMovementIntensity
-                });
+                // Update right hand container
+                hands.rightContainer.right = (sideOffset - swayAmount) + "px";
+                hands.rightContainer.bottom = (baseOffset + bobAmount) + "px";
+                hands.rightHand.rotation = Math.sin(state.bobTime * 6) * -0.2 * state.smoothedMovementIntensity;
             } else {
-                // Left hand continues normal animation during strike
-                this.setHandPosition(leftHand, {
-                    bottom: baseOffset + bobAmount,
-                    left: sideOffset + swayAmount,
-                    rotation: Math.sin(state.bobTime * 6) * 0.2 * state.smoothedMovementIntensity
-                });
+                // Left hand continues normal animation
+                hands.leftContainer.left = (sideOffset + swayAmount) + "px";
+                hands.leftContainer.bottom = (baseOffset + bobAmount) + "px";
+                hands.leftHand.rotation = Math.sin(state.bobTime * 6) * 0.2 * state.smoothedMovementIntensity;
                 
-                // Update strike progress (faster strike animation)
+                // Update strike progress
                 state.strikeProgress += deltaTime * 4;
                 
                 if (state.strikeProgress <= 1) {
-                    // Calculate strike animation phase
+                    // Forward and return punch animation
                     const phase = state.strikeProgress < 0.5 ? 
                         state.strikeProgress * 2 : // Forward punch
                         2 - (state.strikeProgress * 2); // Return punch
                     
-                    // Calculate screen position - make it more dramatic
+                    // Calculate screen position
                     const screenWidth = window.innerWidth;
-                    const moveAmount = (screenWidth / 3) * phase; // Increased movement amount
+                    const moveAmount = (screenWidth / 3) * phase;
                     
-                    // Log the animation values for debugging
-                    console.debug(`Strike animation: phase=${phase.toFixed(2)}, moveAmount=${moveAmount.toFixed(2)}`);
+                    // Debug log when phase changes
+                    if (Math.floor(state.strikeProgress * 20) % 5 === 0) {
+                        console.log(`Strike animation: phase=${phase.toFixed(2)}, moveAmount=${moveAmount.toFixed(2)}`);
+                    }
                     
-                    // IMPORTANT FIX: Ensure we're moving the right hand toward center of screen
-                    // For RIGHT-aligned elements, DECREASING the 'right' value moves it toward center
-                    this.setHandPosition(rightHand, {
-                        bottom: baseOffset + (40 * phase),
-                        right: Math.max(0, sideOffset - moveAmount), // Prevent negative values
-                        rotation: phase * -0.5
-                    });
+                    // Move right hand container for strike
+                    const newRightValue = Math.max(0, sideOffset - moveAmount);
+                    hands.rightContainer.right = newRightValue + "px";
+                    hands.rightContainer.bottom = (baseOffset + (40 * phase)) + "px";
+                    hands.rightHand.rotation = phase * -0.5;
+                    
+                    console.log(`Right container position: ${newRightValue}px from right`);
                 } else {
                     // Reset strike state
                     state.striking = false;
                     state.strikeProgress = 0;
-                    console.log("Strike animation complete");
                     
                     // Reset right hand position
-                    this.setHandPosition(rightHand, {
-                        bottom: baseOffset,
-                        right: sideOffset,
-                        rotation: 0
-                    });
+                    hands.rightContainer.right = sideOffset + "px";
+                    hands.rightContainer.bottom = baseOffset + "px";
+                    hands.rightHand.rotation = 0;
                 }
             }
         } catch (e) {
-            console.error("Hand update error:", e);
-        }
-    },
-    
-    // Helper method to safely set hand position properties
-    setHandPosition: function(hand, props) {
-        try {
-            if (!hand) return;
-            
-            if (props.bottom !== undefined) {
-                hand.bottom = props.bottom + "px";
-            }
-            
-            if (props.left !== undefined && hand.left !== undefined) {
-                hand.left = props.left + "px";
-            }
-            
-            if (props.right !== undefined && hand.right !== undefined) {
-                hand.right = props.right + "px";
-            }
-            
-            if (props.rotation !== undefined) {
-                hand.rotation = props.rotation;
-            }
-            
-            // Add debug logging to verify property updates
-            if (hand.name === "rightHand" && props.right !== undefined) {
-                console.debug(`Right hand position updated: ${props.right}px`);
-            }
-        } catch (e) {
-            console.error("Error setting hand position:", e, hand, props);
+            console.error("New hand update error:", e);
         }
     }
 }; 

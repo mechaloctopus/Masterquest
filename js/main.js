@@ -62,10 +62,20 @@ function initGame() {
         
         try {
             hands = HandsSystem.create();
-            Logger.log("> HANDS UI INITIALIZED");
+            if (hands && hands.leftHand) {
+                Logger.log("> HANDS UI INITIALIZED");
+                console.log("Hands created successfully with new container approach");
+            } else {
+                throw new Error("Hand elements not created properly");
+            }
         } catch (e) {
             Logger.error("Hands initialization failed: " + e.message);
-            hands = [{}, {}]; // Dummy hands
+            hands = {
+                leftContainer: {},
+                rightContainer: {},
+                leftHand: {},
+                rightHand: {}
+            };
         }
         
         try {
