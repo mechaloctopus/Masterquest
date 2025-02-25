@@ -5,6 +5,10 @@ const HandsSystem = {
             const gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
             const { SIZE, COLOR, SIDE_OFFSET, BOTTOM_OFFSET, BACKGROUND } = CONFIG.HANDS;
 
+            // Extract numeric values from CSS strings
+            const sideOffsetValue = parseInt(SIDE_OFFSET);
+            const bottomOffsetValue = parseInt(BOTTOM_OFFSET);
+
             // Left hand creation
             const leftHand = new BABYLON.GUI.Ellipse("leftHand");
             leftHand.width = SIZE;
@@ -14,12 +18,13 @@ const HandsSystem = {
             leftHand.background = BACKGROUND;
             leftHand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
             leftHand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
-            leftHand.left = SIDE_OFFSET;
-            leftHand.bottom = BOTTOM_OFFSET;
+            leftHand.left = sideOffsetValue + "px"; // Explicitly add px
+            leftHand.bottom = bottomOffsetValue + "px"; // Explicitly add px
             gui.addControl(leftHand);
             
             // Right hand creation
             const rightHand = new BABYLON.GUI.Ellipse("rightHand");
+            rightHand.name = "rightHand"; // Add explicit name for debugging
             rightHand.width = SIZE;
             rightHand.height = SIZE;
             rightHand.color = COLOR;
@@ -27,12 +32,12 @@ const HandsSystem = {
             rightHand.background = BACKGROUND;
             rightHand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
             rightHand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
-            rightHand.right = SIDE_OFFSET;
-            rightHand.bottom = BOTTOM_OFFSET;
+            rightHand.right = sideOffsetValue + "px"; // Explicitly add px
+            rightHand.bottom = bottomOffsetValue + "px"; // Explicitly add px
             gui.addControl(rightHand);
 
-            // Log successful creation
-            console.log("Hands created successfully:", leftHand, rightHand);
+            // Verify hand positioning
+            console.log("Hands created - Left:", leftHand.left, leftHand.bottom, "Right:", rightHand.right, rightHand.bottom);
             
             return { leftHand, rightHand };
         } catch (error) {
@@ -109,14 +114,18 @@ const HandsSystem = {
                         state.strikeProgress * 2 : // Forward punch
                         2 - (state.strikeProgress * 2); // Return punch
                     
-                    // Calculate screen position
+                    // Calculate screen position - make it more dramatic
                     const screenWidth = window.innerWidth;
-                    const moveAmount = (screenWidth / 2.5) * phase;
+                    const moveAmount = (screenWidth / 3) * phase; // Increased movement amount
                     
-                    // Animate right hand for strike: change subtraction to addition
+                    // Log the animation values for debugging
+                    console.debug(`Strike animation: phase=${phase.toFixed(2)}, moveAmount=${moveAmount.toFixed(2)}`);
+                    
+                    // IMPORTANT FIX: Ensure we're moving the right hand toward center of screen
+                    // For RIGHT-aligned elements, DECREASING the 'right' value moves it toward center
                     this.setHandPosition(rightHand, {
                         bottom: baseOffset + (40 * phase),
-                        right: sideOffset - moveAmount,
+                        right: Math.max(0, sideOffset - moveAmount), // Prevent negative values
                         rotation: phase * -0.5
                     });
                 } else {
@@ -157,6 +166,11 @@ const HandsSystem = {
             
             if (props.rotation !== undefined) {
                 hand.rotation = props.rotation;
+            }
+            
+            // Add debug logging to verify property updates
+            if (hand.name === "rightHand" && props.right !== undefined) {
+                console.debug(`Right hand position updated: ${props.right}px`);
             }
         } catch (e) {
             console.error("Error setting hand position:", e, hand, props);
