@@ -262,7 +262,7 @@
             const gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
             const { SIZE, COLOR, SIDE_OFFSET, BOTTOM_OFFSET, BACKGROUND } = CONFIG.HANDS;
 
-            const leftHand = new BABYLON.GUI.Ellipse();
+            const leftHand = new BABYLON.GUI.Ellipse("leftHand");
             leftHand.width = SIZE;
             leftHand.height = SIZE;
             leftHand.color = COLOR;
@@ -274,7 +274,7 @@
             leftHand.bottom = BOTTOM_OFFSET;
             gui.addControl(leftHand);
             
-            const rightHand = new BABYLON.GUI.Ellipse();
+            const rightHand = new BABYLON.GUI.Ellipse("rightHand");
             rightHand.width = SIZE;
             rightHand.height = SIZE;
             rightHand.color = COLOR;
@@ -333,7 +333,7 @@
             });
 
             // Jump button
-            document.getElementById('jumpButton').addEventListener('pointerdown', () => {
+            document.getElementById('jumpButton').addEventListener('touchstart', () => {
                 if (state.grounded) {
                     // Play jump sound
                     audioSystem.sfx.jump.currentTime = 0;
@@ -344,7 +344,7 @@
             });
 
             // Strike button
-            document.getElementById('strikeButton').addEventListener('pointerdown', () => {
+            document.getElementById('strikeButton').addEventListener('touchstart', () => {
                 if (!state.striking) {
                     state.striking = true;
                     state.strikeProgress = 0;
@@ -357,59 +357,22 @@
             });
         }
 
-        function registerUpdateLoop(scene, camera, hands, state, audioSystem) {
+        function registerUpdateLoop(scene, camera, handControls, state, audioSystem) {
             scene.registerBeforeRender(() => {
                 const engine = scene.getEngine();
-
-                // Update animation timers
                 const deltaTime = engine.getDeltaTime() / 1000;
-                state.bobTime += deltaTime;
+                const leftHand = handControls[0];
+                const rightHand = handControls[1];
 
-                // Animation helper functions
-                const applyBobAnimation = (hand, isLeft) => {
-                    const movementIntensity = state.moveVector.length();
-                    const bobAmount = Math.sin(state.bobTime * CONFIG.ANIMATION_SPEED) * 5 * movementIntensity;
-                    hand.top = parseFloat(CONFIG.HANDS.BOTTOM_OFFSET) + (isLeft ? bobAmount : -bobAmount);
-                };
+                // --- MOVEMENT ---
+                const forward = camera.getDirection(BABYLON.Vector3.Forward())
+                                    .scale(state.moveVector.z * 0.1);
+                const right = camera.getDirection(BABYLON.Vector3.Right())
+                                    .scale(-state.moveVector.x * 0.1);
+                const combinedMovement = forward.add(right);
+                camera.position.addInPlace(combinedMovement);
 
-                const applyStrikeAnimation = (hand) => {
-                    // Progress the strike animation
-                    state.strikeProgress += deltaTime * CONFIG.HANDS.STRIKE.SPEED;
-                    
-                    if (state.strikeProgress <= 1) {
-                        // Calculate animation progress (0 to 1)
-                        const progress = state.strikeProgress <= 0.5 ? 
-                            state.strikeProgress * 2 : // 0 to 1 during first half
-                            (1 - (state.strikeProgress - 0.5) * 2); // 1 to 0 during second half
-                        
-                        // Store original position properties if starting animation
-                        if (!hand._strikeAnimating) {
-                            hand._strikeAnimating = true;
-                            hand._originalRight = hand.right;
-                            hand._originalBottom = hand.bottom;
-                            hand._originalHorizontalAlignment = hand.horizontalAlignment;
-                            hand._originalVerticalAlignment = hand.verticalAlignment;
-                        }
-
-                        // Simple punch animation - moves hand inward from edge
-                        const easedProgress = Math.sin(progress * Math.PI/2);
-                        const moveDistance = CONFIG.HANDS.STRIKE.DISTANCE * (1 - easedProgress);
-                        hand.right = moveDistance + "px";
-                    } else {
-                        // Reset hand completely when animation is done
-                        hand.right = hand._originalRight;
-                        hand.bottom = hand._originalBottom; 
-                        hand._strikeAnimating = false;
-                        state.striking = false;
-                    }
-                };
-
-                // Movement
-                const forward = camera.getDirection(BABYLON.Vector3.Forward()).scale(state.moveVector.z * 0.1);
-                const right = camera.getDirection(BABYLON.Vector3.Right()).scale(state.moveVector.x * 0.1);
-                camera.position.addInPlace(forward.add(right));
-
-                // Jump physics
+                // --- JUMP PHYSICS ---
                 camera.position.y += state.jumpForce;
                 state.jumpForce += CONFIG.PHYSICS.GRAVITY;
                 
@@ -419,17 +382,60 @@
                     state.grounded = true;
                 }
 
-                // Update hands if they exist
-                if (hands && hands.length >= 2) {
-                    // Left hand always has bob animation
-                    applyBobAnimation(hands[0], true);
+                // --- HAND ANIMATIONS ---
+                // Update bobbing time
+                state.bobTime += deltaTime;
+
+                // Calculate bobbing based on movement intensity
+                const movementIntensity = state.moveVector.length();
+                const bobAmount = Math.sin(state.bobTime * 8) * 10 * movementIntensity;
+                
+                // Apply bobbing to left hand (always bobs)
+                const baseBottomOffset = parseInt(CONFIG.HANDS.BOTTOM_OFFSET);
+                leftHand.bottom = `${baseBottomOffset + bobAmount}px`;
+                
+                // Handle strike animation for right hand
+                if (state.striking) {
+                    // Update strike progress
+                    state.strikeProgress += deltaTime * 0.8; // Strike speed
                     
-                    // Right hand either strikes or bobs
-                    if (state.striking) {
-                        applyStrikeAnimation(hands[1]);
+                    if (state.strikeProgress <= 1) {
+                        // Determine forward/backward phase
+                        let animationPhase;
+                        if (state.strikeProgress < 0.5) {
+                            // Forward punch (0->0.5 becomes 0->1)
+                            animationPhase = state.strikeProgress * 2;
+                        } else {
+                            // Return punch (0.5->1 becomes 1->0)
+                            animationPhase = 2 - (state.strikeProgress * 2);
+                        }
+                        
+                        // Position right hand for strike
+                        const strikeDistance = 100 * animationPhase;
+                        rightHand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+                        rightHand.right = `${parseInt(CONFIG.HANDS.SIDE_OFFSET) - strikeDistance}px`;
                     } else {
-                        applyBobAnimation(hands[1], false);
+                        // Reset after animation completes
+                        rightHand.right = CONFIG.HANDS.SIDE_OFFSET;
+                        state.striking = false;
+                        state.strikeProgress = 0;
                     }
+                } else {
+                    // Apply normal bobbing to right hand when not striking
+                    rightHand.bottom = `${baseBottomOffset - bobAmount}px`;
+                }
+                
+                // --- AUDIO UPDATES ---
+                // Handle footstep sounds
+                if (state.moveVector.length() > 0.1 && state.grounded) {
+                    if (!audioSystem.isWalking) {
+                        audioSystem.sfx.footsteps.play();
+                        audioSystem.isWalking = true;
+                    }
+                } else if (audioSystem.isWalking) {
+                    audioSystem.sfx.footsteps.pause();
+                    audioSystem.sfx.footsteps.currentTime = 0;
+                    audioSystem.isWalking = false;
                 }
             });
         }
