@@ -35,7 +35,7 @@ function initGame() {
         };
 
         // Initialize subsystems one by one with error handling
-        let audioSystem, camera, hands;
+        let audioSystem, camera;
         
         try {
             GridSystem.create(scene);
@@ -60,23 +60,7 @@ function initGame() {
             camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, 0), scene);
         }
         
-        try {
-            hands = HandsSystem.create();
-            if (hands && hands.leftHand) {
-                Logger.log("> HANDS UI INITIALIZED");
-                console.log("Hands created successfully with new container approach");
-            } else {
-                throw new Error("Hand elements not created properly");
-            }
-        } catch (e) {
-            Logger.error("Hands initialization failed: " + e.message);
-            hands = {
-                leftContainer: {},
-                rightContainer: {},
-                leftHand: {},
-                rightHand: {}
-            };
-        }
+        // Hands system removed
         
         try {
             audioSystem = AudioSystem.create();
@@ -109,9 +93,8 @@ function initGame() {
             try {
                 const deltaTime = engine.getDeltaTime() / 1000;
                 
-                // Update all systems
+                // Update all systems (hands removed)
                 MovementSystem.update(camera, state, deltaTime);
-                HandsSystem.updateHands(hands, state, deltaTime);
                 AudioSystem.update(state, audioSystem);
             } catch (e) {
                 // Don't log every frame to avoid console spam

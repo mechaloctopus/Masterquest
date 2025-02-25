@@ -175,16 +175,22 @@ const ControlSystem = {
         // Visual feedback on button
         const strikeButton = document.getElementById('strikeButton');
         if (strikeButton) {
-            strikeButton.style.background = "rgba(255, 0, 255, 0.4)";
+            strikeButton.style.background = "rgba(255, 0, 255, 0.6)";
             
             // Reset button after a short delay
             setTimeout(() => {
                 if (strikeButton) {
                     strikeButton.style.background = "rgba(255, 0, 255, 0.2)";
                 }
-            }, 100);
+            }, 200);
         }
         
-        console.log("Strike state set:", state.striking);
+        // Reset strike state after a delay (since we're not animating hands anymore)
+        setTimeout(() => {
+            state.striking = false;
+            state.strikeProgress = 0;
+        }, 500);
+        
+        console.log("Strike action completed");
     }
 }; 
