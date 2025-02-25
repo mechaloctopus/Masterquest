@@ -1,34 +1,40 @@
 // Hands UI System
 const HandsSystem = {
     create: function() {
-        const gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
-        const { SIZE, COLOR, SIDE_OFFSET, BOTTOM_OFFSET, BACKGROUND } = CONFIG.HANDS;
+        try {
+            const gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+            const { SIZE, COLOR, SIDE_OFFSET, BOTTOM_OFFSET, BACKGROUND } = CONFIG.HANDS;
 
-        const leftHand = new BABYLON.GUI.Ellipse("leftHand");
-        leftHand.width = SIZE;
-        leftHand.height = SIZE;
-        leftHand.color = COLOR;
-        leftHand.thickness = 4;
-        leftHand.background = BACKGROUND;
-        leftHand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
-        leftHand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
-        leftHand.left = SIDE_OFFSET;
-        leftHand.bottom = BOTTOM_OFFSET;
-        gui.addControl(leftHand);
-        
-        const rightHand = new BABYLON.GUI.Ellipse("rightHand");
-        rightHand.width = SIZE;
-        rightHand.height = SIZE;
-        rightHand.color = COLOR;
-        rightHand.thickness = 4;
-        rightHand.background = BACKGROUND;
-        rightHand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
-        rightHand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
-        rightHand.right = SIDE_OFFSET;
-        rightHand.bottom = BOTTOM_OFFSET;
-        gui.addControl(rightHand);
+            const leftHand = new BABYLON.GUI.Ellipse("leftHand");
+            leftHand.width = SIZE;
+            leftHand.height = SIZE;
+            leftHand.color = COLOR;
+            leftHand.thickness = 4;
+            leftHand.background = BACKGROUND;
+            leftHand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+            leftHand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+            leftHand.left = SIDE_OFFSET;
+            leftHand.bottom = BOTTOM_OFFSET;
+            gui.addControl(leftHand);
+            
+            const rightHand = new BABYLON.GUI.Ellipse("rightHand");
+            rightHand.width = SIZE;
+            rightHand.height = SIZE;
+            rightHand.color = COLOR;
+            rightHand.thickness = 4;
+            rightHand.background = BACKGROUND;
+            rightHand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+            rightHand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+            rightHand.right = SIDE_OFFSET;
+            rightHand.bottom = BOTTOM_OFFSET;
+            gui.addControl(rightHand);
 
-        return [leftHand, rightHand];
+            return [leftHand, rightHand];
+        } catch (error) {
+            Logger.error("Failed to create hands: " + error.message);
+            // Return dummy hands that won't cause errors when animated
+            return [{bottom: 0}, {bottom: 0}];
+        }
     },
     
     updateHands: function(handControls, state, deltaTime) {

@@ -7,6 +7,10 @@ function initGame() {
         
         // Initialize core systems
         const canvas = document.getElementById('renderCanvas');
+        if (!canvas) {
+            throw new Error("Canvas element not found! Cannot initialize game.");
+        }
+        
         const engine = new BABYLON.Engine(canvas, true);
         
         // Add some error handling for the engine initialization
@@ -15,6 +19,9 @@ function initGame() {
         };
         
         const scene = SceneManager.create(engine);
+        if (!scene) {
+            throw new Error("Failed to create scene");
+        }
         
         // Initialize game state
         const state = {
@@ -27,25 +34,79 @@ function initGame() {
             strikeProgress: 0
         };
 
-        // Initialize subsystems
-        const audioSystem = AudioSystem.create();
-        GridSystem.create(scene);
-        SkyboxSystem.create(scene);
-        const camera = CameraManager.create(scene, canvas);
-        const hands = HandsSystem.create();
-        ControlSystem.setupControls(scene, camera, state, audioSystem);
+        // Initialize subsystems one by one with error handling
+        let audioSystem, camera, hands;
+        
+        try {
+            GridSystem.create(scene);
+            Logger.log("> GRID SYSTEM INITIALIZED");
+        } catch (e) {
+            Logger.error("Grid initialization failed: " + e.message);
+        }
+        
+        try {
+            SkyboxSystem.create(scene);
+            Logger.log("> SKYBOX INITIALIZED");
+        } catch (e) {
+            Logger.error("Skybox initialization failed: " + e.message);
+        }
+        
+        try {
+            camera = CameraManager.create(scene, canvas);
+            Logger.log("> CAMERA INITIALIZED");
+        } catch (e) {
+            Logger.error("Camera initialization failed: " + e.message);
+            // Create fallback camera
+            camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, 0), scene);
+        }
+        
+        try {
+            hands = HandsSystem.create();
+            Logger.log("> HANDS UI INITIALIZED");
+        } catch (e) {
+            Logger.error("Hands initialization failed: " + e.message);
+            hands = [{}, {}]; // Dummy hands
+        }
+        
+        try {
+            audioSystem = AudioSystem.create();
+            Logger.log("> AUDIO SYSTEM INITIALIZED");
+        } catch (e) {
+            Logger.error("Audio initialization failed: " + e.message);
+            // Create dummy audio system
+            audioSystem = {
+                sfx: { footsteps: {}, jump: {}, strike: {} },
+                isWalking: false
+            };
+        }
+        
+        try {
+            ControlSystem.setupControls(scene, camera, state, audioSystem);
+            Logger.log("> CONTROLS INITIALIZED");
+        } catch (e) {
+            Logger.error("Controls initialization failed: " + e.message);
+        }
         
         // Setup performance monitoring
-        SceneManager.addPerformanceMonitor(engine, scene);
+        try {
+            SceneManager.addPerformanceMonitor(engine, scene);
+        } catch (e) {
+            Logger.error("Performance monitor initialization failed: " + e.message);
+        }
         
         // Main game loop
         scene.registerBeforeRender(() => {
-            const deltaTime = engine.getDeltaTime() / 1000;
-            
-            // Update all systems
-            MovementSystem.update(camera, state, deltaTime);
-            HandsSystem.updateHands(hands, state, deltaTime);
-            AudioSystem.update(state, audioSystem);
+            try {
+                const deltaTime = engine.getDeltaTime() / 1000;
+                
+                // Update all systems
+                MovementSystem.update(camera, state, deltaTime);
+                HandsSystem.updateHands(hands, state, deltaTime);
+                AudioSystem.update(state, audioSystem);
+            } catch (e) {
+                // Don't log every frame to avoid console spam
+                console.error("Update loop error:", e);
+            }
         });
 
         // Start the render loop
@@ -58,6 +119,39 @@ function initGame() {
 
     } catch (error) {
         Logger.error(error.message);
+        // Try to recover with a basic scene
+        try {
+            const canvas = document.getElementById('renderCanvas');
+            const engine = new BABYLON.Engine(canvas, true);
+            const scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
+            
+            // Basic grid
+            for(let i = -20; i <= 20; i += 2) {
+                BABYLON.MeshBuilder.CreateLines("grid", {
+                    points: [
+                        new BABYLON.Vector3(i, 0, -20),
+                        new BABYLON.Vector3(i, 0, 20)
+                    ]
+                }, scene).color = new BABYLON.Color3(0.5, 0, 1);
+                
+                BABYLON.MeshBuilder.CreateLines("grid", {
+                    points: [
+                        new BABYLON.Vector3(-20, 0, i),
+                        new BABYLON.Vector3(20, 0, i)
+                    ]
+                }, scene).color = new BABYLON.Color3(0.5, 0, 1);
+            }
+            
+            // Basic camera
+            const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, 0), scene);
+            camera.attachControl(canvas, true);
+            
+            engine.runRenderLoop(() => scene.render());
+            Logger.log("> EMERGENCY FALLBACK MODE ACTIVATED");
+        } catch (fallbackError) {
+            Logger.error("Emergency fallback also failed: " + fallbackError.message);
+        }
     }
 }
 
