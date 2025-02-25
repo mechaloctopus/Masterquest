@@ -377,27 +377,36 @@
                     state.strikeProgress += deltaTime * CONFIG.HANDS.STRIKE.SPEED;
                     
                     if (state.strikeProgress <= 1) {
-                        // First half: punch out, Second half: retract
+                        // Calculate animation progress (0 to 1)
                         const progress = state.strikeProgress <= 0.5 ? 
                             state.strikeProgress * 2 : // 0 to 1 during first half
                             (1 - (state.strikeProgress - 0.5) * 2); // 1 to 0 during second half
                         
-                        // Convert to center positioning during strike
-                        hand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
-                        hand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER;
-                        
-                        // Apply easing for more natural motion
+                        // Store original position properties if starting animation
+                        if (!hand._strikeAnimating) {
+                            hand._strikeAnimating = true;
+                            hand._originalRight = hand.right;
+                            hand._originalBottom = hand.bottom;
+                            hand._originalHorizontalAlignment = hand.horizontalAlignment;
+                            hand._originalVerticalAlignment = hand.verticalAlignment;
+                        }
+
+                        // Simple punch animation - moves hand inward from edge
                         const easedProgress = Math.sin(progress * Math.PI/2);
-                        hand.left = `${CONFIG.HANDS.STRIKE.DISTANCE * easedProgress}px`;
+                        const moveDistance = CONFIG.HANDS.STRIKE.DISTANCE * (1 - easedProgress);
+                        hand.right = moveDistance + "px";
                     } else {
-                        resetHandPosition(hand);
+                        // Reset hand completely when animation is done
+                        hand.right = hand._originalRight;
+                        hand.bottom = hand._originalBottom; 
+                        hand._strikeAnimating = false;
                         state.striking = false;
                     }
                 };
 
                 // Movement
                 const forward = camera.getDirection(BABYLON.Vector3.Forward()).scale(state.moveVector.z * 0.1);
-                const right = camera.getDirection(BABYLON.Vector3.Right()).scale(-state.moveVector.x * 0.1);
+                const right = camera.getDirection(BABYLON.Vector3.Right()).scale(state.moveVector.x * 0.1);
                 camera.position.addInPlace(forward.add(right));
 
                 // Jump physics
@@ -409,19 +418,6 @@
                     state.jumpForce = 0;
                     state.grounded = true;
                 }
-
-                // Helper function to reset hand to corner position
-                const resetHandPosition = (hand) => {
-                    hand.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
-                    hand.left = undefined; // Clear the left position that was set during strike
-                    hand.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
-                    hand.left = undefined; // Clear the left position that was set during strike
-                    hand.centerX = undefined; // Clear any center positioning
-                    hand.centerY = undefined; // Clear any center positioning
-                    hand.right = CONFIG.HANDS.SIDE_OFFSET;
-                    hand.bottom = CONFIG.HANDS.BOTTOM_OFFSET;
-                    hand.top = parseFloat(CONFIG.HANDS.BOTTOM_OFFSET); // Reset top position
-                };
 
                 // Update hands if they exist
                 if (hands && hands.length >= 2) {
