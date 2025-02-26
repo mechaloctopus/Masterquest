@@ -1,17 +1,27 @@
 // Fireworks System
 const FireworksSystem = {
     init: function() {
-        this.container = document.getElementById('fireworks');
-        this.colors = [
-            '#ff69b4', // Hot pink
-            '#00ffff', // Cyan
-            '#ff00ff', // Magenta
-            '#9370db', // Medium purple
-            '#7b68ee'  // Medium slate blue
-        ];
-        
-        // Start fireworks loop
-        this.startFireworks();
+        try {
+            this.container = document.getElementById('fireworks');
+            if (!this.container) {
+                Logger.error("Fireworks container not found");
+                return;
+            }
+            
+            this.colors = [
+                '#ff69b4', // Hot pink
+                '#00ffff', // Cyan
+                '#ff00ff', // Magenta
+                '#9370db', // Medium purple
+                '#7b68ee'  // Medium slate blue
+            ];
+            
+            // Start fireworks loop
+            this.startFireworks();
+            Logger.log("> FIREWORKS INITIALIZED");
+        } catch (e) {
+            Logger.error("Error initializing fireworks: " + e.message);
+        }
     },
     
     createFirework: function() {
