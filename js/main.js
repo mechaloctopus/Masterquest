@@ -38,15 +38,31 @@ function initGame() {
         let audioSystem, camera, hands;
         
         try {
+            // Update grid colors for vaporwave theme
+            CONFIG.GRID.COLOR = {r: 1, g: 0.4, b: 0.7}; // Pink/purple
             GridSystem.create(scene);
-            Logger.log("> GRID SYSTEM INITIALIZED");
+            Logger.log("> VAPORWAVE GRID INITIALIZED");
         } catch (e) {
             Logger.error("Grid initialization failed: " + e.message);
         }
         
         try {
+            // Initialize fireworks
+            FireworksSystem.init();
+            Logger.log("> BIRTHDAY FIREWORKS ACTIVATED");
+        } catch (e) {
+            Logger.error("Fireworks initialization failed: " + e.message);
+        }
+        
+        try {
+            // Change skybox colors to vaporwave theme
+            // Override skybox color to vaporwave gradient
+            CONFIG.SKYBOX = {
+                TOP_COLOR: "#000033", // Deep blue
+                BOTTOM_COLOR: "#ff69b4" // Hot pink
+            };
             SkyboxSystem.create(scene);
-            Logger.log("> SKYBOX INITIALIZED");
+            Logger.log("> VAPORWAVE SKYBOX INITIALIZED");
         } catch (e) {
             Logger.error("Skybox initialization failed: " + e.message);
         }

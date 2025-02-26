@@ -28,8 +28,8 @@ const CONFIG = {
     },
     AUDIO: {
         MUSIC: {
-            URL: "https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3",
-            VOLUME: 0.5,
+            URL: "https://soundimage.org/wp-content/uploads/2016/04/UI_Quirky13.mp3",
+            VOLUME: 0.6,
             AUTOPLAY: true
         },
         SFX: {
