@@ -35,7 +35,7 @@ function initGame() {
         };
 
         // Initialize subsystems one by one with error handling
-        let audioSystem, camera;
+        let audioSystem, camera, hands;
         
         try {
             GridSystem.create(scene);
@@ -60,7 +60,13 @@ function initGame() {
             camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, 0), scene);
         }
         
-        // Hands system removed
+        try {
+            hands = HandsSystem.create(scene, camera);
+            Logger.log("> HANDS SYSTEM INITIALIZED");
+        } catch (e) {
+            Logger.error("Hands initialization failed: " + e.message);
+            hands = null;
+        }
         
         try {
             audioSystem = AudioSystem.create();
@@ -93,9 +99,10 @@ function initGame() {
             try {
                 const deltaTime = engine.getDeltaTime() / 1000;
                 
-                // Update systems, remove ALL hands references
+                // Update systems
                 MovementSystem.update(camera, state, deltaTime);
                 AudioSystem.update(state, audioSystem);
+                HandsSystem.updateHands(hands, state, deltaTime);
                 
                 // Update animation time for other possible uses
                 state.bobTime += deltaTime;

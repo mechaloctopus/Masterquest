@@ -78,4 +78,27 @@ canvas { width: 100%; height: 100%; }
     background: rgba(0,0,0,0.5);
     padding: 10px;
     border: 1px solid #00ff00;
+}
+
+.hand {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(0, 255, 255, 0.2);
+    border: 2px solid #0ff;
+    box-shadow: 0 0 20px #0ff, inset 0 0 15px #0ff;
+    pointer-events: none;
+    z-index: 1;
+    transition: transform 0.1s ease;
+}
+
+#leftHand {
+    left: 20px;
+    bottom: 140px;
+}
+
+#rightHand {
+    right: 20px;
+    bottom: 140px;
 } 
