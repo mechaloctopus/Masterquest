@@ -50,19 +50,12 @@ const ControlSystem = {
 
         // Look joystick
         const rightStick = createJoystick(document.getElementById('rightJoystick'));
-        rightStick.on('move', (evt, data) => {
-            camera.rotation.y += data.vector.x * 0.02;
+        rightStick.on('move', (event, data) => {
+            const lookY = data.vector.x * 0.05;
+            const lookX = -data.vector.y * 0.05;
             
-            const newRotationX = camera.rotation.x + data.vector.y * 0.02;
-            
-            const maxLookUp = Math.PI * 0.45;
-            const maxLookDown = -Math.PI * 0.45;
-            
-            if (newRotationX < maxLookUp && newRotationX > maxLookDown) {
-                camera.rotation.x = newRotationX;
-            }
-            
-            camera.rotation.z = 0;
+            camera.rotation.y += lookY;
+            camera.rotation.x += lookX;
         });
 
         // Add keyboard controls for desktop users

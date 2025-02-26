@@ -93,6 +93,48 @@ const AudioSystem = {
             return Promise.resolve(); // Return resolved promise if sound can't be played
         };
 
+        // Add this inside the create function
+        const initializeAudioEffects = (context) => {
+            // Create a master compressor for that punchy synthwave sound
+            const compressor = context.createDynamicsCompressor();
+            compressor.threshold.value = -24;
+            compressor.knee.value = 30;
+            compressor.ratio.value = 12;
+            compressor.attack.value = 0.003;
+            compressor.release.value = 0.25;
+            compressor.connect(context.destination);
+            
+            // Create a reverb for that spacey synthwave feel
+            const convolver = context.createConvolver();
+            const reverbLength = 2;
+            const rate = context.sampleRate;
+            const reverbBuffer = context.createBuffer(2, rate * reverbLength, rate);
+            for (let channel = 0; channel < 2; channel++) {
+                const data = reverbBuffer.getChannelData(channel);
+                for (let i = 0; i < data.length; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (rate * reverbLength / 2));
+                }
+            }
+            convolver.buffer = reverbBuffer;
+            convolver.connect(compressor);
+            
+            return { compressor, convolver };
+        };
+
+        // Add this to the audioSystem object
+        const effects = initializeAudioEffects(audioSystem.context);
+        audioSystem.effects = effects;
+
+        // Then modify the loadSound function to use these effects
+        audioSystem.loadSound = function(url, volume, loop = false) {
+            // ... existing code ...
+            
+            // Connect to effects chain for more synthwave goodness
+            source.connect(this.effects.convolver);
+            
+            // ... rest of the function ...
+        };
+
         return audioSystem;
     },
     

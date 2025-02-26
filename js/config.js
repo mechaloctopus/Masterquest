@@ -28,22 +28,22 @@ const CONFIG = {
     },
     AUDIO: {
         MUSIC: {
-            URL: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-            VOLUME: 0.6,
+            URL: "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Soft_and_Furious/Emotion_Promo_EP/Soft_and_Furious_-_03_-_The_Reckoning.mp3",
+            VOLUME: 0.5,
             AUTOPLAY: true
         },
         SFX: {
             FOOTSTEPS: {
-                URL: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-                VOLUME: 0.3
+                URL: "https://freesound.org/data/previews/147/147054_2538033-lq.mp3",
+                VOLUME: 0.2
             },
             JUMP: {
-                URL: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-                VOLUME: 0.6
+                URL: "https://freesound.org/data/previews/369/369515_6687660-lq.mp3",
+                VOLUME: 0.4
             },
             STRIKE: {
-                URL: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
-                VOLUME: 0.7
+                URL: "https://freesound.org/data/previews/320/320775_5260872-lq.mp3",
+                VOLUME: 0.5
             }
         }
     },
