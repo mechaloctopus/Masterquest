@@ -19,19 +19,54 @@ const BirthdayTextSystem = {
             cyanMaterial.emissiveColor = new BABYLON.Color3(0, 1, 1); // Cyan
             cyanMaterial.specularColor = new BABYLON.Color3(1, 1, 1);
             
-            // Create HAPPY BIRTHDAY MARCUS! as 3D text with boxes
-            const words = [
-                { text: "HAPPY", material: cyanMaterial, scale: 0.8, y: 2 },
-                { text: "BIRTHDAY", material: cyanMaterial, scale: 0.8, y: 0 },
-                { text: "MARCUS!", material: pinkMaterial, scale: 1.2, y: -2.5 }
-            ];
+            // Create actual 3D text using Babylon's TextBlock and GUI
+            const advancedDynamicTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI", true, scene);
             
-            words.forEach(word => {
-                const wordGroup = createTextRow(word.text, word.material, scene);
-                wordGroup.parent = textParent;
-                wordGroup.position.y = word.y;
-                wordGroup.scaling = new BABYLON.Vector3(word.scale, word.scale, word.scale);
-            });
+            // Create messages as 3D planes with text textures
+            const createTextMesh = (text, material, y, scale, scene) => {
+                // Create a plane for the text
+                const plane = BABYLON.MeshBuilder.CreatePlane("textPlane_" + text, {
+                    width: text.length * 1.5,
+                    height: 2
+                }, scene);
+                
+                // Position it
+                plane.position.y = y;
+                plane.scaling.x = scale;
+                plane.scaling.y = scale;
+                plane.parent = textParent;
+                
+                // Create dynamic texture
+                const textTexture = new BABYLON.DynamicTexture("textTexture_" + text, {
+                    width: 512 * text.length / 5,
+                    height: 256
+                }, scene);
+                
+                const font = "bold 100px Arial";
+                const context = textTexture.getContext();
+                context.font = font;
+                context.fillStyle = material.emissiveColor.toHexString();
+                context.textAlign = "center";
+                context.textBaseline = "middle";
+                context.fillText(text, textTexture.getSize().width / 2, textTexture.getSize().height / 2);
+                textTexture.update();
+                
+                // Create material with the texture
+                const textMaterial = new BABYLON.StandardMaterial("textMat_" + text, scene);
+                textMaterial.emissiveTexture = textTexture;
+                textMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+                textMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+                textMaterial.emissiveColor = material.emissiveColor;
+                textMaterial.disableLighting = true;
+                
+                plane.material = textMaterial;
+                return plane;
+            };
+            
+            // Create text meshes for the birthday message
+            const happyText = createTextMesh("HAPPY", cyanMaterial, 2, 1.5, scene);
+            const birthdayText = createTextMesh("BIRTHDAY", cyanMaterial, 0, 1.5, scene);
+            const marcusText = createTextMesh("MARCUS!", pinkMaterial, -2.5, 2, scene);
             
             // Add glow effect
             const glowLayer = new BABYLON.GlowLayer("birthdayGlow", scene);
