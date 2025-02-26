@@ -136,6 +136,18 @@ function initGame() {
         Logger.log("> SYSTEM READY");
         Logger.log("> INITIALIZE GRID NAVIGATION...");
 
+        try {
+            // Initialize 3D birthday text (try both methods)
+            let birthdayText = BirthdayTextSystem.create(scene);
+            if (!birthdayText) {
+                // Fallback to primitive version if CreateText is not available
+                birthdayText = BirthdayTextSystem.createWithPrimitives(scene);
+            }
+            Logger.log("> 3D BIRTHDAY MESSAGE INITIALIZED");
+        } catch (e) {
+            Logger.error("Birthday text initialization failed: " + e.message);
+        }
+
     } catch (error) {
         Logger.error(error.message);
         // Try to recover with a basic scene
