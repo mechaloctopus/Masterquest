@@ -1,7 +1,7 @@
 // Game Configuration
 const CONFIG = {
     CAMERA: {
-        START_POSITION: {x: 0, y: 1.6, z: 0},
+        START_POSITION: {x: 0, y: 1.6, z: -25},
         SPEED: 0.1,
         GROUND_Y: 1.6
     },

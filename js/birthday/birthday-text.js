@@ -6,7 +6,8 @@ const BirthdayTextSystem = {
             
             // Create parent container for text
             const textParent = new BABYLON.TransformNode("birthdayParent", scene);
-            textParent.position = new BABYLON.Vector3(0, 4, -15);
+            textParent.position = new BABYLON.Vector3(0, 4, -10);
+            textParent.rotation.y = Math.PI;
             
             // Create text planes
             const createTextPlane = (text, color, yPosition, scale, scene) => {
