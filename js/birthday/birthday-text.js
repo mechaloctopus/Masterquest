@@ -8,69 +8,64 @@ const BirthdayTextSystem = {
             const textParent = new BABYLON.TransformNode("birthdayParent", scene);
             textParent.position = new BABYLON.Vector3(0, 4, -15);
             
-            // Create materials
-            const pinkMaterial = new BABYLON.StandardMaterial("pinkMat", scene);
-            pinkMaterial.diffuseColor = new BABYLON.Color3(0.1, 0.1, 0.1);
-            pinkMaterial.emissiveColor = new BABYLON.Color3(1, 0.4, 0.8); // Pink
-            pinkMaterial.specularColor = new BABYLON.Color3(1, 1, 1);
+            // Create the billboard planes
+            const happyPlane = BABYLON.MeshBuilder.CreatePlane("happyPlane", {width: 14, height: 3}, scene);
+            happyPlane.position.y = 2;
+            happyPlane.parent = textParent;
             
-            const cyanMaterial = new BABYLON.StandardMaterial("cyanMat", scene);
-            cyanMaterial.diffuseColor = new BABYLON.Color3(0.1, 0.1, 0.1);
-            cyanMaterial.emissiveColor = new BABYLON.Color3(0, 1, 1); // Cyan
-            cyanMaterial.specularColor = new BABYLON.Color3(1, 1, 1);
+            const birthdayPlane = BABYLON.MeshBuilder.CreatePlane("birthdayPlane", {width: 16, height: 3}, scene);
+            birthdayPlane.position.y = 0;
+            birthdayPlane.parent = textParent;
             
-            // Create actual 3D text using Babylon's TextBlock and GUI
-            const advancedDynamicTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI", true, scene);
+            const marcusPlane = BABYLON.MeshBuilder.CreatePlane("marcusPlane", {width: 16, height: 4}, scene);
+            marcusPlane.position.y = -2.5;
+            marcusPlane.parent = textParent;
             
-            // Create messages as 3D planes with text textures
-            const createTextMesh = (text, material, y, scale, scene) => {
-                // Create a plane for the text
-                const plane = BABYLON.MeshBuilder.CreatePlane("textPlane_" + text, {
-                    width: text.length * 1.5,
-                    height: 2
-                }, scene);
-                
-                // Position it
-                plane.position.y = y;
-                plane.scaling.x = scale;
-                plane.scaling.y = scale;
-                plane.parent = textParent;
-                
-                // Create dynamic texture
-                const textTexture = new BABYLON.DynamicTexture("textTexture_" + text, {
-                    width: 512 * text.length / 5,
-                    height: 256
-                }, scene);
-                
-                const font = "bold 100px Arial";
-                const context = textTexture.getContext();
-                context.font = font;
-                context.fillStyle = material.emissiveColor.toHexString();
-                context.textAlign = "center";
-                context.textBaseline = "middle";
-                context.fillText(text, textTexture.getSize().width / 2, textTexture.getSize().height / 2);
-                textTexture.update();
-                
-                // Create material with the texture
-                const textMaterial = new BABYLON.StandardMaterial("textMat_" + text, scene);
-                textMaterial.emissiveTexture = textTexture;
-                textMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
-                textMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-                textMaterial.emissiveColor = material.emissiveColor;
-                textMaterial.disableLighting = true;
-                
-                plane.material = textMaterial;
-                return plane;
+            // Create materials with glowing colors
+            const createGlowMaterial = (name, color, scene) => {
+                const material = new BABYLON.StandardMaterial(name, scene);
+                material.emissiveColor = color;
+                material.disableLighting = true;
+                return material;
             };
             
-            // Create text meshes for the birthday message
-            const happyText = createTextMesh("HAPPY", cyanMaterial, 2, 1.5, scene);
-            const birthdayText = createTextMesh("BIRTHDAY", cyanMaterial, 0, 1.5, scene);
-            const marcusText = createTextMesh("MARCUS!", pinkMaterial, -2.5, 2, scene);
+            const cyanMaterial = createGlowMaterial("cyanMat", new BABYLON.Color3(0, 1, 1), scene);
+            const pinkMaterial = createGlowMaterial("pinkMat", new BABYLON.Color3(1, 0.4, 0.8), scene);
+            
+            // Create the GUI textures for the text
+            const createTextTexture = (text, color, plane, fontSize) => {
+                const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(plane);
+                
+                const textBlock = new BABYLON.GUI.TextBlock();
+                textBlock.text = text;
+                textBlock.color = color;
+                textBlock.fontSize = fontSize || 120;
+                textBlock.fontFamily = "Arial";
+                textBlock.fontStyle = "bold";
+                textBlock.outlineWidth = 8;
+                textBlock.outlineColor = "black";
+                
+                advancedTexture.addControl(textBlock);
+                return advancedTexture;
+            };
+            
+            // Apply textures to planes
+            createTextTexture("HAPPY", "#00FFFF", happyPlane, 120);
+            createTextTexture("BIRTHDAY", "#00FFFF", birthdayPlane, 120);
+            createTextTexture("MARCUS!", "#FF69B4", marcusPlane, 160);
             
             // Add glow effect
             const glowLayer = new BABYLON.GlowLayer("birthdayGlow", scene);
             glowLayer.intensity = 1.5;
+            
+            // Make planes glow in their respective colors
+            happyPlane.material = cyanMaterial;
+            birthdayPlane.material = cyanMaterial;
+            marcusPlane.material = pinkMaterial;
+            
+            // Add a bit of transparency to see the glow better
+            cyanMaterial.alpha = 0.7;
+            pinkMaterial.alpha = 0.7;
             
             // Animation
             scene.registerBeforeRender(() => {
