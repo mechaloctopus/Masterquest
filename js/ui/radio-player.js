@@ -9,6 +9,8 @@ const RadioPlayerSystem = {
         this.currentTrack = null;
         this.audioElement = new Audio();
         this.isPlaying = false;
+        this.retryCount = 0;
+        this.maxRetries = 3;
         
         // Initialize with configuration
         this.setupPlayer();
@@ -98,6 +100,23 @@ const RadioPlayerSystem = {
             }
         });
         
+        // Add better error handling
+        this.audioElement.addEventListener('error', (e) => {
+            const errorMessage = e.target.error ? e.target.error.message : "Unknown error";
+            Logger.error("Audio error: " + errorMessage);
+            console.error("Audio error details:", e);
+            
+            // Try to load a fallback track if available
+            if (this.retryCount < this.maxRetries) {
+                this.retryCount++;
+                Logger.log(`Retrying playback (${this.retryCount}/${this.maxRetries})...`);
+                setTimeout(() => this.playNextTrack(), 1000);
+            } else {
+                this.retryCount = 0;
+                Logger.error("Max retries reached. Could not play track.");
+            }
+        });
+        
         // Add keyboard shortcuts for music control
         document.addEventListener('keydown', (e) => {
             if (e.code === 'KeyM') { // M key to toggle play/pause
@@ -134,6 +153,11 @@ const RadioPlayerSystem = {
                 trackElement.appendChild(trackName);
                 trackList.appendChild(trackElement);
                 
+                // Preload the track
+                const preloadAudio = new Audio();
+                preloadAudio.preload = 'metadata';
+                preloadAudio.src = track.URL;
+                
                 // Add click event
                 playBtn.addEventListener('click', () => {
                     // If this is the current track, toggle play/pause
@@ -162,6 +186,15 @@ const RadioPlayerSystem = {
             // Resume playing
             this.audioElement.play().catch(e => {
                 Logger.error("Audio resume prevented: " + e.message);
+                
+                // Try to unlock audio context
+                if (window.AudioSystem && AudioSystem.context) {
+                    AudioSystem.context.resume().then(() => {
+                        this.audioElement.play().catch(err => {
+                            Logger.error("Still could not play audio: " + err.message);
+                        });
+                    });
+                }
             });
             // UI will update through the play event listener
         }
@@ -171,44 +204,92 @@ const RadioPlayerSystem = {
         // Stop current track
         this.audioElement.pause();
         
+        // Reset error count
+        this.retryCount = 0;
+        
         // Remove active class from all tracks
         this.trackElements.forEach(track => {
             track.classList.remove('active');
         });
         
-        // Set new track
-        this.audioElement.src = url;
-        this.audioElement.currentTime = 0;
-        this.audioElement.volume = this.volumeSlider.value / 100;
+        // Log attempt
+        Logger.log("> PLAYING TRACK: " + url);
         
         // Add active class
         trackElement.classList.add('active');
         this.currentTrack = trackElement;
         
-        // Add this to the playTrack method right before playing
-        Logger.log("> PLAYING TRACK: " + url);
-        console.log("Playing track with URL:", url);
+        // Create a new audio element each time to avoid issues with failed loads
+        this.audioElement = new Audio();
+        
+        // Set up event listeners
+        this.audioElement.addEventListener('play', () => {
+            this.isPlaying = true;
+            if (this.currentTrack) {
+                this.currentTrack.querySelector('.play-btn').textContent = '❚❚';
+            }
+        });
+        
+        this.audioElement.addEventListener('pause', () => {
+            this.isPlaying = false;
+            if (this.currentTrack) {
+                this.currentTrack.querySelector('.play-btn').textContent = '▶';
+            }
+        });
+        
+        this.audioElement.addEventListener('ended', () => {
+            this.playNextTrack();
+        });
+        
+        this.audioElement.addEventListener('error', (e) => {
+            const errorMessage = e.target.error ? e.target.error.message : "Unknown error";
+            Logger.error("Audio error: " + errorMessage);
+            console.error("Audio error details:", e);
+            
+            // Try to play the next track if this one fails
+            if (this.retryCount < this.maxRetries) {
+                this.retryCount++;
+                setTimeout(() => this.playNextTrack(), 1000);
+            } else {
+                this.retryCount = 0;
+            }
+        });
+        
+        // Set volume and load the track
+        this.audioElement.volume = this.volumeSlider.value / 100;
+        this.audioElement.src = url;
         
         // Play it
         this.audioElement.play().catch(e => {
-            Logger.error("Audio autoplay prevented: " + e.message);
-            // UI feedback is handled by the pause event
+            Logger.error("Audio playback prevented: " + e.message);
+            
+            // Try to unlock audio context
+            if (window.AudioSystem && AudioSystem.context) {
+                AudioSystem.context.resume().then(() => {
+                    // Try again after resuming context
+                    this.audioElement.play().catch(err => {
+                        Logger.error("Still could not play audio: " + err.message);
+                    });
+                });
+            }
         });
         
         // Also stop the main background music if it's playing
         if (window.AudioSystem && AudioSystem.music) {
             AudioSystem.music.pause();
         }
-        
-        // And also add an event listener for errors
-        this.audioElement.addEventListener('error', (e) => {
-            Logger.error("Audio error: " + (e.message || "Unknown error"));
-            console.error("Audio error details:", e);
-        });
     },
     
     playNextTrack: function() {
-        if (!this.currentTrack) return;
+        if (!this.currentTrack) {
+            // If no track is active, play the first one
+            if (this.trackElements.length > 0) {
+                const firstTrack = this.trackElements[0];
+                const url = firstTrack.dataset.url;
+                this.playTrack(url, firstTrack);
+            }
+            return;
+        }
         
         // Find next track (or loop to first)
         let nextTrack = this.currentTrack.nextElementSibling;
