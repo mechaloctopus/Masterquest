@@ -73,7 +73,7 @@ const CONFIG = {
         TRACKS: [
             {
                 NAME: "Synthwave Dreams",
-                URL: "https://freesound.org/people/Doctor_Dreamchip/sounds/523808/"
+                URL: "https://freesound.org/data/previews/523/523808_10479542-lq.mp3"
             },
             {
                 NAME: "Neon Streets",
