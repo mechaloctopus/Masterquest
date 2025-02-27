@@ -4,6 +4,8 @@ const AudioSystem = {
         // Create audio system
         const audioSystem = {
             context: null,
+            // We'll use RadioPlayerSystem as the central player
+            // music will be a reference to RadioPlayerSystem's audio
             music: null,
             currentTrackIndex: CONFIG.AUDIO.MUSIC.CURRENT_TRACK_INDEX || 0,
             sfx: {
@@ -41,51 +43,26 @@ const AudioSystem = {
             };
         }
 
-        // Preload all tracks
+        // Preload all tracks - this functionality will now be handled by RadioPlayerSystem
         audioSystem.preloadTracks = function() {
             if (!CONFIG.AUDIO.TRACKS || !CONFIG.AUDIO.TRACKS.length) {
                 Logger.error("No music tracks configured");
                 return;
             }
             
-            // Preload each track
+            // We'll now let RadioPlayerSystem handle track preloading
+            // Just store track info for reference
             CONFIG.AUDIO.TRACKS.forEach((track, index) => {
-                Logger.log(`> PRELOADING TRACK: ${track.NAME}`);
-                const audio = new Audio();
-                
-                audio.addEventListener('canplaythrough', () => {
-                    audioSystem.tracks[index].loaded = true;
-                    Logger.log(`> TRACK READY: ${track.NAME}`);
-                });
-                
-                audio.addEventListener('error', (e) => {
-                    Logger.error(`Failed to load track: ${track.NAME}`);
-                    // Set a flag so we know this track failed
-                    audioSystem.tracks[index].error = true;
-                });
-                
-                // Attempt to load the track
-                audio.src = track.URL;
-                audio.load(); // Start loading
-                
-                // Store track information
                 audioSystem.tracks[index] = {
-                    audio: audio,
                     name: track.NAME,
-                    url: track.URL,
-                    loaded: false,
-                    error: false
+                    url: track.URL
                 };
             });
         };
 
-        // Load background music with track selection
+        // Load background music - now delegates to RadioPlayerSystem
         const loadMusic = (trackIndex = 0) => {
-            // Stop current music if it exists
-            if (audioSystem.music) {
-                audioSystem.music.pause();
-                audioSystem.music.currentTime = 0;
-            }
+            // This method now just tells RadioPlayerSystem to play a track
             
             // Get track from config
             const tracks = CONFIG.AUDIO.TRACKS;
@@ -98,53 +75,64 @@ const AudioSystem = {
             audioSystem.currentTrackIndex = (trackIndex + tracks.length) % tracks.length;
             const track = tracks[audioSystem.currentTrackIndex];
             
-            Logger.log(`> LOADING MUSIC: ${track.NAME}`);
+            // If RadioPlayerSystem exists, delegate to it
+            if (window.RadioPlayerSystem) {
+                // Find the track element in the RadioPlayer
+                const trackElements = document.querySelectorAll('.track');
+                if (trackElements && trackElements.length > 0) {
+                    const trackElement = Array.from(trackElements).find(el => 
+                        el.querySelector('.track-name').textContent === track.NAME);
+                    
+                    if (trackElement) {
+                        Logger.log(`> DELEGATING PLAYBACK TO RADIO: ${track.NAME}`);
+                        
+                        // Use setTimeout to ensure RadioPlayerSystem is initialized
+                        setTimeout(() => {
+                            RadioPlayerSystem.playTrack(track.URL, trackElement);
+                            
+                            // Store reference to RadioPlayerSystem's audio
+                            audioSystem.music = RadioPlayerSystem.audioElement;
+                        }, 200);
+                        
+                        return Promise.resolve();
+                    }
+                }
+            }
             
-            // Create and configure audio element
-            const music = new Audio();
-            music.loop = true;
-            music.volume = audioSystem.volumes.music;
-            
-            // Add listeners first before setting source
-            music.addEventListener('canplaythrough', () => {
-                audioSystem.loaded.music = true;
-                Logger.log(`> MUSIC READY: ${track.NAME}`);
-            });
-            
-            music.addEventListener('error', (e) => {
-                Logger.error(`Background music failed to load: ${track.NAME}`);
-                // Try next track if this one fails
-                audioSystem.nextTrack();
-            });
-            
-            // Set source and start loading
-            music.src = track.URL;
-            audioSystem.music = music;
-            
-            // Return a promise for play attempt
-            return new Promise((resolve, reject) => {
-                // Wait a bit to ensure we have enough data
-                setTimeout(() => {
-                    music.play()
-                        .then(resolve)
-                        .catch(e => {
-                            Logger.error("Music autoplay prevented: " + e.message);
-                            reject(e);
-                        });
-                }, 50);
-            });
+            // Fallback if RadioPlayerSystem is not available or track not found
+            Logger.error(`RadioPlayerSystem not available, cannot play track: ${track.NAME}`);
+            return Promise.resolve();
         };
 
-        // Add radio functionality
+        // Radio functionality now delegates to RadioPlayerSystem
         audioSystem.nextTrack = function() {
+            if (window.RadioPlayerSystem) {
+                RadioPlayerSystem.playNextTrack();
+                return Promise.resolve();
+            }
             return loadMusic(audioSystem.currentTrackIndex + 1);
         };
         
         audioSystem.previousTrack = function() {
+            if (window.RadioPlayerSystem) {
+                // Implement previous track if RadioPlayerSystem has it
+                if (RadioPlayerSystem.playPreviousTrack) {
+                    RadioPlayerSystem.playPreviousTrack();
+                } else {
+                    // Otherwise just use next track as fallback
+                    RadioPlayerSystem.playNextTrack();
+                }
+                return Promise.resolve();
+            }
             return loadMusic(audioSystem.currentTrackIndex - 1);
         };
         
         audioSystem.getCurrentTrackInfo = function() {
+            if (window.RadioPlayerSystem && RadioPlayerSystem.currentTrack) {
+                const trackName = RadioPlayerSystem.currentTrack.querySelector('.track-name');
+                return trackName ? trackName.textContent : "Unknown";
+            }
+            
             const track = CONFIG.AUDIO.TRACKS[audioSystem.currentTrackIndex];
             return track ? track.NAME : "Unknown";
         };
@@ -190,24 +178,40 @@ const AudioSystem = {
         audioSystem.sfx.jump = loadSoundEffect(CONFIG.AUDIO.SFX.JUMP.URL, 'jump');
         audioSystem.sfx.strike = loadSoundEffect(CONFIG.AUDIO.SFX.STRIKE.URL, 'strike');
 
-        // Set up volume controls
+        // Set up volume controls - now connect to RadioPlayerSystem when possible
         const musicVolumeSlider = document.getElementById('musicVolume');
         if (musicVolumeSlider) {
             musicVolumeSlider.addEventListener('input', (e) => {
-                audioSystem.volumes.music = e.target.value / 100;
-                if (audioSystem.music) audioSystem.music.volume = audioSystem.volumes.music;
+                const volume = e.target.value / 100;
+                audioSystem.volumes.music = volume;
+                
+                // If RadioPlayerSystem exists, sync its volume
+                if (window.RadioPlayerSystem) {
+                    const radioVolumeSlider = document.getElementById('radioVolume');
+                    if (radioVolumeSlider) {
+                        radioVolumeSlider.value = e.target.value;
+                    }
+                    
+                    if (RadioPlayerSystem.audioElement) {
+                        RadioPlayerSystem.audioElement.volume = volume;
+                    }
+                }
             });
         }
 
-        // Add listeners for next/previous track if the elements exist
+        // Add listeners for next/previous track
         const nextTrackBtn = document.getElementById('nextTrack');
         if (nextTrackBtn) {
-            nextTrackBtn.addEventListener('click', () => audioSystem.nextTrack());
+            nextTrackBtn.addEventListener('click', () => {
+                audioSystem.nextTrack();
+            });
         }
         
         const prevTrackBtn = document.getElementById('prevTrack');
         if (prevTrackBtn) {
-            prevTrackBtn.addEventListener('click', () => audioSystem.previousTrack());
+            prevTrackBtn.addEventListener('click', () => {
+                audioSystem.previousTrack();
+            });
         }
 
         const sfxVolumeSlider = document.getElementById('sfxVolume');
@@ -217,6 +221,14 @@ const AudioSystem = {
                 Object.values(audioSystem.sfx).forEach(sfx => {
                     if (sfx) sfx.volume = audioSystem.volumes.sfx;
                 });
+                
+                // If RadioPlayerSystem exists, sync sfx volume
+                if (window.RadioPlayerSystem) {
+                    const radioSfxVolumeSlider = document.getElementById('radioSfxVolume');
+                    if (radioSfxVolumeSlider) {
+                        radioSfxVolumeSlider.value = e.target.value;
+                    }
+                }
             });
         }
 
@@ -234,11 +246,16 @@ const AudioSystem = {
                 audioSystem.context.resume();
             }
             
-            // Start background music after unlocking
-            loadMusic(audioSystem.currentTrackIndex).catch(e => {
-                // Silent catch to prevent uncaught promise
-                console.log("Audio playback waiting for user interaction");
-            });
+            // Start background music via RadioPlayerSystem
+            if (window.RadioPlayerSystem && CONFIG.AUDIO.MUSIC.AUTOPLAY) {
+                // Let RadioPlayerSystem handle autoplay
+                Logger.log("> DELEGATING AUTOPLAY TO RADIO PLAYER");
+            } else {
+                // Direct autoplay as fallback
+                loadMusic(audioSystem.currentTrackIndex).catch(e => {
+                    console.log("Audio playback waiting for user interaction");
+                });
+            }
             
             // Remove the listener after first interaction
             document.removeEventListener('click', unlockAudio);
@@ -354,9 +371,6 @@ const AudioSystem = {
             
             return sound;
         };
-
-        // Preload all tracks
-        audioSystem.preloadTracks();
 
         return audioSystem;
     },

@@ -343,4 +343,59 @@ canvas { width: 100%; height: 100%; }
 /* Hide the existing audio controls since we now have the radio player */
 #audioControls {
     display: none;
+}
+
+/* Add these styles to style.css */
+
+.player-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255, 0, 204, 0.3);
+}
+
+.control-btn {
+    background: none;
+    border: 1px solid #ff00cc;
+    color: #ff00cc;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: monospace;
+}
+
+.control-btn:hover {
+    background: rgba(255, 0, 204, 0.3);
+    box-shadow: 0 0 15px #ff00cc;
+}
+
+#playPauseButton {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+}
+
+.now-playing {
+    text-align: center;
+    margin-bottom: 15px;
+    padding: 5px;
+    background: rgba(25, 0, 20, 0.3);
+    border-radius: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#nowPlaying {
+    font-weight: bold;
+    color: #ffff00;
+    text-shadow: 0 0 10px #ffff00;
 } 

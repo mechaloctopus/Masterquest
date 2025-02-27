@@ -81,6 +81,7 @@ function initGame() {
         
         try {
             audioSystem = AudioSystem.create();
+            // Don't automatically play music here; RadioPlayerSystem will handle it
             Logger.log("> AUDIO SYSTEM INITIALIZED");
         } catch (e) {
             Logger.error("Audio initialization failed: " + e.message);
@@ -146,21 +147,12 @@ function initGame() {
         // Initialize the radio player if it exists
         try {
             if (window.RadioPlayerSystem) {
-                RadioPlayerSystem.init();
-                
-                // If a default track should auto-play
-                if (CONFIG.AUDIO.MUSIC.AUTOPLAY && CONFIG.AUDIO.TRACKS && CONFIG.AUDIO.TRACKS.length > 0) {
-                    setTimeout(() => {
-                        const firstTrack = document.querySelector('.track');
-                        if (firstTrack) {
-                            const url = firstTrack.dataset.url;
-                            RadioPlayerSystem.playTrack(url, firstTrack);
-                        }
-                    }, 1000);
-                }
+                // RadioPlayerSystem will self-initialize on DOM ready
+                // No need to call init() again or set autoplay here
+                Logger.log("> RADIO PLAYER WILL SELF-INITIALIZE");
             }
         } catch (e) {
-            Logger.error("Radio player initialization failed: " + e.message);
+            Logger.error("Radio player reference failed: " + e.message);
         }
 
     } catch (error) {

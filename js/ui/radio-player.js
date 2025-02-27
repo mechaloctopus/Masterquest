@@ -1,16 +1,25 @@
-// Radio Player System
+// Radio Player System - Central Audio Controller
 const RadioPlayerSystem = {
     init: function() {
         this.playerElement = document.getElementById('radioPlayer');
         this.toggleButton = document.getElementById('radioToggle');
         this.volumeSlider = document.getElementById('radioVolume');
         this.sfxVolumeSlider = document.getElementById('radioSfxVolume');
-        this.trackElements = document.querySelectorAll('.track');
+        
+        // Track elements will be populated in loadTracksFromConfig
+        this.trackElements = [];
+        
         this.currentTrack = null;
         this.audioElement = new Audio();
         this.isPlaying = false;
         this.retryCount = 0;
         this.maxRetries = 3;
+        
+        // Add global player controls
+        this.playerControls = document.getElementById('playerControls');
+        this.playPauseBtn = document.getElementById('playPauseButton');
+        this.nextBtn = document.getElementById('nextButton');
+        this.prevBtn = document.getElementById('prevButton');
         
         // Initialize with configuration
         this.setupPlayer();
@@ -26,7 +35,19 @@ const RadioPlayerSystem = {
             this.toggleButton.textContent = '▶ RADIO';
         }
         
+        // Set this object as a global singleton for other systems to access
+        window.RadioPlayer = this;
+        
         Logger.log("> RADIO PLAYER INITIALIZED");
+        
+        // If configured to autoplay, start the default track
+        if (CONFIG.AUDIO.MUSIC.AUTOPLAY && this.trackElements.length > 0) {
+            setTimeout(() => {
+                const trackIndex = CONFIG.AUDIO.MUSIC.CURRENT_TRACK_INDEX || 0;
+                const trackToPlay = this.trackElements[trackIndex] || this.trackElements[0];
+                this.playTrack(trackToPlay.dataset.url, trackToPlay);
+            }, 500);
+        }
     },
     
     setupPlayer: function() {
@@ -36,7 +57,7 @@ const RadioPlayerSystem = {
             this.toggleButton.textContent = this.playerElement.classList.contains('collapsed') ? '▶ RADIO' : '▼';
         });
         
-        // Volume control
+        // Volume control - synchronize all volume controls
         this.volumeSlider.addEventListener('input', (e) => {
             const volume = e.target.value / 100;
             this.audioElement.volume = volume;
@@ -44,9 +65,10 @@ const RadioPlayerSystem = {
             // Update config
             CONFIG.AUDIO.MUSIC.VOLUME = volume;
             
-            // Also update the existing music if it's playing
-            if (window.AudioSystem && AudioSystem.music) {
-                AudioSystem.music.volume = volume;
+            // Update other volume controls that might exist
+            const musicVolumeSlider = document.getElementById('musicVolume');
+            if (musicVolumeSlider) {
+                musicVolumeSlider.value = e.target.value;
             }
         });
         
@@ -54,31 +76,41 @@ const RadioPlayerSystem = {
         this.sfxVolumeSlider.addEventListener('input', (e) => {
             const volume = e.target.value / 100;
             
-            // Update config and existing sfx volumes
+            // Update config 
             CONFIG.UI.AUDIO_CONTROLS.SFX_VOLUME = volume;
             
-            if (window.AudioSystem && AudioSystem.sfx) {
+            // Update AudioSystem's SFX volume if it exists
+            if (window.AudioSystem) {
                 Object.values(AudioSystem.sfx).forEach(sfx => {
                     if (sfx) sfx.volume = volume;
                 });
             }
+            
+            // Update other volume controls that might exist
+            const sfxVolumeSlider = document.getElementById('sfxVolume');
+            if (sfxVolumeSlider) {
+                sfxVolumeSlider.value = e.target.value;
+            }
         });
         
-        // Track play buttons
-        this.trackElements.forEach(track => {
-            const playBtn = track.querySelector('.play-btn');
-            playBtn.addEventListener('click', () => {
-                const url = track.dataset.url;
-                
-                // If this is the current track, toggle play/pause
-                if (this.currentTrack === track) {
-                    this.togglePlayPause();
-                } else {
-                    // Otherwise play the new track
-                    this.playTrack(url, track);
-                }
+        // Set up player controls if they exist
+        if (this.playPauseBtn) {
+            this.playPauseBtn.addEventListener('click', () => {
+                this.togglePlayPause();
             });
-        });
+        }
+        
+        if (this.nextBtn) {
+            this.nextBtn.addEventListener('click', () => {
+                this.playNextTrack();
+            });
+        }
+        
+        if (this.prevBtn) {
+            this.prevBtn.addEventListener('click', () => {
+                this.playPreviousTrack();
+            });
+        }
         
         // Audio end event
         this.audioElement.addEventListener('ended', () => {
@@ -88,15 +120,25 @@ const RadioPlayerSystem = {
         // Add pause/play state tracking
         this.audioElement.addEventListener('play', () => {
             this.isPlaying = true;
-            if (this.currentTrack) {
-                this.currentTrack.querySelector('.play-btn').textContent = '❚❚';
+            // Update all play buttons
+            this.updatePlayButtons('❚❚');
+            
+            // Update the main play/pause button if it exists
+            if (this.playPauseBtn) {
+                this.playPauseBtn.textContent = '❚❚';
+                this.playPauseBtn.setAttribute('aria-label', 'Pause');
             }
         });
         
         this.audioElement.addEventListener('pause', () => {
             this.isPlaying = false;
-            if (this.currentTrack) {
-                this.currentTrack.querySelector('.play-btn').textContent = '▶';
+            // Update all play buttons
+            this.updatePlayButtons('▶');
+            
+            // Update the main play/pause button if it exists
+            if (this.playPauseBtn) {
+                this.playPauseBtn.textContent = '▶';
+                this.playPauseBtn.setAttribute('aria-label', 'Play');
             }
         });
         
@@ -104,7 +146,6 @@ const RadioPlayerSystem = {
         this.audioElement.addEventListener('error', (e) => {
             const errorMessage = e.target.error ? e.target.error.message : "Unknown error";
             Logger.error("Audio error: " + errorMessage);
-            console.error("Audio error details:", e);
             
             // Try to load a fallback track if available
             if (this.retryCount < this.maxRetries) {
@@ -123,8 +164,18 @@ const RadioPlayerSystem = {
                 this.togglePlayPause();
             } else if (e.code === 'KeyN') { // N key for next track
                 this.playNextTrack();
+            } else if (e.code === 'KeyB') { // B key for previous track
+                this.playPreviousTrack();
             }
         });
+    },
+    
+    updatePlayButtons: function(symbol) {
+        // Update the play button in the currently playing track
+        if (this.currentTrack) {
+            const playBtn = this.currentTrack.querySelector('.play-btn');
+            if (playBtn) playBtn.textContent = symbol;
+        }
     },
     
     loadTracksFromConfig: function() {
@@ -140,10 +191,12 @@ const RadioPlayerSystem = {
                 const trackElement = document.createElement('div');
                 trackElement.className = 'track';
                 trackElement.dataset.url = track.URL;
+                trackElement.dataset.name = track.NAME;
                 
                 const playBtn = document.createElement('button');
                 playBtn.className = 'play-btn';
                 playBtn.textContent = '▶';
+                playBtn.setAttribute('aria-label', `Play ${track.NAME}`);
                 
                 const trackName = document.createElement('span');
                 trackName.className = 'track-name';
@@ -156,7 +209,12 @@ const RadioPlayerSystem = {
                 // Preload the track
                 const preloadAudio = new Audio();
                 preloadAudio.preload = 'metadata';
-                preloadAudio.src = track.URL;
+                
+                try {
+                    preloadAudio.src = track.URL;
+                } catch (e) {
+                    Logger.error(`Could not preload track: ${track.NAME} - ${e.message}`);
+                }
                 
                 // Add click event
                 playBtn.addEventListener('click', () => {
@@ -171,12 +229,19 @@ const RadioPlayerSystem = {
             });
             
             // Update track elements reference
-            this.trackElements = document.querySelectorAll('.track');
+            this.trackElements = Array.from(document.querySelectorAll('.track'));
         }
     },
     
     togglePlayPause: function() {
-        if (!this.currentTrack) return;
+        if (!this.currentTrack) {
+            // If no track is active, play the first one
+            if (this.trackElements.length > 0) {
+                const firstTrack = this.trackElements[0];
+                this.playTrack(firstTrack.dataset.url, firstTrack);
+            }
+            return;
+        }
         
         if (this.isPlaying) {
             // Pause the track
@@ -214,10 +279,17 @@ const RadioPlayerSystem = {
         
         // Log attempt
         Logger.log("> PLAYING TRACK: " + url);
+        Logger.log("> TRACK NAME: " + trackElement.dataset.name);
         
         // Add active class
         trackElement.classList.add('active');
         this.currentTrack = trackElement;
+        
+        // Update the current track index in config
+        const trackIndex = this.trackElements.indexOf(trackElement);
+        if (trackIndex >= 0) {
+            CONFIG.AUDIO.MUSIC.CURRENT_TRACK_INDEX = trackIndex;
+        }
         
         // Create a new audio element each time to avoid issues with failed loads
         this.audioElement = new Audio();
@@ -225,15 +297,23 @@ const RadioPlayerSystem = {
         // Set up event listeners
         this.audioElement.addEventListener('play', () => {
             this.isPlaying = true;
-            if (this.currentTrack) {
-                this.currentTrack.querySelector('.play-btn').textContent = '❚❚';
+            this.updatePlayButtons('❚❚');
+            
+            // Update the main play/pause button if it exists
+            if (this.playPauseBtn) {
+                this.playPauseBtn.textContent = '❚❚';
+                this.playPauseBtn.setAttribute('aria-label', 'Pause');
             }
         });
         
         this.audioElement.addEventListener('pause', () => {
             this.isPlaying = false;
-            if (this.currentTrack) {
-                this.currentTrack.querySelector('.play-btn').textContent = '▶';
+            this.updatePlayButtons('▶');
+            
+            // Update the main play/pause button if it exists
+            if (this.playPauseBtn) {
+                this.playPauseBtn.textContent = '▶';
+                this.playPauseBtn.setAttribute('aria-label', 'Play');
             }
         });
         
@@ -244,7 +324,6 @@ const RadioPlayerSystem = {
         this.audioElement.addEventListener('error', (e) => {
             const errorMessage = e.target.error ? e.target.error.message : "Unknown error";
             Logger.error("Audio error: " + errorMessage);
-            console.error("Audio error details:", e);
             
             // Try to play the next track if this one fails
             if (this.retryCount < this.maxRetries) {
@@ -257,26 +336,34 @@ const RadioPlayerSystem = {
         
         // Set volume and load the track
         this.audioElement.volume = this.volumeSlider.value / 100;
-        this.audioElement.src = url;
         
-        // Play it
-        this.audioElement.play().catch(e => {
-            Logger.error("Audio playback prevented: " + e.message);
+        try {
+            this.audioElement.src = url;
             
-            // Try to unlock audio context
-            if (window.AudioSystem && AudioSystem.context) {
-                AudioSystem.context.resume().then(() => {
-                    // Try again after resuming context
-                    this.audioElement.play().catch(err => {
-                        Logger.error("Still could not play audio: " + err.message);
-                    });
-                });
+            // Update the currently playing track display if it exists
+            const nowPlayingElement = document.getElementById('nowPlaying');
+            if (nowPlayingElement) {
+                nowPlayingElement.textContent = trackElement.dataset.name || 'Unknown Track';
             }
-        });
-        
-        // Also stop the main background music if it's playing
-        if (window.AudioSystem && AudioSystem.music) {
-            AudioSystem.music.pause();
+            
+            // Play it
+            this.audioElement.play().catch(e => {
+                Logger.error("Audio playback prevented: " + e.message);
+                
+                // Try to unlock audio context
+                if (window.AudioSystem && AudioSystem.context) {
+                    AudioSystem.context.resume().then(() => {
+                        // Try again after resuming context
+                        this.audioElement.play().catch(err => {
+                            Logger.error("Still could not play audio: " + err.message);
+                        });
+                    });
+                }
+            });
+        } catch (e) {
+            Logger.error(`Error setting audio source: ${e.message}`);
+            // Try next track as fallback
+            setTimeout(() => this.playNextTrack(), 1000);
         }
     },
     
@@ -285,26 +372,61 @@ const RadioPlayerSystem = {
             // If no track is active, play the first one
             if (this.trackElements.length > 0) {
                 const firstTrack = this.trackElements[0];
-                const url = firstTrack.dataset.url;
-                this.playTrack(url, firstTrack);
+                this.playTrack(firstTrack.dataset.url, firstTrack);
             }
             return;
         }
         
         // Find next track (or loop to first)
-        let nextTrack = this.currentTrack.nextElementSibling;
-        if (!nextTrack) {
-            nextTrack = this.trackElements[0];
-        }
+        const currentIndex = this.trackElements.indexOf(this.currentTrack);
+        const nextIndex = (currentIndex + 1) % this.trackElements.length;
+        const nextTrack = this.trackElements[nextIndex];
         
         // Play next track
-        const url = nextTrack.dataset.url;
-        this.playTrack(url, nextTrack);
+        if (nextTrack) {
+            this.playTrack(nextTrack.dataset.url, nextTrack);
+        }
+    },
+    
+    playPreviousTrack: function() {
+        if (!this.currentTrack) {
+            // If no track is active, play the first one
+            if (this.trackElements.length > 0) {
+                const firstTrack = this.trackElements[0];
+                this.playTrack(firstTrack.dataset.url, firstTrack);
+            }
+            return;
+        }
+        
+        // Find previous track (or loop to last)
+        const currentIndex = this.trackElements.indexOf(this.currentTrack);
+        const prevIndex = (currentIndex - 1 + this.trackElements.length) % this.trackElements.length;
+        const prevTrack = this.trackElements[prevIndex];
+        
+        // Play previous track
+        if (prevTrack) {
+            this.playTrack(prevTrack.dataset.url, prevTrack);
+        }
+    },
+    
+    // Utility methods that other systems can use
+    getAudioElement: function() {
+        return this.audioElement;
+    },
+    
+    isAudioPlaying: function() {
+        return this.isPlaying;
+    },
+    
+    getCurrentTrackName: function() {
+        return this.currentTrack ? 
+            this.currentTrack.dataset.name || this.currentTrack.querySelector('.track-name').textContent : 
+            "No track playing";
     }
 };
 
 // Initialize when document is ready
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize after a small delay to ensure other systems are ready
-    setTimeout(() => RadioPlayerSystem.init(), 100);
+    setTimeout(() => RadioPlayerSystem.init(), 200);
 }); 
