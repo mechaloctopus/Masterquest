@@ -73,20 +73,20 @@ const CONFIG = {
         },
         TRACKS: [
             {
-                NAME: "Synthwave Dreams",
-                URL: "assets/audio/synthwave-dreams.mp3"
+                NAME: "vhs",
+                URL: "audio/vhs.mp3"
             },
             {
-                NAME: "Neon Streets",
-                URL: "assets/audio/neon-streets.mp3"
+                NAME: "happy airlines",
+                URL: "audio/happyairlines.wav"
             },
             {
-                NAME: "Digital Pulse",
-                URL: "assets/audio/digital-pulse.mp3"
+                NAME: "klaxon",
+                URL: "audio/klaxon.wav"
             },
             {
-                NAME: "Cyber Future",
-                URL: "assets/audio/cyber-future.mp3"
+                NAME: "video game land",
+                URL: "audio/videogameland.wav"
             }
         ]
     },
