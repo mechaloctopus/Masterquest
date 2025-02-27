@@ -37,7 +37,7 @@ const CONFIG = {
         SIDE_OFFSET: "20px",
         BACKGROUND: "rgba(255,105,180,0.2)",
         STRIKE: {
-            SPEED: 0.005,
+            SPEED: 0.05,
             DISTANCE: 200,
             EASING: "sine"  // "sine", "elastic", "bounce"
         }
