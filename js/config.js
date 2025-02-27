@@ -8,7 +8,7 @@ const CONFIG = {
     GRID: {
         SIZE: 50,
         SPACING: 2,
-        COLOR: {r: 0.75, g: 0, b: 1}
+        COLOR: {r: 0, g: 1, b: 0}
     },
     HANDS: {
         SIZE: "80px",
@@ -28,7 +28,7 @@ const CONFIG = {
     },
     AUDIO: {
         MUSIC: {
-            URL: "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Soft_and_Furious/Emotion_Promo_EP/Soft_and_Furious_-_03_-_The_Reckoning.mp3",
+            URL: "https://cdn.freesound.org/previews/558/558657_7741937-lq.mp3",
             VOLUME: 0.5,
             AUTOPLAY: true
         },
@@ -47,5 +47,12 @@ const CONFIG = {
             }
         }
     },
-    ANIMATION_SPEED: 10 // Controls bobbing speed
+    ANIMATION_SPEED: 10, // Controls bobbing speed
+    SKYBOX: {
+        TOP_COLOR: "#000011", // Almost black with slight blue tint
+        BOTTOM_COLOR: "#000022", // Very dark blue
+        STAR_COUNT: 2000,      // More stars
+        STAR_SIZE_MIN: 0.1,    // Smaller minimum star size
+        STAR_SIZE_MAX: 0.6     // Larger maximum star size
+    }
 }; 
