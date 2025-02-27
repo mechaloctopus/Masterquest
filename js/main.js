@@ -143,6 +143,26 @@ function initGame() {
             Logger.error("Birthday text initialization failed: " + e.message);
         }
 
+        // Initialize the radio player if it exists
+        try {
+            if (window.RadioPlayerSystem) {
+                RadioPlayerSystem.init();
+                
+                // If a default track should auto-play
+                if (CONFIG.AUDIO.MUSIC.AUTOPLAY && CONFIG.AUDIO.TRACKS && CONFIG.AUDIO.TRACKS.length > 0) {
+                    setTimeout(() => {
+                        const firstTrack = document.querySelector('.track');
+                        if (firstTrack) {
+                            const url = firstTrack.dataset.url;
+                            RadioPlayerSystem.playTrack(url, firstTrack);
+                        }
+                    }, 1000);
+                }
+            }
+        } catch (e) {
+            Logger.error("Radio player initialization failed: " + e.message);
+        }
+
     } catch (error) {
         Logger.error(error.message);
         // Try to recover with a basic scene

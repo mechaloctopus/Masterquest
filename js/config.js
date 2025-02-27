@@ -53,9 +53,8 @@ const CONFIG = {
     // AUDIO SETTINGS
     AUDIO: {
         MUSIC: {
-            URL: "https://cdn.freesound.org/previews/558/558657_7741937-lq.mp3",
             VOLUME: 0.5,
-            AUTOPLAY: true
+            AUTOPLAY: false
         },
         SFX: {
             FOOTSTEPS: {

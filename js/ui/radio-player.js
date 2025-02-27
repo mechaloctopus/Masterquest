@@ -8,6 +8,7 @@ const RadioPlayerSystem = {
         this.trackElements = document.querySelectorAll('.track');
         this.currentTrack = null;
         this.audioElement = new Audio();
+        this.isPlaying = false;
         
         // Initialize with configuration
         this.setupPlayer();
@@ -16,6 +17,12 @@ const RadioPlayerSystem = {
         // Set starting volumes from config
         this.volumeSlider.value = CONFIG.AUDIO.MUSIC.VOLUME * 100;
         this.sfxVolumeSlider.value = CONFIG.UI.AUDIO_CONTROLS.SFX_VOLUME * 100;
+        
+        // Initially collapse if configured
+        if (CONFIG.UI.AUDIO_CONTROLS.COLLAPSED_BY_DEFAULT) {
+            this.playerElement.classList.add('collapsed');
+            this.toggleButton.textContent = '▶ RADIO';
+        }
         
         Logger.log("> RADIO PLAYER INITIALIZED");
     },
@@ -60,13 +67,44 @@ const RadioPlayerSystem = {
             const playBtn = track.querySelector('.play-btn');
             playBtn.addEventListener('click', () => {
                 const url = track.dataset.url;
-                this.playTrack(url, track);
+                
+                // If this is the current track, toggle play/pause
+                if (this.currentTrack === track) {
+                    this.togglePlayPause();
+                } else {
+                    // Otherwise play the new track
+                    this.playTrack(url, track);
+                }
             });
         });
         
         // Audio end event
         this.audioElement.addEventListener('ended', () => {
             this.playNextTrack();
+        });
+        
+        // Add pause/play state tracking
+        this.audioElement.addEventListener('play', () => {
+            this.isPlaying = true;
+            if (this.currentTrack) {
+                this.currentTrack.querySelector('.play-btn').textContent = '❚❚';
+            }
+        });
+        
+        this.audioElement.addEventListener('pause', () => {
+            this.isPlaying = false;
+            if (this.currentTrack) {
+                this.currentTrack.querySelector('.play-btn').textContent = '▶';
+            }
+        });
+        
+        // Add keyboard shortcuts for music control
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyM') { // M key to toggle play/pause
+                this.togglePlayPause();
+            } else if (e.code === 'KeyN') { // N key for next track
+                this.playNextTrack();
+            }
         });
     },
     
@@ -91,7 +129,13 @@ const RadioPlayerSystem = {
                 // Add click handler
                 const playBtn = trackElement.querySelector('.play-btn');
                 playBtn.addEventListener('click', () => {
-                    this.playTrack(trackConfig.URL, trackElement);
+                    // If this is the current track, toggle play/pause
+                    if (this.currentTrack === trackElement) {
+                        this.togglePlayPause();
+                    } else {
+                        // Otherwise play the new track
+                        this.playTrack(trackConfig.URL, trackElement);
+                    }
                 });
                 
                 trackList.appendChild(trackElement);
@@ -102,10 +146,25 @@ const RadioPlayerSystem = {
         }
     },
     
+    togglePlayPause: function() {
+        if (!this.currentTrack) return;
+        
+        if (this.isPlaying) {
+            // Pause the track
+            this.audioElement.pause();
+            // UI will update through the pause event listener
+        } else {
+            // Resume playing
+            this.audioElement.play().catch(e => {
+                Logger.warning("Audio resume prevented: " + e.message);
+            });
+            // UI will update through the play event listener
+        }
+    },
+    
     playTrack: function(url, trackElement) {
         // Stop current track
         this.audioElement.pause();
-        this.audioElement.currentTime = 0;
         
         // Remove active class from all tracks
         this.trackElements.forEach(track => {
@@ -114,23 +173,17 @@ const RadioPlayerSystem = {
         
         // Set new track
         this.audioElement.src = url;
+        this.audioElement.currentTime = 0;
         this.audioElement.volume = this.volumeSlider.value / 100;
         
         // Add active class
         trackElement.classList.add('active');
-        trackElement.querySelector('.play-btn').textContent = '❚❚';
         this.currentTrack = trackElement;
         
         // Play it
         this.audioElement.play().catch(e => {
             Logger.warning("Audio autoplay prevented: " + e.message);
-            // UI feedback
-            trackElement.querySelector('.play-btn').textContent = '▶';
-        });
-        
-        // Update button when playing
-        this.audioElement.addEventListener('playing', () => {
-            trackElement.querySelector('.play-btn').textContent = '❚❚';
+            // UI feedback is handled by the pause event
         });
         
         // Also stop the main background music if it's playing
@@ -147,9 +200,6 @@ const RadioPlayerSystem = {
         if (!nextTrack) {
             nextTrack = this.trackElements[0];
         }
-        
-        // Reset current play button
-        this.currentTrack.querySelector('.play-btn').textContent = '▶';
         
         // Play next track
         const url = nextTrack.dataset.url;
