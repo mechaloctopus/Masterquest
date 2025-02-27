@@ -32,69 +32,83 @@ const BirthdayTextSystem = {
                 // Clear the context
                 ctx.clearRect(0, 0, textSize, 200);
                 
-                // Create synthwave gradient for text
+                // Create metallic gradient for synthwave look
                 const gradient = ctx.createLinearGradient(0, 0, 0, 180);
                 
                 // Use different color schemes based on input color
                 if (color === CONFIG.BIRTHDAY.COLORS.PRIMARY) {
-                    gradient.addColorStop(0, "#00FFFF"); // Cyan
-                    gradient.addColorStop(0.5, "#0099FF"); // Light blue
-                    gradient.addColorStop(1, "#0066FF"); // Darker blue
+                    // Metallic blue/cyan gradient
+                    gradient.addColorStop(0.0, "#FFFFFF"); // White highlight
+                    gradient.addColorStop(0.2, "#00FFFF"); // Cyan
+                    gradient.addColorStop(0.5, "#0099FF"); // Blue
+                    gradient.addColorStop(0.8, "#0055FF"); // Darker blue
+                    gradient.addColorStop(1.0, "#00CCFF"); // Light blue edge
                 } else {
-                    gradient.addColorStop(0, "#FF69B4"); // Hot pink
+                    // Metallic pink/purple gradient
+                    gradient.addColorStop(0.0, "#FFFFFF"); // White highlight
+                    gradient.addColorStop(0.2, "#FF69B4"); // Hot pink
                     gradient.addColorStop(0.5, "#FF00FF"); // Magenta
-                    gradient.addColorStop(1, "#9400D3"); // Purple
+                    gradient.addColorStop(0.8, "#9400D3"); // Purple
+                    gradient.addColorStop(1.0, "#FF33CC"); // Light pink edge
                 }
                 
-                // Draw text with gradient and glow
-                ctx.fillStyle = "#000000"; // Black background
-                ctx.fillRect(0, 0, textSize, 200);
-                
-                // Draw glowing outline
-                ctx.font = "bold 110px Arial";
+                // Use better font for synthwave
+                const fontSize = textSize * 0.75;
+                ctx.font = "bold " + fontSize + "px 'Segoe UI', Tahoma, sans-serif";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                ctx.shadowColor = color === CONFIG.BIRTHDAY.COLORS.PRIMARY ? "#00FFFF" : "#FF00FF";
-                ctx.shadowBlur = 15;
-                ctx.strokeStyle = "#FFFFFF";
-                ctx.lineWidth = 8;
-                ctx.strokeText(text, textSize / 2, 100);
                 
-                // Draw text with gradient
+                // Add multiple shadow and glow layers for more depth
+                // Outer glow
+                const glowColor = color === CONFIG.BIRTHDAY.COLORS.PRIMARY ? "#00FFFF" : "#FF00FF";
+                ctx.shadowColor = glowColor;
+                ctx.shadowBlur = 25;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+                
+                // Draw the text with gradient fill
                 ctx.fillStyle = gradient;
                 ctx.fillText(text, textSize / 2, 100);
                 
-                // Draw grid lines for synthwave effect
-                ctx.strokeStyle = "#444444";
-                ctx.lineWidth = 1;
-                for (let i = 0; i < 10; i++) {
-                    const y = i * 20;
-                    ctx.beginPath();
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(textSize, y);
-                    ctx.stroke();
-                }
+                // Add subtle inner shadow for 3D metallic effect
+                ctx.shadowColor = "#000000";
+                ctx.shadowBlur = 1;
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "#FFFFFF";
+                ctx.strokeText(text, textSize / 2, 100);
                 
-                // Update the texture
+                // Update texture
                 textTexture.update();
                 
-                // Create a plane for the text
-                const plane = BABYLON.MeshBuilder.CreatePlane("plane_" + text, {
-                    width: text.length * scale,
+                // Create plane for the text
+                const plane = BABYLON.MeshBuilder.CreatePlane("textPlane_" + text, {
+                    width: textSize / 100 * scale,
                     height: 2 * scale
                 }, scene);
                 
-                // Create material and apply texture
-                const material = new BABYLON.StandardMaterial("textMat_" + text, scene);
+                // Create material with the texture
+                const material = new BABYLON.StandardMaterial("textMaterial_" + text, scene);
                 material.diffuseTexture = textTexture;
-                material.emissiveTexture = textTexture;
-                material.specularColor = new BABYLON.Color3(0, 0, 0);
-                material.backFaceCulling = false;
+                material.specularColor = new BABYLON.Color3(1, 1, 1);
+                material.emissiveColor = color === CONFIG.BIRTHDAY.COLORS.PRIMARY 
+                    ? new BABYLON.Color3(0, 0.7, 1) // Cyan glow
+                    : new BABYLON.Color3(1, 0, 0.7); // Pink glow
                 material.useAlphaFromDiffuseTexture = true;
                 
-                // Apply material and position
+                // Assign material to plane
                 plane.material = material;
+                
+                // Position the plane
                 plane.position.y = yPosition;
+                
+                // Add metallic reflection
+                plane.material.reflectionTexture = new BABYLON.MirrorTexture("mirror", 1024, scene);
+                plane.material.reflectionTexture.mirrorPlane = new BABYLON.Plane(0, -1, 0, -0.5);
+                plane.material.reflectionTexture.level = 0.5;
+                
+                // Parent to the container
                 plane.parent = textParent;
                 
                 return plane;
@@ -103,7 +117,7 @@ const BirthdayTextSystem = {
             // Create the three text lines with config values
             const happyText = createTextPlane("HAPPY", CONFIG.BIRTHDAY.COLORS.PRIMARY, 2, CONFIG.BIRTHDAY.SCALE, scene);
             const birthdayText = createTextPlane("BIRTHDAY", CONFIG.BIRTHDAY.COLORS.PRIMARY, 0, CONFIG.BIRTHDAY.SCALE, scene);
-            const marcusText = createTextPlane(CONFIG.BIRTHDAY.RECIPIENT_NAME + "!", CONFIG.BIRTHDAY.COLORS.SECONDARY, -2.5, CONFIG.BIRTHDAY.SCALE * 1.5, scene);
+            const marcusText = createTextPlane(CONFIG.BIRTHDAY.RECIPIENT_NAME, CONFIG.BIRTHDAY.COLORS.SECONDARY, -2.5, CONFIG.BIRTHDAY.SCALE * 1.5, scene);
             
             // Add glow layer
             const glowLayer = new BABYLON.GlowLayer("birthdayGlow", scene);

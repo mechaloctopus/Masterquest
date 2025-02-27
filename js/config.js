@@ -73,7 +73,7 @@ const CONFIG = {
         TRACKS: [
             {
                 NAME: "Synthwave Dreams",
-                URL: "https://cdn.freesound.org/previews/558/558657_7741937-lq.mp3"
+                URL: "https://freesound.org/people/Doctor_Dreamchip/sounds/523808/"
             },
             {
                 NAME: "Neon Streets",
@@ -105,7 +105,8 @@ const CONFIG = {
         COLORS: {
             PRIMARY: "cyan",
             SECONDARY: "pink",
-            GLOW_INTENSITY: 1.5
+            GLOW_INTENSITY: 1.5,
+            METALLIC: true  // New option to enable metallic effect
         },
         ANIMATION: {
             BOB_HEIGHT: 0.5,
