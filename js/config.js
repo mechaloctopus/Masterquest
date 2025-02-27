@@ -59,15 +59,15 @@ const CONFIG = {
         },
         SFX: {
             FOOTSTEPS: {
-                URL: "https://freesound.org/data/previews/147/147054_2538033-lq.mp3",
+                URL: "js/audio/footsteps.mp3",
                 VOLUME: 0.2
             },
             JUMP: {
-                URL: "https://freesound.org/data/previews/369/369515_6687660-lq.mp3",
+                URL: "js/audio/jump.mp3",
                 VOLUME: 0.4
             },
             STRIKE: {
-                URL: "https://freesound.org/data/previews/320/320775_5260872-lq.mp3",
+                URL: "js/audio/strike.wav",
                 VOLUME: 0.5
             }
         },
@@ -100,7 +100,7 @@ const CONFIG = {
     // BIRTHDAY SETTINGS
     BIRTHDAY: {
         SHOW_MESSAGE: true,
-        RECIPIENT_NAME: "MARCUS",
+        RECIPIENT_NAME: "MASTERQUEST",
         TEXT_POSITION: {x: 0, y: 4, z: -15},
         SCALE: 0.6,
         COLORS: {
