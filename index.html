@@ -13,7 +13,10 @@
 </head>
 <body>
     <canvas id="renderCanvas"></canvas>
-    <div id="log"></div>
+    <div id="log">
+        <button id="logToggle">▼</button>
+        <div id="logContent"></div>
+    </div>
     <div id="leftJoystick" class="joystick-container"></div>
     <div id="rightJoystick" class="joystick-container"></div>
     <div id="leftHand" class="hand"></div>
@@ -54,6 +57,9 @@
     <!-- Move these scripts BEFORE main.js so they're defined when main.js uses them -->
     <script src="js/birthday/birthday-text.js"></script>
     <script src="js/birthday/fireworks.js"></script>
+
+    <!-- Add this before the main.js script -->
+    <script src="js/ui/logger-toggle.js"></script>
 
     <!-- Main Game Loop -->
     <script src="js/main.js"></script>
