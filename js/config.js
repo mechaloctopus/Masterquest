@@ -54,7 +54,8 @@ const CONFIG = {
     AUDIO: {
         MUSIC: {
             VOLUME: 0.5,
-            AUTOPLAY: false
+            AUTOPLAY: false,
+            CURRENT_TRACK_INDEX: 0 // Track the currently playing track
         },
         SFX: {
             FOOTSTEPS: {
@@ -73,19 +74,19 @@ const CONFIG = {
         TRACKS: [
             {
                 NAME: "Synthwave Dreams",
-                URL: "https://freesound.org/data/previews/523/523808_10479542-lq.mp3"
+                URL: "assets/audio/synthwave-dreams.mp3"
             },
             {
                 NAME: "Neon Streets",
-                URL: "https://freesound.org/data/previews/415/415992_7665684-lq.mp3"
+                URL: "assets/audio/neon-streets.mp3"
             },
             {
                 NAME: "Digital Pulse",
-                URL: "https://freesound.org/data/previews/382/382738_7256827-lq.mp3"
+                URL: "assets/audio/digital-pulse.mp3"
             },
             {
                 NAME: "Cyber Future",
-                URL: "https://freesound.org/data/previews/323/323706_5260872-lq.mp3"
+                URL: "assets/audio/cyber-future.mp3"
             }
         ]
     },

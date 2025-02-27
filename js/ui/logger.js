@@ -11,42 +11,71 @@ const Logger = (function() {
         }
     }
     
-    // Add log entry to the console
+    // Log a message
     function log(message) {
         if (!logContentElement) {
             init();
         }
         
-        console.log(message); // Also log to browser console
+        // Add message to log
+        const messageElement = document.createElement('div');
+        messageElement.className = 'log-message';
+        messageElement.textContent = message;
         
-        if (logContentElement) {
-            const entry = document.createElement('div');
-            entry.innerHTML = message;
-            logContentElement.appendChild(entry);
-        }
+        // Add to DOM
+        logContentElement.appendChild(messageElement);
+        
+        // Auto-scroll to bottom
+        logContentElement.scrollTop = logContentElement.scrollHeight;
+        
+        // Also log to console
+        console.log(message);
     }
     
-    // Log error message
+    // Log an error message
     function error(message) {
         if (!logContentElement) {
             init();
         }
         
-        console.error(message); // Also log to browser console
+        // Add error message to log
+        const errorElement = document.createElement('div');
+        errorElement.className = 'log-message log-error';
+        errorElement.textContent = "ERROR: " + message;
         
-        if (logContentElement) {
-            const entry = document.createElement('div');
-            entry.innerHTML = `<span style="color: #ff0000;">ERROR: ${message}</span>`;
-            logContentElement.appendChild(entry);
-        }
+        // Add to DOM
+        logContentElement.appendChild(errorElement);
+        
+        // Auto-scroll to bottom
+        logContentElement.scrollTop = logContentElement.scrollHeight;
+        
+        // Also log to console
+        console.error(message);
     }
     
-    // Clear all log entries
-    function clear() {
+    // Log a warning message (added function)
+    function warning(message) {
         if (!logContentElement) {
             init();
         }
         
+        // Add warning message to log
+        const warningElement = document.createElement('div');
+        warningElement.className = 'log-message log-warning';
+        warningElement.textContent = "WARNING: " + message;
+        
+        // Add to DOM
+        logContentElement.appendChild(warningElement);
+        
+        // Auto-scroll to bottom
+        logContentElement.scrollTop = logContentElement.scrollHeight;
+        
+        // Also log to console
+        console.warn(message);
+    }
+    
+    // Clear the log
+    function clear() {
         if (logContentElement) {
             logContentElement.innerHTML = '';
         }
@@ -57,6 +86,7 @@ const Logger = (function() {
         init,
         log,
         error,
+        warning, // Add this to the public API
         clear
     };
 })(); 

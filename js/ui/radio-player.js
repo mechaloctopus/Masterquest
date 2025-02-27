@@ -109,36 +109,41 @@ const RadioPlayerSystem = {
     },
     
     loadTracksFromConfig: function() {
-        // If tracks are defined in CONFIG, use those instead
+        const trackList = document.querySelector('.track-list');
+        if (!trackList) return;
+        
+        // Clear existing tracks
+        trackList.innerHTML = '';
+        
+        // Add tracks from config
         if (CONFIG.AUDIO.TRACKS && CONFIG.AUDIO.TRACKS.length > 0) {
-            // Clear existing tracks
-            const trackList = document.querySelector('.track-list');
-            trackList.innerHTML = '';
-            
-            // Add tracks from config
-            CONFIG.AUDIO.TRACKS.forEach(trackConfig => {
+            CONFIG.AUDIO.TRACKS.forEach(track => {
                 const trackElement = document.createElement('div');
                 trackElement.className = 'track';
-                trackElement.dataset.url = trackConfig.URL;
+                trackElement.dataset.url = track.URL;
                 
-                trackElement.innerHTML = `
-                    <button class="play-btn">▶</button>
-                    <span class="track-name">${trackConfig.NAME}</span>
-                `;
+                const playBtn = document.createElement('button');
+                playBtn.className = 'play-btn';
+                playBtn.textContent = '▶';
                 
-                // Add click handler
-                const playBtn = trackElement.querySelector('.play-btn');
+                const trackName = document.createElement('span');
+                trackName.className = 'track-name';
+                trackName.textContent = track.NAME;
+                
+                trackElement.appendChild(playBtn);
+                trackElement.appendChild(trackName);
+                trackList.appendChild(trackElement);
+                
+                // Add click event
                 playBtn.addEventListener('click', () => {
                     // If this is the current track, toggle play/pause
                     if (this.currentTrack === trackElement) {
                         this.togglePlayPause();
                     } else {
                         // Otherwise play the new track
-                        this.playTrack(trackConfig.URL, trackElement);
+                        this.playTrack(track.URL, trackElement);
                     }
                 });
-                
-                trackList.appendChild(trackElement);
             });
             
             // Update track elements reference
@@ -156,7 +161,7 @@ const RadioPlayerSystem = {
         } else {
             // Resume playing
             this.audioElement.play().catch(e => {
-                Logger.warning("Audio resume prevented: " + e.message);
+                Logger.error("Audio resume prevented: " + e.message);
             });
             // UI will update through the play event listener
         }
@@ -180,9 +185,13 @@ const RadioPlayerSystem = {
         trackElement.classList.add('active');
         this.currentTrack = trackElement;
         
+        // Add this to the playTrack method right before playing
+        Logger.log("> PLAYING TRACK: " + url);
+        console.log("Playing track with URL:", url);
+        
         // Play it
         this.audioElement.play().catch(e => {
-            Logger.warning("Audio autoplay prevented: " + e.message);
+            Logger.error("Audio autoplay prevented: " + e.message);
             // UI feedback is handled by the pause event
         });
         
@@ -190,6 +199,12 @@ const RadioPlayerSystem = {
         if (window.AudioSystem && AudioSystem.music) {
             AudioSystem.music.pause();
         }
+        
+        // And also add an event listener for errors
+        this.audioElement.addEventListener('error', (e) => {
+            Logger.error("Audio error: " + (e.message || "Unknown error"));
+            console.error("Audio error details:", e);
+        });
     },
     
     playNextTrack: function() {

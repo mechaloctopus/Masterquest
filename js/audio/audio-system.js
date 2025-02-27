@@ -5,6 +5,7 @@ const AudioSystem = {
         const audioSystem = {
             context: new (window.AudioContext || window.webkitAudioContext)(),
             music: null,
+            currentTrackIndex: CONFIG.AUDIO.MUSIC.CURRENT_TRACK_INDEX || 0,
             sfx: {
                 footsteps: null,
                 jump: null,
@@ -23,21 +24,57 @@ const AudioSystem = {
             }
         };
 
-        // Load background music
-        const loadMusic = () => {
-            const music = new Audio(CONFIG.AUDIO.MUSIC.URL);
+        // Load background music with track selection
+        const loadMusic = (trackIndex = 0) => {
+            // Stop current music if it exists
+            if (audioSystem.music) {
+                audioSystem.music.pause();
+                audioSystem.music.currentTime = 0;
+            }
+            
+            // Get track from config
+            const tracks = CONFIG.AUDIO.TRACKS;
+            if (!tracks || !tracks.length) {
+                Logger.error("No music tracks configured");
+                return Promise.resolve();
+            }
+            
+            // Ensure track index is valid
+            audioSystem.currentTrackIndex = (trackIndex + tracks.length) % tracks.length;
+            const track = tracks[audioSystem.currentTrackIndex];
+            
+            // Create and configure audio element
+            const music = new Audio(track.URL);
             music.loop = true;
             music.volume = audioSystem.volumes.music;
+            
             music.addEventListener('canplaythrough', () => {
                 audioSystem.loaded.music = true;
-                Logger.log("> MUSIC READY");
+                Logger.log(`> MUSIC READY: ${track.NAME}`);
             });
-            music.addEventListener('error', () => 
-                Logger.warning("Background music failed to load"));
+            
+            music.addEventListener('error', (e) => {
+                Logger.error(`Background music failed to load: ${track.NAME}`, e);
+            });
+            
             audioSystem.music = music;
             return music.play().catch(e => {
-                Logger.warning("Music autoplay prevented: " + e.message);
+                Logger.error("Music autoplay prevented: " + e.message);
             });
+        };
+
+        // Add radio functionality
+        audioSystem.nextTrack = function() {
+            return loadMusic(audioSystem.currentTrackIndex + 1);
+        };
+        
+        audioSystem.previousTrack = function() {
+            return loadMusic(audioSystem.currentTrackIndex - 1);
+        };
+        
+        audioSystem.getCurrentTrackInfo = function() {
+            const track = CONFIG.AUDIO.TRACKS[audioSystem.currentTrackIndex];
+            return track ? track.NAME : "Unknown";
         };
 
         // Load sound effects
@@ -47,10 +84,10 @@ const AudioSystem = {
                 audioSystem.loaded[type] = true;
             });
             sound.onerror = () => {
-                Logger.warning(`Sound effect failed to load: ${url}`);
+                Logger.error(`Sound effect failed to load: ${url}`);
             };
             sound.addEventListener('error', () => 
-                Logger.warning(`Sound effect failed to load: ${url}`));
+                Logger.error(`Sound effect failed to load: ${url}`));
             sound.volume = audioSystem.volumes.sfx;
             return sound;
         };
@@ -61,11 +98,22 @@ const AudioSystem = {
         audioSystem.sfx.jump = loadSoundEffect(CONFIG.AUDIO.SFX.JUMP.URL, 'jump');
         audioSystem.sfx.strike = loadSoundEffect(CONFIG.AUDIO.SFX.STRIKE.URL, 'strike');
 
-        // Set up volume controls
+        // Set up volume controls and add track controls
         document.getElementById('musicVolume').addEventListener('input', (e) => {
             audioSystem.volumes.music = e.target.value / 100;
             if (audioSystem.music) audioSystem.music.volume = audioSystem.volumes.music;
         });
+
+        // Add listeners for next/previous track if the elements exist
+        const nextTrackBtn = document.getElementById('nextTrack');
+        if (nextTrackBtn) {
+            nextTrackBtn.addEventListener('click', () => audioSystem.nextTrack());
+        }
+        
+        const prevTrackBtn = document.getElementById('prevTrack');
+        if (prevTrackBtn) {
+            prevTrackBtn.addEventListener('click', () => audioSystem.previousTrack());
+        }
 
         document.getElementById('sfxVolume').addEventListener('input', (e) => {
             audioSystem.volumes.sfx = e.target.value / 100;
@@ -75,12 +123,12 @@ const AudioSystem = {
         });
 
         // Start background music (requires user interaction first on most browsers)
-        document.addEventListener('click', () => loadMusic(), {once: true});
+        document.addEventListener('click', () => loadMusic(audioSystem.currentTrackIndex), {once: true});
         
         // Add a general error handler for audio context issues
         audioSystem.context.addEventListener('statechange', () => {
             if (audioSystem.context.state === 'interrupted') 
-                Logger.warning("Audio context interrupted");
+                Logger.error("Audio context interrupted");
         });
         
         // Helper function to safely play sounds
