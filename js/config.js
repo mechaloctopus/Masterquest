@@ -70,7 +70,25 @@ const CONFIG = {
                 URL: "https://freesound.org/data/previews/320/320775_5260872-lq.mp3",
                 VOLUME: 0.5
             }
-        }
+        },
+        TRACKS: [
+            {
+                NAME: "Synthwave Dreams",
+                URL: "https://cdn.freesound.org/previews/558/558657_7741937-lq.mp3"
+            },
+            {
+                NAME: "Neon Streets",
+                URL: "https://freesound.org/data/previews/415/415992_7665684-lq.mp3"
+            },
+            {
+                NAME: "Digital Pulse",
+                URL: "https://freesound.org/data/previews/382/382738_7256827-lq.mp3"
+            },
+            {
+                NAME: "Cyber Future",
+                URL: "https://freesound.org/data/previews/323/323706_5260872-lq.mp3"
+            }
+        ]
     },
     
     // ANIMATION SETTINGS
@@ -138,6 +156,10 @@ const CONFIG = {
         JOYSTICKS: {
             SIZE: 80,
             COLOR: "#00ff00"
+        },
+        AUDIO_CONTROLS: {
+            SFX_VOLUME: 0.7,
+            COLLAPSED_BY_DEFAULT: true
         }
     }
 }; 

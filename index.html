@@ -62,7 +62,48 @@
     <!-- Add this before the main.js script -->
     <script src="js/ui/logger-toggle.js"></script>
 
+    <!-- Add this script before the main.js script -->
+    <script src="js/ui/radio-player.js"></script>
+
     <!-- Main Game Loop -->
     <script src="js/main.js"></script>
+
+    <!-- Add this before the closing </body> tag -->
+    <div id="radioPlayer" class="radio-player">
+        <div class="radio-header">
+            <button id="radioToggle">▼</button>
+            <span class="radio-title">RADIO PLAYER</span>
+        </div>
+        <div class="radio-content">
+            <div class="volume-controls">
+                <div class="slider-container">
+                    <input type="range" id="radioVolume" min="0" max="100" value="50">
+                    <label for="radioVolume">MUSIC</label>
+                </div>
+                <div class="slider-container">
+                    <input type="range" id="radioSfxVolume" min="0" max="100" value="70">
+                    <label for="radioSfxVolume">SFX</label>
+                </div>
+            </div>
+            <div class="track-list">
+                <div class="track" data-url="https://cdn.freesound.org/previews/558/558657_7741937-lq.mp3">
+                    <button class="play-btn">▶</button>
+                    <span class="track-name">Synthwave Dreams</span>
+                </div>
+                <div class="track" data-url="https://freesound.org/data/previews/415/415992_7665684-lq.mp3">
+                    <button class="play-btn">▶</button>
+                    <span class="track-name">Neon Streets</span>
+                </div>
+                <div class="track" data-url="https://freesound.org/data/previews/382/382738_7256827-lq.mp3">
+                    <button class="play-btn">▶</button>
+                    <span class="track-name">Digital Pulse</span>
+                </div>
+                <div class="track" data-url="https://freesound.org/data/previews/323/323706_5260872-lq.mp3">
+                    <button class="play-btn">▶</button>
+                    <span class="track-name">Cyber Future</span>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
