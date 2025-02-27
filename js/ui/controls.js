@@ -149,8 +149,20 @@ const ControlSystem = {
             return;
         }
         
-        // Set strike state but don't rely on hands animation
+        // Set strike state
         state.striking = true;
+        state.strikeProgress = 0; // Reset progress
+        
+        // Add striking class to right hand for visual effect
+        const rightHand = document.getElementById('rightHand');
+        if (rightHand) {
+            rightHand.classList.add('striking');
+            
+            // Remove the class after the animation completes
+            setTimeout(() => {
+                rightHand.classList.remove('striking');
+            }, 500);
+        }
         
         // Play sound
         if (audioSystem && audioSystem.sfx && audioSystem.sfx.strike) {
@@ -177,10 +189,27 @@ const ControlSystem = {
             }, 200);
         }
         
-        // Reset strike state after a delay
+        // Add screen flash effect for more impact
+        const flashElement = document.createElement('div');
+        flashElement.style.position = 'fixed';
+        flashElement.style.top = '0';
+        flashElement.style.left = '0';
+        flashElement.style.width = '100%';
+        flashElement.style.height = '100%';
+        flashElement.style.backgroundColor = 'rgba(255, 0, 255, 0.15)';
+        flashElement.style.pointerEvents = 'none';
+        flashElement.style.zIndex = '9';
+        flashElement.style.opacity = '1';
+        flashElement.style.transition = 'opacity 0.2s ease-out';
+        document.body.appendChild(flashElement);
+        
+        // Fade out and remove the flash element
         setTimeout(() => {
-            state.striking = false;
-        }, 500);
+            flashElement.style.opacity = '0';
+            setTimeout(() => {
+                document.body.removeChild(flashElement);
+            }, 200);
+        }, 50);
         
         console.log("Strike action completed");
     }
