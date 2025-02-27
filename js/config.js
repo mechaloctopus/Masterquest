@@ -73,20 +73,20 @@ const CONFIG = {
         },
         TRACKS: [
             {
-                NAME: "Synthwave Dreams",
-                URL: "https://cdn.freesound.org/previews/558/558657_7741937-lq.mp3"
+                NAME: "vhs",
+                URL: "js/audio/vhs.mp3"
             },
             {
-                NAME: "Neon Streets",
-                URL: "https://freesound.org/data/previews/415/415992_7665684-lq.mp3"
+                NAME: "happy airlines",
+                URL: "js/audio/happyairlines.wav"
             },
             {
-                NAME: "Digital Pulse",
-                URL: "https://freesound.org/data/previews/382/382738_7256827-lq.mp3"
+                NAME: "klaxon",
+                URL: "js/audio/klaxon.wav"
             },
             {
-                NAME: "Cyber Future",
-                URL: "https://freesound.org/data/previews/323/323706_5260872-lq.mp3"
+                NAME: "video game land",
+                URL: "js/audio/videogameland.wav"
             }
         ]
     },
