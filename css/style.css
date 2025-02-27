@@ -164,4 +164,24 @@ canvas { width: 100%; height: 100%; }
 @keyframes explode {
     0% { transform: scale(0.1); opacity: 1; }
     100% { transform: scale(2); opacity: 0; }
-} 
+}
+
+:root {
+    /* We'll use CSS variables for UI elements so they can be dynamically updated */
+    --jump-button-color: rgba(0, 255, 0, 0.2);
+    --jump-button-border: #00ff00;
+    --jump-button-text: #00ff00;
+    --jump-button-glow: drop-shadow(0 0 5px #00ff00);
+    
+    --strike-button-color: rgba(255, 0, 255, 0.2);
+    --strike-button-border: #ff00ff;
+    --strike-button-text: #ff00ff;
+    --strike-button-glow: drop-shadow(0 0 5px #ff00ff);
+
+    --hand-background: rgba(255, 105, 180, 0.2);
+    --hand-border: #ff69b4;
+    --hand-glow: 0 0 20px #ff69b4, inset 0 0 15px #ff69b4;
+}
+
+/* Add this to dynamically update CSS variables from JS */
+/* File: js/ui/style-manager.js */ 

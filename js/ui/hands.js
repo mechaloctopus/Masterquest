@@ -35,7 +35,7 @@ const HandsSystem = {
         if (!hands || !hands.leftHand || !hands.rightHand) return;
         
         // Basic bobbing motion when moving
-        const bobIntensity = state.moveVector ? state.moveVector.length() * 5 : 0;
+        const bobIntensity = state.moveVector ? state.moveVector.length() * CONFIG.CAMERA.BOB_INTENSITY : 0;
         
         // Smooth out movement intensity
         state.smoothedMovementIntensity = state.smoothedMovementIntensity * 0.9 + bobIntensity * 0.1;
@@ -43,7 +43,7 @@ const HandsSystem = {
         // Calculate bobbing
         let bobY = 0;
         if (state.grounded && state.smoothedMovementIntensity > 0.1) {
-            bobY = Math.sin(state.bobTime * CONFIG.ANIMATION_SPEED) * state.smoothedMovementIntensity;
+            bobY = Math.sin(state.bobTime * CONFIG.ANIMATION.BOB_SPEED) * state.smoothedMovementIntensity;
         }
         
         // Apply bobbing to hands

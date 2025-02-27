@@ -7,8 +7,8 @@ const ControlSystem = {
                 zone: element,
                 mode: 'static',
                 position: { left: '50%', top: '50%' },
-                color: '#00ff00',
-                size: 80
+                color: CONFIG.UI.JOYSTICKS.COLOR,
+                size: CONFIG.UI.JOYSTICKS.SIZE
             });
         };
         
@@ -51,8 +51,8 @@ const ControlSystem = {
         // Look joystick
         const rightStick = createJoystick(document.getElementById('rightJoystick'));
         rightStick.on('move', (event, data) => {
-            const lookY = data.vector.x * 0.05;
-            const lookX = -data.vector.y * 0.05;
+            const lookY = data.vector.x * CONFIG.CAMERA.SENSITIVITY;
+            const lookX = -data.vector.y * CONFIG.CAMERA.SENSITIVITY;
             
             camera.rotation.y += lookY;
             camera.rotation.x += lookX;

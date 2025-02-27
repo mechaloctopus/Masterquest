@@ -4,9 +4,9 @@ const MovementSystem = {
         // Apply movement based on input vector
         if (state.moveVector) {
             const forward = camera.getDirection(BABYLON.Vector3.Forward())
-                                .scale(state.moveVector.z * 0.1);
+                                .scale(state.moveVector.z * CONFIG.PHYSICS.MOVE_SPEED);
             const right = camera.getDirection(BABYLON.Vector3.Right())
-                                .scale(state.moveVector.x * 0.1);
+                                .scale(state.moveVector.x * CONFIG.PHYSICS.MOVE_SPEED);
             camera.position.addInPlace(forward.add(right));
         }
         

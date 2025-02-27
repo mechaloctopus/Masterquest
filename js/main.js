@@ -39,7 +39,6 @@ function initGame() {
         
         try {
             // Update grid colors to neon green
-            CONFIG.GRID.COLOR = {r: 0, g: 1, b: 0}; // Neon green
             GridSystem.create(scene);
             Logger.log("> NEON GREEN GRID INITIALIZED");
         } catch (e) {
@@ -57,10 +56,6 @@ function initGame() {
         try {
             // Change skybox colors to vaporwave theme
             // Override skybox color to vaporwave gradient
-            CONFIG.SKYBOX = {
-                TOP_COLOR: "#000033", // Deep blue
-                BOTTOM_COLOR: "#ff69b4" // Hot pink
-            };
             SkyboxSystem.create(scene);
             Logger.log("> VAPORWAVE SKYBOX INITIALIZED");
         } catch (e) {

@@ -1,12 +1,20 @@
 // Birthday Text System
 const BirthdayTextSystem = {
     create: function(scene) {
+        if (!CONFIG.BIRTHDAY.SHOW_MESSAGE) {
+            return null;
+        }
+        
         try {
             Logger.log("> GENERATING 3D BIRTHDAY MESSAGE");
             
             // Create parent container for text
             const textParent = new BABYLON.TransformNode("birthdayParent", scene);
-            textParent.position = new BABYLON.Vector3(0, 4, -10);
+            textParent.position = new BABYLON.Vector3(
+                CONFIG.BIRTHDAY.TEXT_POSITION.x,
+                CONFIG.BIRTHDAY.TEXT_POSITION.y,
+                CONFIG.BIRTHDAY.TEXT_POSITION.z
+            );
             textParent.rotation.y = Math.PI;
             
             // Create text planes
@@ -28,7 +36,7 @@ const BirthdayTextSystem = {
                 const gradient = ctx.createLinearGradient(0, 0, 0, 180);
                 
                 // Use different color schemes based on input color
-                if (color === "cyan") {
+                if (color === CONFIG.BIRTHDAY.COLORS.PRIMARY) {
                     gradient.addColorStop(0, "#00FFFF"); // Cyan
                     gradient.addColorStop(0.5, "#0099FF"); // Light blue
                     gradient.addColorStop(1, "#0066FF"); // Darker blue
@@ -46,7 +54,7 @@ const BirthdayTextSystem = {
                 ctx.font = "bold 110px Arial";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                ctx.shadowColor = color === "cyan" ? "#00FFFF" : "#FF00FF";
+                ctx.shadowColor = color === CONFIG.BIRTHDAY.COLORS.PRIMARY ? "#00FFFF" : "#FF00FF";
                 ctx.shadowBlur = 15;
                 ctx.strokeStyle = "#FFFFFF";
                 ctx.lineWidth = 8;
@@ -92,20 +100,21 @@ const BirthdayTextSystem = {
                 return plane;
             };
             
-            // Create the three text lines
-            const happyText = createTextPlane("HAPPY", "cyan", 2, 0.6, scene);
-            const birthdayText = createTextPlane("BIRTHDAY", "cyan", 0, 0.6, scene);
-            const marcusText = createTextPlane("MARCUS!", "pink", -2.5, 0.9, scene);
+            // Create the three text lines with config values
+            const happyText = createTextPlane("HAPPY", CONFIG.BIRTHDAY.COLORS.PRIMARY, 2, CONFIG.BIRTHDAY.SCALE, scene);
+            const birthdayText = createTextPlane("BIRTHDAY", CONFIG.BIRTHDAY.COLORS.PRIMARY, 0, CONFIG.BIRTHDAY.SCALE, scene);
+            const marcusText = createTextPlane(CONFIG.BIRTHDAY.RECIPIENT_NAME + "!", CONFIG.BIRTHDAY.COLORS.SECONDARY, -2.5, CONFIG.BIRTHDAY.SCALE * 1.5, scene);
             
             // Add glow layer
             const glowLayer = new BABYLON.GlowLayer("birthdayGlow", scene);
-            glowLayer.intensity = 1.5;
+            glowLayer.intensity = CONFIG.BIRTHDAY.COLORS.GLOW_INTENSITY;
             
-            // Animation
+            // Animation using config values
             scene.registerBeforeRender(() => {
                 const time = performance.now() * 0.001;
-                textParent.position.y = 4 + Math.sin(time * 0.5) * 0.5;
-                textParent.rotation.y = Math.sin(time * 0.2) * 0.2;
+                textParent.position.y = CONFIG.BIRTHDAY.TEXT_POSITION.y + 
+                    Math.sin(time * CONFIG.BIRTHDAY.ANIMATION.BOB_SPEED) * CONFIG.BIRTHDAY.ANIMATION.BOB_HEIGHT;
+                textParent.rotation.y = Math.sin(time * CONFIG.BIRTHDAY.ANIMATION.ROTATION_SPEED) * 0.2;
             });
             
             Logger.log("> 3D BIRTHDAY TEXT CREATED SUCCESSFULLY");

@@ -1,6 +1,10 @@
 // Fireworks System
 const FireworksSystem = {
     init: function() {
+        if (!CONFIG.FIREWORKS.ENABLED) {
+            return;
+        }
+        
         try {
             this.container = document.getElementById('fireworks');
             if (!this.container) {
@@ -8,15 +12,9 @@ const FireworksSystem = {
                 return;
             }
             
-            this.colors = [
-                '#ff69b4', // Hot pink
-                '#00ffff', // Cyan
-                '#ff00ff', // Magenta
-                '#9370db', // Medium purple
-                '#7b68ee'  // Medium slate blue
-            ];
+            this.colors = CONFIG.FIREWORKS.COLORS;
             
-            // Start fireworks loop
+            // Start fireworks loop with configurable interval
             this.startFireworks();
             Logger.log("> FIREWORKS INITIALIZED");
         } catch (e) {
@@ -55,8 +53,8 @@ const FireworksSystem = {
     },
     
     createParticles: function(x, y, color) {
-        // Create 12 particles around the firework
-        const particleCount = 12;
+        // Create particles around the firework
+        const particleCount = CONFIG.FIREWORKS.PARTICLE_COUNT;
         
         for (let i = 0; i < particleCount; i++) {
             const particle = document.createElement('div');
@@ -70,7 +68,7 @@ const FireworksSystem = {
             
             // Calculate trajectory
             const angle = (i / particleCount) * Math.PI * 2;
-            const distance = 50 + Math.random() * 50;
+            const distance = CONFIG.FIREWORKS.PARTICLE_DISTANCE + Math.random() * 50;
             
             // Set animation
             particle.animate([
@@ -97,8 +95,8 @@ const FireworksSystem = {
     },
     
     startFireworks: function() {
-        // Create a firework every 800ms
-        setInterval(() => this.createFirework(), 800);
+        // Create a firework at the configured interval
+        setInterval(() => this.createFirework(), CONFIG.FIREWORKS.FREQUENCY);
         
         // Create initial fireworks
         for (let i = 0; i < 3; i++) {
