@@ -398,4 +398,123 @@ canvas { width: 100%; height: 100%; }
     font-weight: bold;
     color: #ffff00;
     text-shadow: 0 0 10px #ffff00;
+}
+
+/* Add responsive styles for mobile devices */
+@media screen and (max-width: 768px) {
+    /* Adjust log position for mobile */
+    #log {
+        top: 10px;
+        left: 10px;
+        max-width: 80%;
+        font-size: 12px;
+        z-index: 101; /* Ensure it's above the radio player */
+    }
+    
+    #log.collapsed {
+        max-width: 30px;
+        width: auto;
+    }
+    
+    /* Radio player positioning for mobile */
+    .radio-player {
+        top: 10px;
+        right: 10px;
+        width: calc(100% - 100px); /* Give some space from the left edge */
+        max-width: 280px;
+        font-size: 12px;
+        z-index: 100;
+    }
+    
+    .radio-player.collapsed {
+        width: auto;
+        max-width: 100px;
+    }
+    
+    /* When both are collapsed, they should just show as small buttons */
+    #log.collapsed + .radio-player.collapsed {
+        max-width: 80px;
+    }
+    
+    /* Make control buttons smaller on mobile */
+    .control-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+    
+    #playPauseButton {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+    
+    /* Smaller track list items */
+    .track {
+        padding: 3px;
+    }
+    
+    .play-btn {
+        width: 20px;
+        height: 20px;
+        min-width: 20px;
+        min-height: 20px;
+    }
+    
+    /* Adjust volume controls */
+    .slider-container {
+        margin-bottom: 5px;
+    }
+    
+    .slider-container label {
+        width: 50px;
+        font-size: 12px;
+    }
+}
+
+/* For very small screens like phones in portrait mode */
+@media screen and (max-width: 480px) {
+    /* Ensure collapsed state by default on very small screens */
+    .radio-player:not(.collapsed) {
+        max-height: 70vh; /* Limit maximum height on small screens */
+        overflow-y: auto;
+    }
+    
+    /* Auto-collapse the radio player initially on small screens */
+    body.mobile-detected .radio-player {
+        position: fixed; /* Use fixed positioning to ensure it's visible */
+    }
+    
+    /* Position the toggle button better on small screens */
+    #radioToggle {
+        padding: 2px 4px;
+        font-size: 12px;
+    }
+    
+    #logToggle {
+        padding: 2px 4px;
+        font-size: 12px;
+    }
+    
+    /* Better spacing in the header */
+    .radio-header {
+        padding: 5px;
+    }
+    
+    .radio-title {
+        font-size: 12px;
+        letter-spacing: 1px;
+    }
+}
+
+/* Add this script to detect mobile and set a class on the body */
+body::after {
+    content: "";
+    display: none;
+}
+
+@media screen and (max-width: 768px) {
+    body::after {
+        display: block;
+    }
 } 
