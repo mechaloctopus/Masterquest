@@ -38,10 +38,10 @@ function initGame() {
         let audioSystem, camera, hands;
         
         try {
-            // Update grid colors for vaporwave theme
-            CONFIG.GRID.COLOR = {r: 1, g: 0.4, b: 0.7}; // Pink/purple
+            // Update grid colors to neon green
+            CONFIG.GRID.COLOR = {r: 0, g: 1, b: 0}; // Neon green
             GridSystem.create(scene);
-            Logger.log("> VAPORWAVE GRID INITIALIZED");
+            Logger.log("> NEON GREEN GRID INITIALIZED");
         } catch (e) {
             Logger.error("Grid initialization failed: " + e.message);
         }

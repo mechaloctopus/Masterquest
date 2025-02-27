@@ -49,10 +49,10 @@ const CONFIG = {
     },
     ANIMATION_SPEED: 10, // Controls bobbing speed
     SKYBOX: {
-        TOP_COLOR: "#000011", // Almost black with slight blue tint
-        BOTTOM_COLOR: "#000022", // Very dark blue
-        STAR_COUNT: 2000,      // More stars
-        STAR_SIZE_MIN: 0.1,    // Smaller minimum star size
-        STAR_SIZE_MAX: 0.6     // Larger maximum star size
+        TOP_COLOR: "#000000", // Pure black for deep space
+        BOTTOM_COLOR: "#000011", // Very slight blue tint at bottom
+        STAR_COUNT: 1500,      // Fewer but more distinct stars
+        STAR_SIZE_MIN: 0.1,    
+        STAR_SIZE_MAX: 0.4     // Smaller max size for stars
     }
 }; 
