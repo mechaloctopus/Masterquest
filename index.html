@@ -23,12 +23,6 @@
     <div id="rightHand" class="hand"></div>
     <button id="strikeButton">STRIKE</button>
     <button id="jumpButton">JUMP</button>
-    <div id="audioControls">
-        <input type="range" id="musicVolume" min="0" max="100" value="50">
-        <label for="musicVolume">MUSIC</label><br>
-        <input type="range" id="sfxVolume" min="0" max="100" value="70">
-        <label for="sfxVolume">SFX</label>
-    </div>
     
     <!-- Birthday additions -->
     <div id="birthdayMessage">HAPPY BIRTHDAY<br>MARCUS!</div>
@@ -55,23 +49,19 @@
     <!-- Physics System -->
     <script src="js/physics/movement.js"></script>
     
-    <!-- Move these scripts BEFORE main.js so they're defined when main.js uses them -->
+    <!-- Birthday features -->
     <script src="js/birthday/birthday-text.js"></script>
     <script src="js/birthday/fireworks.js"></script>
 
-    <!-- Add this before the main.js script -->
+    <!-- UI Components -->
     <script src="js/ui/logger-toggle.js"></script>
-
-    <!-- Add this script before the main.js script -->
     <script src="js/ui/radio-player.js"></script>
-
-    <!-- Add this before the main.js script -->
     <script src="js/ui/mobile-detector.js"></script>
 
     <!-- Main Game Loop -->
     <script src="js/main.js"></script>
 
-    <!-- Add this before the closing </body> tag -->
+    <!-- Radio Player UI -->
     <div id="radioPlayer" class="radio-player">
         <div class="radio-header">
             <button id="radioToggle">▼</button>

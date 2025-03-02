@@ -193,6 +193,62 @@ const BirthdayTextSystem = {
                 return null;
             }
         }
+    },
+
+    createWithPrimitives: function(scene) {
+        if (!CONFIG.BIRTHDAY.SHOW_MESSAGE) {
+            return null;
+        }
+        
+        Logger.log("> USING PRIMITIVE BIRTHDAY TEXT FALLBACK");
+        
+        // Create parent container
+        const textParent = new BABYLON.TransformNode("birthdayParent", scene);
+        textParent.position = new BABYLON.Vector3(
+            CONFIG.BIRTHDAY.TEXT_POSITION.x,
+            CONFIG.BIRTHDAY.TEXT_POSITION.y,
+            CONFIG.BIRTHDAY.TEXT_POSITION.z
+        );
+        
+        // Create materials
+        const cyanMaterial = new BABYLON.StandardMaterial("cyanMat", scene);
+        cyanMaterial.diffuseColor = new BABYLON.Color3(0, 0.8, 0.8);
+        cyanMaterial.emissiveColor = new BABYLON.Color3(0, 1, 1);
+        
+        const pinkMaterial = new BABYLON.StandardMaterial("pinkMat", scene);
+        pinkMaterial.diffuseColor = new BABYLON.Color3(0.8, 0.4, 0.8);
+        pinkMaterial.emissiveColor = new BABYLON.Color3(1, 0.4, 1);
+        
+        // Create text boxes
+        const happyBox = createSimpleBox(5, 1, 0.2, scene);
+        happyBox.material = cyanMaterial;
+        happyBox.position.y = 2;
+        happyBox.parent = textParent;
+        
+        const birthdayBox = createSimpleBox(8, 1, 0.2, scene);
+        birthdayBox.material = cyanMaterial;
+        birthdayBox.position.y = 0;
+        birthdayBox.parent = textParent;
+        
+        const nameBox = createSimpleBox(7, 1.5, 0.2, scene);
+        nameBox.material = pinkMaterial;
+        nameBox.position.y = -2.5;
+        nameBox.parent = textParent;
+        
+        // Add glow effect
+        const glowLayer = new BABYLON.GlowLayer("birthdayGlow", scene);
+        glowLayer.intensity = CONFIG.BIRTHDAY.COLORS.GLOW_INTENSITY;
+        
+        // Animation
+        scene.registerBeforeRender(() => {
+            const time = performance.now() * 0.001;
+            textParent.position.y = CONFIG.BIRTHDAY.TEXT_POSITION.y + 
+                Math.sin(time * CONFIG.BIRTHDAY.ANIMATION.BOB_SPEED) * CONFIG.BIRTHDAY.ANIMATION.BOB_HEIGHT;
+            textParent.rotation.y = Math.sin(time * CONFIG.BIRTHDAY.ANIMATION.ROTATION_SPEED) * 0.2;
+        });
+        
+        Logger.log("> PRIMITIVE BIRTHDAY TEXT CREATED");
+        return textParent;
     }
 };
 

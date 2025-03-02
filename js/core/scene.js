@@ -4,12 +4,23 @@ const SceneManager = {
         const scene = new BABYLON.Scene(engine);
         scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
         
-        // Setup error handling - THIS IS THE PROBLEM
-        // Babylon.js engine doesn't have onErrorObservable in all versions
-        // Use a safer approach
-        if (engine.onError) {
+        // Setup error handling - Improved approach
+        if (engine.onErrorObservable) {
+            // Modern Babylon.js uses Observables
+            engine.onErrorObservable.add((e) => {
+                Logger.error(`GRAPHICS: ${e.message || e}`);
+            });
+        } else if (typeof engine.onError === 'function') {
+            // Backwards compatibility
+            const originalOnError = engine.onError;
             engine.onError = function(e) {
-                Logger.error(`GRAPHICS: ${e.message}`);
+                Logger.error(`GRAPHICS: ${e.message || e}`);
+                originalOnError(e);
+            };
+        } else if (typeof engine.onError !== 'undefined') {
+            // Direct assignment if property exists
+            engine.onError = function(e) {
+                Logger.error(`GRAPHICS: ${e.message || e}`);
             };
         }
         
