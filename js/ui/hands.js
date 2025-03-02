@@ -67,7 +67,7 @@ const HandsSystem = {
             hands.rightHand.style.transform = `translateY(${bobY * 10}px)`;
             hands.rightHand.style.transition = "all 0.2s ease-out";
             
-            // No need to set these every frame if they haven't changed
+            // Only update CSS if needed
             if (hands.rightHand.style.right !== CONFIG.HANDS.SIDE_OFFSET) {
                 hands.rightHand.style.right = CONFIG.HANDS.SIDE_OFFSET;
             }
@@ -79,23 +79,23 @@ const HandsSystem = {
             // Apply bobbing only to left hand
             hands.leftHand.style.transform = `translateY(${-bobY * 10}px)`;
             
-            // Only update the state.strikeProgress once per frame
+            // Update strike progress
             state.strikeProgress += CONFIG.HANDS.STRIKE.SPEED * deltaTime * 100;
             
             // Use sine easing for smoother animation
             const easingFunction = t => Math.sin(t * Math.PI / 2);
             
-            // Cache window dimensions to avoid recalculating
+            // Cache window dimensions
             const windowWidth = window.innerWidth;
             const windowHeight = window.innerHeight;
             const handSize = parseInt(CONFIG.HANDS.SIZE);
             
-            // Pre-compute positions
-            let rightPos, bottomPos, scale, rotation, glowIntensity;
+            // Calculate animation parameters
+            let progress, rightPos, bottomPos, scale, rotation, glowIntensity;
             
             if (state.strikeProgress < 0.5) {
                 // Forward motion (0-0.5): Move hand to center of screen
-                const progress = easingFunction(state.strikeProgress * 2); // 0 to 1
+                progress = easingFunction(state.strikeProgress * 2); // 0 to 1
                 
                 // Calculate positions to move from side to center
                 const startRight = parseInt(CONFIG.HANDS.SIDE_OFFSET);
@@ -112,7 +112,7 @@ const HandsSystem = {
                 glowIntensity = 20 + progress * 30;
             } else {
                 // Return motion (0.5-1): Move back to original position
-                const progress = easingFunction((1 - state.strikeProgress) * 2); // 1 to 0
+                progress = easingFunction((1 - state.strikeProgress) * 2); // 1 to 0
                 
                 // Calculate positions to move from center back to side
                 const startRight = windowWidth / 2 - handSize / 2;
@@ -129,14 +129,14 @@ const HandsSystem = {
                 glowIntensity = 20 + progress * 30;
             }
             
-            // Apply computed values - only once per frame
+            // Apply computed values
             hands.rightHand.style.transition = "none";
             hands.rightHand.style.right = `${rightPos}px`;
             hands.rightHand.style.bottom = `${bottomPos}px`;
             hands.rightHand.style.transform = `scale(${scale}) rotate(${rotation}deg) translateZ(${Math.min(50, progress * 50)}px)`;
             hands.rightHand.style.boxShadow = `0 0 ${glowIntensity}px ${CONFIG.HANDS.COLOR}, inset 0 0 15px ${CONFIG.HANDS.COLOR}`;
             
-            // Reset animation when complete - avoid repeated calculations
+            // Reset animation when complete
             if (state.strikeProgress >= 1) {
                 state.strikeProgress = 0;
                 state.striking = false;

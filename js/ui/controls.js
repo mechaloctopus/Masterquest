@@ -160,7 +160,9 @@ const ControlSystem = {
             
             // Remove the class after the animation completes
             setTimeout(() => {
-                rightHand.classList.remove('striking');
+                if (rightHand) {
+                    rightHand.classList.remove('striking');
+                }
             }, 500);
         }
         
@@ -207,7 +209,9 @@ const ControlSystem = {
         setTimeout(() => {
             flashElement.style.opacity = '0';
             setTimeout(() => {
-                document.body.removeChild(flashElement);
+                if (flashElement.parentNode) {
+                    document.body.removeChild(flashElement);
+                }
             }, 200);
         }, 50);
         
