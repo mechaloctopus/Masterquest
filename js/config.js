@@ -14,7 +14,7 @@ const CONFIG = {
     GRID: {
         SIZE: 50,          // How far the grid extends
         SPACING: 2,        // Distance between grid lines
-        COLOR: {r: 0, g: 1, b: 0},  // RGB values (0-1)
+        COLOR: {r: 1, g: 0, b: 0},  // RGB values (0-1)
         GLOW_INTENSITY: 2.0,  // Grid glow effect strength
         VISIBILITY: true      // Toggle grid visibility
     },
