@@ -100,7 +100,7 @@ const CONFIG = {
     // BIRTHDAY SETTINGS
     BIRTHDAY: {
         SHOW_MESSAGE: true,
-        RECIPIENT_NAME: "Jake",
+        RECIPIENT_NAME: "JAKE",
         TEXT_POSITION: {x: 0, y: 4, z: -15},
         SCALE: 0.6,
         COLORS: {

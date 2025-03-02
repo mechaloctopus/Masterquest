@@ -35,8 +35,22 @@ const RadioPlayerSystem = {
             this.toggleButton.textContent = '▶ RADIO';
         }
         
-        // Set this object as a global singleton for other systems to access
-        window.RadioPlayer = this;
+        // Instead of setting this object as a global, expose a clean API
+        if (!window.RadioPlayer) {
+            window.RadioPlayer = {
+                getAudioElement: () => this.getAudioElement(),
+                isAudioPlaying: () => this.isAudioPlaying(),
+                getCurrentTrackName: () => this.getCurrentTrackName(),
+                togglePlayPause: () => this.togglePlayPause(),
+                playNextTrack: () => this.playNextTrack(),
+                playPreviousTrack: () => this.playPreviousTrack(),
+                getVolume: () => this.volumeSlider.value / 100,
+                setVolume: (vol) => {
+                    this.volumeSlider.value = vol * 100;
+                    this.audioElement.volume = vol;
+                }
+            };
+        }
         
         Logger.log("> RADIO PLAYER INITIALIZED");
         

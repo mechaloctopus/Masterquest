@@ -1,20 +1,31 @@
 // Logging System
 const Logger = (function() {
     // Reference to the log content element
-    let logContentElement;
+    let logContentElement = null;
+    let initialized = false;
     
     // Initialize logger
     function init() {
+        if (initialized) return true;
+        
         logContentElement = document.getElementById('logContent');
         if (!logContentElement) {
             console.error("Log content element not found!");
+            return false;
         }
+        
+        initialized = true;
+        return true;
     }
+    
+    // Try to initialize when the module is loaded
+    document.addEventListener('DOMContentLoaded', init);
     
     // Log a message
     function log(message) {
-        if (!logContentElement) {
-            init();
+        if (!initialized && !init()) {
+            console.log(message);
+            return;
         }
         
         // Add message to log
@@ -34,8 +45,9 @@ const Logger = (function() {
     
     // Log an error message
     function error(message) {
-        if (!logContentElement) {
-            init();
+        if (!initialized && !init()) {
+            console.error(message);
+            return;
         }
         
         // Add error message to log
@@ -53,10 +65,11 @@ const Logger = (function() {
         console.error(message);
     }
     
-    // Log a warning message (added function)
+    // Log a warning message
     function warning(message) {
-        if (!logContentElement) {
-            init();
+        if (!initialized && !init()) {
+            console.warn(message);
+            return;
         }
         
         // Add warning message to log
@@ -76,9 +89,9 @@ const Logger = (function() {
     
     // Clear the log
     function clear() {
-        if (logContentElement) {
-            logContentElement.innerHTML = '';
-        }
+        if (!initialized && !init()) return;
+        
+        logContentElement.innerHTML = '';
     }
     
     // Public API
@@ -86,7 +99,7 @@ const Logger = (function() {
         init,
         log,
         error,
-        warning, // Add this to the public API
+        warning,
         clear
     };
 })(); 

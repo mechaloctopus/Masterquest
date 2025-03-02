@@ -23,33 +23,46 @@ const FireworksSystem = {
     },
     
     createFirework: function() {
-        // Random position on screen
-        const x = Math.random() * window.innerWidth;
-        const y = Math.random() * (window.innerHeight * 0.7); // Keep in upper 70% of screen
-        
-        // Create firework center
-        const firework = document.createElement('div');
-        firework.className = 'firework';
-        firework.style.left = `${x}px`;
-        firework.style.top = `${y}px`;
-        
-        // Random color from our vaporwave palette
-        const color = this.colors[Math.floor(Math.random() * this.colors.length)];
-        firework.style.backgroundColor = color;
-        firework.style.boxShadow = `0 0 10px 2px ${color}`;
-        
-        // Add to container
-        this.container.appendChild(firework);
-        
-        // Create particles for explosion effect
-        this.createParticles(x, y, color);
-        
-        // Remove after animation completes
-        setTimeout(() => {
-            if (firework.parentNode) {
-                firework.parentNode.removeChild(firework);
+        try {
+            if (!this.container) {
+                console.warn("Fireworks container not available");
+                return;
             }
-        }, 1000);
+            
+            // Random position on screen
+            const x = Math.random() * window.innerWidth;
+            const y = Math.random() * (window.innerHeight * 0.7); // Keep in upper 70% of screen
+            
+            // Create firework center
+            const firework = document.createElement('div');
+            firework.className = 'firework';
+            firework.style.left = `${x}px`;
+            firework.style.top = `${y}px`;
+            
+            // Random color from our vaporwave palette
+            const color = this.colors[Math.floor(Math.random() * this.colors.length)];
+            firework.style.backgroundColor = color;
+            firework.style.boxShadow = `0 0 10px 2px ${color}`;
+            
+            // Add to container
+            this.container.appendChild(firework);
+            
+            // Create particles for explosion effect
+            this.createParticles(x, y, color);
+            
+            // Remove after animation completes, with fallback if removal fails
+            setTimeout(() => {
+                try {
+                    if (firework.parentNode) {
+                        firework.parentNode.removeChild(firework);
+                    }
+                } catch (e) {
+                    console.warn("Error removing firework:", e);
+                }
+            }, 1000);
+        } catch (e) {
+            Logger.error("Firework creation error: " + e.message);
+        }
     },
     
     createParticles: function(x, y, color) {
