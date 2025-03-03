@@ -1,0 +1,592 @@
+// Foe System - Handles foes and quiz battles for all realms
+const FoeSystem = (function() {
+    // Private properties
+    const foes = [];
+    let initialized = false;
+    let scene = null;
+    
+    // Initialize the Foe system
+    function init(sceneInstance) {
+        if (initialized) {
+            Logger.warning("Foe System already initialized");
+            return;
+        }
+        
+        try {
+            scene = sceneInstance;
+            initialized = true;
+            
+            Logger.log("> FOE SYSTEM INITIALIZED");
+            
+            // Initialize event handlers
+            if (window.EventSystem) {
+                // Listen for player proximity
+                EventSystem.on('player.moved', checkFoeProximity);
+                
+                // Listen for realm changes
+                EventSystem.on('realm.change', handleRealmChange);
+                
+                // Listen for quiz answers
+                EventSystem.on('quiz.answer', handleQuizAnswer);
+            }
+            
+            return true;
+        } catch (e) {
+            Logger.error(`Foe System initialization failed: ${e.message}`);
+            return false;
+        }
+    }
+    
+    // Load foes for a specific realm
+    function loadFoesForRealm(realmIndex) {
+        if (!initialized) {
+            Logger.error("Cannot load foes - system not initialized");
+            return false;
+        }
+        
+        try {
+            Logger.log(`> LOADING FOES FOR REALM ${realmIndex}`);
+            
+            // Clear existing foes
+            clearAllFoes();
+            
+            // Get realm configuration
+            const realmConfig = CONFIG.REALMS[`REALM_${realmIndex}`];
+            if (!realmConfig) {
+                Logger.error(`Realm configuration for realm ${realmIndex} not found`);
+                return false;
+            }
+            
+            // Get foe count from common config or realm-specific override
+            const foeCount = realmConfig.FOE_COUNT || CONFIG.REALMS.COMMON.FOE_COUNT || 10;
+            
+            // Get foe template
+            const foeTemplate = CONFIG.REALMS.COMMON.NPC_TEMPLATES.QUIZ;
+            
+            // Create foes for this realm
+            for (let i = 0; i < foeCount; i++) {
+                createFoe(i, realmIndex, foeTemplate);
+            }
+            
+            Logger.log(`> ${foes.length} FOES CREATED FOR REALM ${realmIndex}`);
+            return true;
+        } catch (e) {
+            Logger.error(`Failed to load foes for realm ${realmIndex}: ${e.message}`);
+            return false;
+        }
+    }
+    
+    // Create a single foe
+    function createFoe(index, realmIndex, template) {
+        // Generate a unique ID for this foe
+        const foeId = `foe_${realmIndex}_${index}`;
+        
+        // Default position (would be replaced with actual realm positions)
+        const position = new BABYLON.Vector3(
+            Math.random() * 40 - 20, // -20 to 20
+            0.5,                     // Just above ground
+            Math.random() * 40 - 20  // -20 to 20
+        );
+        
+        // Create foe mesh based on template
+        let foeMesh;
+        
+        if (template.TYPE === "neon_orb") {
+            // Create a neon orb
+            foeMesh = BABYLON.MeshBuilder.CreateSphere(foeId, {
+                diameter: template.SCALE || 1.2
+            }, scene);
+            
+            // Create material for the orb
+            const material = new BABYLON.StandardMaterial(`${foeId}_material`, scene);
+            material.emissiveColor = new BABYLON.Color3.FromHexString(template.COLOR);
+            material.specularColor = new BABYLON.Color3(0, 0, 0); // No specular
+            material.alpha = 0.8; // Slightly transparent
+            
+            foeMesh.material = material;
+            
+            // Add glow effect
+            const glowLayer = new BABYLON.GlowLayer(`${foeId}_glow`, scene);
+            glowLayer.intensity = template.GLOW_INTENSITY || 1.8;
+            glowLayer.addIncludedOnlyMesh(foeMesh);
+            
+            // Add spikes or additional geometry to distinguish from regular NPCs
+            addSpikesToOrb(foeMesh, template.COLOR);
+        } else {
+            // Default simple box as fallback
+            foeMesh = BABYLON.MeshBuilder.CreateBox(foeId, {
+                width: template.SCALE || 1.2,
+                height: template.SCALE || 1.2, 
+                depth: template.SCALE || 1.2
+            }, scene);
+            
+            // Apply a default material
+            const material = new BABYLON.StandardMaterial(`${foeId}_material`, scene);
+            material.diffuseColor = new BABYLON.Color3.FromHexString(template.COLOR || "#ff00ff");
+            foeMesh.material = material;
+        }
+        
+        // Position the foe
+        foeMesh.position = position;
+        
+        // Generate quiz questions for this foe
+        const quizQuestions = generateQuizQuestions(index, realmIndex);
+        
+        // Store the foe data
+        const foe = {
+            id: foeId,
+            mesh: foeMesh,
+            realmIndex: realmIndex,
+            template: template,
+            position: position,
+            quizData: {
+                questions: quizQuestions,
+                currentQuestion: 0,
+                score: 0,
+                maxScore: quizQuestions.length,
+                completed: false
+            },
+            state: 'idle', // idle, engaging, battle, defeated
+            isInteracting: false,
+            hoverParams: {
+                originalY: position.y,
+                phase: Math.random() * Math.PI * 2 // Random starting phase
+            }
+        };
+        
+        // Add to the foes array
+        foes.push(foe);
+        
+        // Setup hovering animation
+        setupHoverAnimation(foe);
+        
+        return foe;
+    }
+    
+    // Add spikes to orb to distinguish foes from regular NPCs
+    function addSpikesToOrb(foeMesh, color) {
+        // Add spikes or particles to make the foe look more threatening
+        const spikeCount = 8;
+        const spikeLength = 0.5;
+        
+        for (let i = 0; i < spikeCount; i++) {
+            // Calculate position around the sphere
+            const angle = (i / spikeCount) * Math.PI * 2;
+            const direction = new BABYLON.Vector3(
+                Math.cos(angle),
+                0,
+                Math.sin(angle)
+            );
+            
+            // Create spike mesh
+            const spike = BABYLON.MeshBuilder.CreateCylinder(
+                `spike_${i}`,
+                {
+                    height: spikeLength,
+                    diameterTop: 0,
+                    diameterBottom: 0.2,
+                    tessellation: 4
+                },
+                scene
+            );
+            
+            // Position and rotate spike
+            spike.position = foeMesh.position.clone().add(direction.scale(0.6));
+            spike.lookAt(foeMesh.position);
+            
+            // Apply material
+            const spikeMaterial = new BABYLON.StandardMaterial(`spike_material_${i}`, scene);
+            spikeMaterial.emissiveColor = new BABYLON.Color3.FromHexString(color);
+            spike.material = spikeMaterial;
+            
+            // Parent to main mesh for easier management
+            spike.parent = foeMesh;
+        }
+    }
+    
+    // Generate quiz questions for a foe
+    function generateQuizQuestions(foeIndex, realmIndex) {
+        // In a real implementation, these would come from a database or config
+        // Here we're generating some placeholder questions
+        const baseQuestions = [
+            {
+                question: "What color scheme is most associated with vaporwave?",
+                options: [
+                    "Red and yellow", 
+                    "Purple and teal", 
+                    "Green and brown", 
+                    "Black and white"
+                ],
+                correctAnswer: 1,
+                explanation: "Purple and teal are classic vaporwave colors."
+            },
+            {
+                question: "Which decade's aesthetics heavily influenced vaporwave?",
+                options: [
+                    "1970s", 
+                    "1980s", 
+                    "1990s", 
+                    "2000s"
+                ],
+                correctAnswer: 2,
+                explanation: "The 1990s' early internet and digital aesthetics heavily influenced vaporwave."
+            },
+            {
+                question: "What is a common symbol in vaporwave art?",
+                options: [
+                    "Mountains", 
+                    "Greek statues", 
+                    "Horses", 
+                    "Skyscrapers"
+                ],
+                correctAnswer: 1,
+                explanation: "Greek statues and classical art are often used in vaporwave aesthetics."
+            },
+            {
+                question: "What pattern is commonly featured in vaporwave backgrounds?",
+                options: [
+                    "Plaid", 
+                    "Polka dots", 
+                    "Grid lines", 
+                    "Zigzag"
+                ],
+                correctAnswer: 2,
+                explanation: "Grid lines, especially in perspective, are a staple of vaporwave art."
+            },
+            {
+                question: "What font style is most associated with vaporwave?",
+                options: [
+                    "Gothic", 
+                    "Roman", 
+                    "Serif", 
+                    "Japanese katakana with English"
+                ],
+                correctAnswer: 3,
+                explanation: "Japanese characters alongside English text is very common in vaporwave aesthetics."
+            }
+        ];
+        
+        // Select 3 random questions from the base set
+        const selectedQuestions = [];
+        const indices = new Set();
+        
+        // Ensure we get unique questions
+        while (indices.size < 3 && indices.size < baseQuestions.length) {
+            const randomIndex = Math.floor(Math.random() * baseQuestions.length);
+            indices.add(randomIndex);
+        }
+        
+        // Build the selected questions array
+        Array.from(indices).forEach(index => {
+            selectedQuestions.push(baseQuestions[index]);
+        });
+        
+        return selectedQuestions;
+    }
+    
+    // Setup the hovering animation for a foe
+    function setupHoverAnimation(foe) {
+        if (!scene) return;
+        
+        const hoverHeight = foe.template.HOVER_HEIGHT || 0.7;
+        const hoverSpeed = foe.template.HOVER_SPEED || 0.5;
+        
+        // Register an animation to run before each render
+        scene.registerBeforeRender(() => {
+            if (foe && foe.mesh) {
+                // Update hover phase
+                foe.hoverParams.phase += hoverSpeed * scene.getAnimationRatio() * 0.01;
+                
+                // Calculate new Y position with sine wave
+                const newY = foe.hoverParams.originalY + Math.sin(foe.hoverParams.phase) * hoverHeight;
+                
+                // Apply new position
+                foe.mesh.position.y = newY;
+                
+                // Slowly rotate the foe
+                foe.mesh.rotation.y += 0.003 * scene.getAnimationRatio();
+                
+                // If in battle state, add more dramatic effects
+                if (foe.state === 'battle') {
+                    // Pulse size
+                    const pulse = 1 + 0.1 * Math.sin(foe.hoverParams.phase * 3);
+                    foe.mesh.scaling.x = pulse;
+                    foe.mesh.scaling.y = pulse;
+                    foe.mesh.scaling.z = pulse;
+                    
+                    // Maybe add more battle effects here
+                }
+            }
+        });
+    }
+    
+    // Clear all foes from the scene
+    function clearAllFoes() {
+        // Remove each foe mesh from the scene
+        foes.forEach(foe => {
+            if (foe.mesh) {
+                foe.mesh.dispose();
+            }
+        });
+        
+        // Clear the array
+        foes.length = 0;
+    }
+    
+    // Check player proximity to foes
+    function checkFoeProximity(playerData) {
+        if (!playerData || !playerData.position) return;
+        
+        const playerPos = new BABYLON.Vector3(
+            playerData.position.x,
+            0, // Use ground Y for distance check
+            playerData.position.z
+        );
+        
+        // Check each foe
+        foes.forEach(foe => {
+            if (!foe.mesh) return;
+            
+            // Skip defeated foes
+            if (foe.state === 'defeated') return;
+            
+            // Calculate distance
+            const foePos = foe.mesh.position;
+            const distance = BABYLON.Vector3.Distance(
+                playerPos,
+                new BABYLON.Vector3(foePos.x, 0, foePos.z) // Ignore Y for distance
+            );
+            
+            // Close enough to interact (5 units)
+            if (distance < 5) {
+                if (foe.state === 'idle') {
+                    // Foe becomes aware of player
+                    foe.state = 'engaging';
+                    
+                    // Visual indication
+                    highlightFoe(foe, true);
+                    
+                    // Emit event that foe is engaging
+                    if (window.EventSystem) {
+                        EventSystem.emit('foe.engaging', {
+                            foeId: foe.id,
+                            distance: distance
+                        });
+                    }
+                }
+                
+                // Very close - initiate battle (3 units)
+                if (distance < 3 && foe.state === 'engaging' && !foe.isInteracting) {
+                    // Start battle
+                    startBattle(foe.id);
+                }
+            } else if (foe.state === 'engaging') {
+                // Player moved away, foe returns to idle
+                foe.state = 'idle';
+                
+                // Remove highlight
+                highlightFoe(foe, false);
+            }
+        });
+    }
+    
+    // Handle realm change event
+    function handleRealmChange(data) {
+        if (!data || !data.realmIndex) return;
+        
+        // Clear current foes
+        clearAllFoes();
+        
+        // Load foes for the new realm
+        loadFoesForRealm(data.realmIndex);
+    }
+    
+    // Highlight or unhighlight a foe
+    function highlightFoe(foe, highlight) {
+        if (!foe || !foe.mesh || !foe.mesh.material) return;
+        
+        if (highlight) {
+            // Store original emission color
+            if (!foe.originalEmissive) {
+                foe.originalEmissive = foe.mesh.material.emissiveColor ? 
+                    foe.mesh.material.emissiveColor.clone() : 
+                    new BABYLON.Color3(0, 0, 0);
+            }
+            
+            // Increase emission for highlight
+            foe.mesh.material.emissiveColor = new BABYLON.Color3(1, 0.5, 1);
+            
+            // Scale up slightly
+            foe.mesh.scaling = new BABYLON.Vector3(1.3, 1.3, 1.3);
+        } else {
+            // Restore original emission
+            if (foe.originalEmissive) {
+                foe.mesh.material.emissiveColor = foe.originalEmissive;
+            }
+            
+            // Restore original scale
+            foe.mesh.scaling = new BABYLON.Vector3(1, 1, 1);
+        }
+    }
+    
+    // Start battle with a foe
+    function startBattle(foeId) {
+        const foe = foes.find(f => f.id === foeId);
+        if (!foe) return;
+        
+        // Don't start battle if already in one or defeated
+        if (foe.isInteracting || foe.state === 'defeated') return;
+        
+        foe.isInteracting = true;
+        foe.state = 'battle';
+        
+        // Reset quiz progress if this is a new battle
+        if (!foe.quizData.completed) {
+            foe.quizData.currentQuestion = 0;
+            foe.quizData.score = 0;
+        }
+        
+        // Get current question
+        const currentQuestion = foe.quizData.questions[foe.quizData.currentQuestion];
+        
+        // Emit event to UI system to show quiz
+        if (window.EventSystem) {
+            EventSystem.emit('quiz.start', {
+                foeId: foe.id,
+                quizData: {
+                    question: currentQuestion.question,
+                    options: currentQuestion.options,
+                    questionNumber: foe.quizData.currentQuestion + 1,
+                    totalQuestions: foe.quizData.questions.length
+                }
+            });
+        }
+        
+        return foe.quizData;
+    }
+    
+    // End battle with a foe
+    function endBattle(foeId, playerWon) {
+        const foe = foes.find(f => f.id === foeId);
+        if (!foe) return;
+        
+        foe.isInteracting = false;
+        
+        // Update foe state
+        if (playerWon) {
+            foe.state = 'defeated';
+            
+            // Apply visual changes to show defeat
+            if (foe.mesh && foe.mesh.material) {
+                // Dim the color
+                foe.mesh.material.emissiveColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+                
+                // Lower to ground
+                foe.mesh.position.y = 0.1;
+                
+                // Disable hovering animation
+                foe.hoverParams.disabled = true;
+            }
+        } else {
+            foe.state = 'idle';
+        }
+        
+        // Emit event to UI system to hide quiz
+        if (window.EventSystem) {
+            EventSystem.emit('quiz.end', {
+                foeId: foe.id,
+                playerWon: playerWon,
+                score: foe.quizData.score,
+                maxScore: foe.quizData.maxScore
+            });
+        }
+    }
+    
+    // Handle quiz answer
+    function handleQuizAnswer(data) {
+        if (!data || !data.foeId || typeof data.answerIndex !== 'number') return;
+        
+        const foe = foes.find(f => f.id === data.foeId);
+        if (!foe || !foe.isInteracting) return;
+        
+        // Get current question
+        const currentQuestionIndex = foe.quizData.currentQuestion;
+        const currentQuestion = foe.quizData.questions[currentQuestionIndex];
+        
+        // Check if answer is correct
+        const isCorrect = data.answerIndex === currentQuestion.correctAnswer;
+        
+        // Update score if correct
+        if (isCorrect) {
+            foe.quizData.score++;
+        }
+        
+        // Emit result event
+        if (window.EventSystem) {
+            EventSystem.emit('quiz.answerResult', {
+                foeId: foe.id,
+                isCorrect: isCorrect,
+                correctAnswer: currentQuestion.options[currentQuestion.correctAnswer],
+                explanation: currentQuestion.explanation,
+                score: foe.quizData.score,
+                maxScore: foe.quizData.maxScore
+            });
+        }
+        
+        // Move to next question or finish quiz
+        foe.quizData.currentQuestion++;
+        
+        if (foe.quizData.currentQuestion >= foe.quizData.questions.length) {
+            // Quiz complete
+            foe.quizData.completed = true;
+            
+            // Player wins if they got more than half right
+            const playerWon = foe.quizData.score > (foe.quizData.maxScore / 2);
+            
+            // End battle
+            setTimeout(() => {
+                endBattle(foe.id, playerWon);
+            }, 3000); // Give time to read the final answer result
+            
+        } else {
+            // Show next question after a short delay
+            setTimeout(() => {
+                const nextQuestion = foe.quizData.questions[foe.quizData.currentQuestion];
+                
+                if (window.EventSystem) {
+                    EventSystem.emit('quiz.nextQuestion', {
+                        foeId: foe.id,
+                        quizData: {
+                            question: nextQuestion.question,
+                            options: nextQuestion.options,
+                            questionNumber: foe.quizData.currentQuestion + 1,
+                            totalQuestions: foe.quizData.questions.length
+                        }
+                    });
+                }
+            }, 3000); // Give time to read the answer result
+        }
+    }
+    
+    // Get a foe by ID
+    function getFoe(foeId) {
+        return foes.find(foe => foe.id === foeId);
+    }
+    
+    // Get all foes
+    function getAllFoes() {
+        return [...foes];
+    }
+    
+    // Public API
+    return {
+        init: init,
+        loadFoesForRealm: loadFoesForRealm,
+        createFoe: createFoe,
+        clearAllFoes: clearAllFoes,
+        startBattle: startBattle,
+        endBattle: endBattle,
+        getFoe: getFoe,
+        getAllFoes: getAllFoes
+    };
+})(); 

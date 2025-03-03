@@ -93,42 +93,7 @@ const CONFIG = {
     
     // ANIMATION SETTINGS
     ANIMATION: {
-        BOB_SPEED: 10,      // Controls bobbing speed
-        FIREWORKS_INTERVAL: 800  // Milliseconds between fireworks
-    },
-    
-    // BIRTHDAY SETTINGS
-    BIRTHDAY: {
-        SHOW_MESSAGE: true,
-        RECIPIENT_NAME: "JAKE",
-        TEXT_POSITION: {x: 0, y: 4, z: -15},
-        SCALE: 0.6,
-        COLORS: {
-            PRIMARY: "cyan",
-            SECONDARY: "pink",
-            GLOW_INTENSITY: 1.5,
-            METALLIC: true  // New option to enable metallic effect
-        },
-        ANIMATION: {
-            BOB_HEIGHT: 0.5,
-            BOB_SPEED: 0.5,
-            ROTATION_SPEED: 0.2
-        }
-    },
-    
-    // FIREWORKS SETTINGS
-    FIREWORKS: {
-        ENABLED: true,
-        FREQUENCY: 800,     // ms between fireworks
-        COLORS: [
-            '#ff69b4', // Hot pink
-            '#00ffff', // Cyan
-            '#ff00ff', // Magenta
-            '#9370db', // Medium purple
-            '#7b68ee'  // Medium slate blue
-        ],
-        PARTICLE_COUNT: 12,
-        PARTICLE_DISTANCE: 50
+        BOB_SPEED: 10      // Controls bobbing speed
     },
     
     // UI SETTINGS
@@ -161,6 +126,67 @@ const CONFIG = {
         AUDIO_CONTROLS: {
             SFX_VOLUME: 0.7,
             COLLAPSED_BY_DEFAULT: true
+        }
+    },
+    
+    // REALM SETTINGS
+    REALMS: {
+        CURRENT_REALM: 1,
+        COMMON: {
+            NPC_COUNT: 10,
+            FOE_COUNT: 10,
+            // Common settings for all realms
+            NPC_TEMPLATES: {
+                DIALOGUE: {
+                    TYPE: "neon_orb",
+                    COLOR: "#00ffff",
+                    GLOW_INTENSITY: 1.5,
+                    HOVER_HEIGHT: 0.5,
+                    HOVER_SPEED: 0.3,
+                    SCALE: 1.0
+                },
+                QUIZ: {
+                    TYPE: "neon_orb",
+                    COLOR: "#ff00ff",
+                    GLOW_INTENSITY: 1.8,
+                    HOVER_HEIGHT: 0.7,
+                    HOVER_SPEED: 0.5,
+                    SCALE: 1.2
+                }
+            }
+        },
+        // Individual realm configs will go here
+        REALM_1: {
+            NAME: "Synthwave Beach",
+            SKYBOX: {
+                TOP_COLOR: "#000033",    // Deep blue
+                BOTTOM_COLOR: "#ff69b4", // Hot pink
+            }
+        },
+        REALM_2: {
+            NAME: "Digital Mountains",
+            SKYBOX: {
+                TOP_COLOR: "#111133",
+                BOTTOM_COLOR: "#00ffff", // Cyan
+            }
+        }
+        // Realms 3-7 to be configured later
+    },
+    
+    // 3D ASSET SETTINGS
+    ASSETS: {
+        MODELS: {
+            PATH: "assets/models/",
+            FORMATS: ["glb", "fbx"],
+            LOAD_ON_DEMAND: true  // If false, preload all models
+        },
+        SPRITES: {
+            PATH: "assets/sprites/",
+            FORMATS: ["png"]
+        },
+        TEXTURES: {
+            PATH: "assets/textures/",
+            FORMATS: ["jpg", "png"]
         }
     }
 }; 

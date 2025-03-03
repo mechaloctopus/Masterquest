@@ -14,10 +14,16 @@ const App = (function() {
             striking: false,
             strikeProgress: 0,
             health: 100,
-            maxHealth: 100
+            maxHealth: 100,
+            currentRealm: 1
         },
         systems: {},
-        assets: {}
+        assets: {},
+        realm: {
+            current: null,
+            npcs: [],
+            foes: []
+        }
     };
 
     // Initialize all application systems
@@ -92,16 +98,6 @@ const App = (function() {
                 state.systems.grid = true;
             } catch (e) {
                 Logger.error(`Grid initialization failed: ${e.message}`);
-            }
-
-            // Initialize fireworks
-            try {
-                FireworksSystem.init();
-                Logger.log("> FIREWORKS INITIALIZED");
-                Logger.log("> BIRTHDAY FIREWORKS ACTIVATED");
-                state.systems.fireworks = true;
-            } catch (e) {
-                Logger.error(`Fireworks initialization failed: ${e.message}`);
             }
             
             // Initialize skybox
@@ -194,19 +190,6 @@ const App = (function() {
                 Logger.error(`Performance monitor initialization failed: ${e.message}`);
             }
             
-            // Initialize birthday text
-            try {
-                let birthdayText = BirthdayTextSystem.create(state.scene);
-                if (!birthdayText) {
-                    // Fallback to primitive version if CreateText is not available
-                    birthdayText = BirthdayTextSystem.createWithPrimitives(state.scene);
-                }
-                Logger.log("> 3D BIRTHDAY MESSAGE INITIALIZED");
-                state.systems.birthdayText = true;
-            } catch (e) {
-                Logger.error(`Birthday text initialization failed: ${e.message}`);
-            }
-            
             // Initialize radio player
             try {
                 if (window.RadioPlayerSystem) {
@@ -216,6 +199,39 @@ const App = (function() {
                 }
             } catch (e) {
                 Logger.error(`Radio player reference failed: ${e.message}`);
+            }
+            
+            // Initialize dialogue system for NPC and Foe interactions
+            try {
+                if (window.DialogueSystem) {
+                    DialogueSystem.init();
+                    Logger.log("> DIALOGUE SYSTEM INITIALIZED");
+                    state.systems.dialogue = true;
+                }
+            } catch (e) {
+                Logger.error(`Dialogue system initialization failed: ${e.message}`);
+            }
+            
+            // Initialize NPC system
+            try {
+                if (window.NPCSystem) {
+                    NPCSystem.init(state.scene);
+                    Logger.log("> NPC SYSTEM INITIALIZED");
+                    state.systems.npcs = true;
+                }
+            } catch (e) {
+                Logger.error(`NPC system initialization failed: ${e.message}`);
+            }
+            
+            // Initialize Foe system
+            try {
+                if (window.FoeSystem) {
+                    FoeSystem.init(state.scene);
+                    Logger.log("> FOE SYSTEM INITIALIZED");
+                    state.systems.foes = true;
+                }
+            } catch (e) {
+                Logger.error(`Foe system initialization failed: ${e.message}`);
             }
             
             // If asset loader is available, queue and load assets
@@ -253,8 +269,60 @@ const App = (function() {
             // Set up system event listeners
             setupEventListeners();
             
+            // Initialize the current realm
+            initializeCurrentRealm();
+            
         } catch (e) {
             Logger.error(`System initialization failed: ${e.message}`);
+        }
+    }
+    
+    // Initialize the current realm
+    function initializeCurrentRealm() {
+        try {
+            // Get current realm from config or state
+            const realmIndex = CONFIG.REALMS.CURRENT_REALM || 1;
+            state.gameState.currentRealm = realmIndex;
+            
+            // Get realm config
+            const realmConfig = CONFIG.REALMS[`REALM_${realmIndex}`];
+            if (!realmConfig) {
+                Logger.error(`Realm configuration for realm ${realmIndex} not found`);
+                return;
+            }
+            
+            Logger.log(`> INITIALIZING REALM: ${realmConfig.NAME}`);
+            
+            // Store current realm info
+            state.realm.current = {
+                index: realmIndex,
+                name: realmConfig.NAME,
+                config: realmConfig
+            };
+            
+            // Set up realm-specific skybox if configured
+            if (realmConfig.SKYBOX && state.systems.skybox) {
+                // Apply realm-specific skybox settings
+                // This functionality would be implemented in SkyboxSystem
+                // SkyboxSystem.updateForRealm(realmConfig.SKYBOX);
+                Logger.log(`> SKYBOX UPDATED FOR REALM: ${realmConfig.NAME}`);
+            }
+            
+            // Initialize NPCs for this realm
+            if (state.systems.npcs && window.NPCSystem) {
+                NPCSystem.loadNPCsForRealm(realmIndex);
+                Logger.log(`> NPCS LOADED FOR REALM: ${realmConfig.NAME}`);
+            }
+            
+            // Initialize Foes for this realm
+            if (state.systems.foes && window.FoeSystem) {
+                FoeSystem.loadFoesForRealm(realmIndex);
+                Logger.log(`> FOES LOADED FOR REALM: ${realmConfig.NAME}`);
+            }
+            
+            Logger.log(`> REALM ${realmConfig.NAME} INITIALIZED`);
+        } catch (e) {
+            Logger.error(`Realm initialization failed: ${e.message}`);
         }
     }
     
@@ -335,6 +403,64 @@ const App = (function() {
                 }
             });
         }
+        
+        // Future: Add event listeners for realm-specific events
+        if (window.EventSystem) {
+            // Listen for realm change events
+            EventSystem.on('realm.change', (data) => {
+                if (data && data.realmIndex) {
+                    changeRealm(data.realmIndex);
+                }
+            });
+            
+            // Listen for NPC interaction events
+            EventSystem.on('npc.interact', (data) => {
+                if (data && data.npcId) {
+                    handleNPCInteraction(data.npcId);
+                }
+            });
+            
+            // Listen for foe/quiz interaction events
+            EventSystem.on('foe.interact', (data) => {
+                if (data && data.foeId) {
+                    handleFoeInteraction(data.foeId);
+                }
+            });
+        }
+    }
+    
+    // Change to a different realm
+    function changeRealm(realmIndex) {
+        // This is a placeholder for future realm-change functionality
+        Logger.log(`> PREPARING TO CHANGE TO REALM ${realmIndex}`);
+        
+        // Future implementation:
+        // 1. Clear current realm entities
+        // 2. Update state
+        // 3. Load new realm assets
+        // 4. Initialize new realm
+    }
+    
+    // Handle NPC interaction
+    function handleNPCInteraction(npcId) {
+        // Placeholder for NPC dialogue system
+        Logger.log(`> INTERACTING WITH NPC ID: ${npcId}`);
+        
+        // Future implementation:
+        // 1. Find NPC data
+        // 2. Display dialogue UI
+        // 3. Process interaction
+    }
+    
+    // Handle foe/quiz interaction
+    function handleFoeInteraction(foeId) {
+        // Placeholder for foe/quiz system
+        Logger.log(`> INTERACTING WITH FOE ID: ${foeId}`);
+        
+        // Future implementation:
+        // 1. Find foe data
+        // 2. Display quiz UI
+        // 3. Process interaction/combat
     }
     
     // Apply equipment effects when items are equipped/unequipped
@@ -450,9 +576,10 @@ const App = (function() {
             LoaderSystem.loadSounds(audioFiles);
             Logger.log("> QUEUED AUDIO ASSETS FOR LOADING");
             
-            // You could add more asset types here:
-            // LoaderSystem.loadTextures(textureFiles);
-            // etc.
+            // Future: Load realm-specific assets based on current realm
+            // const realmAssets = getRealmAssets(state.gameState.currentRealm);
+            // LoaderSystem.loadModels(realmAssets.models);
+            // LoaderSystem.loadTextures(realmAssets.textures);
         } catch (e) {
             Logger.error(`Failed to queue assets: ${e.message}`);
         }
@@ -478,6 +605,28 @@ const App = (function() {
                 
                 // Update animation time for other possible uses
                 state.gameState.bobTime += deltaTime;
+                
+                // Future: Update realm-specific entities and animations
+                // if (state.realm.npcs.length > 0) {
+                //     updateNPCs(deltaTime);
+                // }
+                // 
+                // if (state.realm.foes.length > 0) {
+                //     updateFoes(deltaTime);
+                // }
+
+                // Update player position for NPCs and Foes
+                if (state.systems.camera) {
+                    const camera = state.systems.camera;
+                    const position = camera.position;
+                    
+                    // Emit player position event for NPC and Foe proximity checks
+                    if (window.EventSystem) {
+                        EventSystem.emit('player.moved', {
+                            position: position
+                        });
+                    }
+                }
             } catch (e) {
                 // Don't log every frame to avoid console spam
                 console.error("Update loop error:", e);
@@ -580,6 +729,7 @@ const App = (function() {
         setupServiceWorker: setupServiceWorker,
         getState: () => ({ ...state }), // Return a copy of state for debugging
         damage: damagePlayer, // Expose damage function for testing
+        changeRealm: changeRealm // Expose realm change function
     };
 })();
 
