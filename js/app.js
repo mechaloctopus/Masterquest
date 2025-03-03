@@ -73,7 +73,26 @@ const App = (function() {
             // Mark as initialized
             state.initialized = true;
             Logger.log("> SYSTEM READY");
-            Logger.log("> INITIALIZE GRID NAVIGATION...");
+            
+            // Final message for navigation
+            setTimeout(() => {
+                Logger.log("> INITIALIZE GRID NAVIGATION...");
+                if (state.systems.coordinates) {
+                    Logger.log("> COORDINATE SYSTEM ACTIVE");
+                    Logger.log("> GRID COORDINATES DISPLAYED");
+                }
+            }, 1000);
+            
+            // Initialize radio player if available
+            try {
+                if (window.RadioPlayerSystem) {
+                    // RadioPlayerSystem will self-initialize on DOM ready
+                    Logger.log("> RADIO PLAYER INITIALIZED");
+                    state.systems.radioPlayer = true;
+                }
+            } catch (e) {
+                Logger.error(`Radio player reference failed: ${e.message}`);
+            }
             
         } catch (error) {
             Logger.error(error.message);
@@ -135,10 +154,23 @@ const App = (function() {
             try {
                 if (window.MapSystem) {
                     MapSystem.init();
+                    Logger.log("> MAP SYSTEM INITIALIZED");
                     state.systems.map = true;
                 }
             } catch (e) {
                 Logger.error(`Map system initialization failed: ${e.message}`);
+            }
+            
+            // Initialize coordinate display system
+            try {
+                if (window.CoordinateSystem) {
+                    CoordinateSystem.init();
+                    Logger.log("> COORDINATE SYSTEM INITIALIZED");
+                    state.systems.coordinates = true;
+                    Logger.log("> GRID NAVIGATION ENABLED");
+                }
+            } catch (e) {
+                Logger.error(`Coordinate system initialization failed: ${e.message}`);
             }
             
             // Initialize inventory system
@@ -188,17 +220,6 @@ const App = (function() {
                 state.systems.performance = true;
             } catch (e) {
                 Logger.error(`Performance monitor initialization failed: ${e.message}`);
-            }
-            
-            // Initialize radio player
-            try {
-                if (window.RadioPlayerSystem) {
-                    // RadioPlayerSystem will self-initialize on DOM ready
-                    Logger.log("> RADIO PLAYER INITIALIZED");
-                    state.systems.radioPlayer = true;
-                }
-            } catch (e) {
-                Logger.error(`Radio player reference failed: ${e.message}`);
             }
             
             // Initialize dialogue system for NPC and Foe interactions
@@ -393,6 +414,14 @@ const App = (function() {
                     
                     // Update map with player position
                     MapSystem.updatePlayerPosition({ x: position.x, z: position.z }, rotation);
+                    
+                    // Update coordinate display
+                    if (window.CoordinateSystem && state.systems.coordinates) {
+                        CoordinateSystem.updatePosition(
+                            { x: position.x, y: position.y, z: position.z },
+                            rotation
+                        );
+                    }
                     
                     // Emit player position for NPC and Foe proximity checks
                     if (window.EventSystem) {

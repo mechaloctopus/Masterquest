@@ -85,17 +85,29 @@ window.FoeSystem = (function() {
             material.specularColor = BABYLON.Color3.White();
             foeMesh.material = material;
             
-            // Position directly in front of camera's starting position, slightly to the right
-            foeMesh.position = new BABYLON.Vector3(3, 2, -10);
+            // Position using grid coordinates if available, otherwise use fixed position
+            let position;
+            if (window.CoordinateSystem) {
+                // Place at grid position (-2, -5) - 2 units left, 5 units forward
+                position = CoordinateSystem.gridToWorld({x: -2, z: -5});
+                safeLog(`> FOE POSITIONED AT GRID (-2, -5) - WORLD ${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}`);
+            } else {
+                position = new BABYLON.Vector3(3, 2, -10);
+                safeLog(`> FOE POSITIONED AT (3, 2, -10)`);
+            }
             
-            safeLog(`> FOE POSITIONED AT (3, 2, -10)`);
+            // Ensure Y position is at eye level
+            position.y = 2;
+            foeMesh.position = new BABYLON.Vector3(position.x, position.y, position.z);
+            
             console.log("Foe created at position:", foeMesh.position);
             
             // Store foe in the array
             const foe = {
                 id: "visible_foe",
                 mesh: foeMesh,
-                position: foeMesh.position
+                position: foeMesh.position,
+                gridPosition: window.CoordinateSystem ? CoordinateSystem.worldToGrid(foeMesh.position) : null
             };
             
             foes.push(foe);
