@@ -48,37 +48,19 @@ const App = (function() {
                 strikeProgress: 0
             };
 
-            // Setup event listeners
-            setupEventListeners();
+            // Initialize all systems at once (keeping original order)
+            initializeAllSystems();
             
-            // Initialize loader first
-            initializeLoader();
+            // Setup main render loop
+            setupRenderLoop();
             
-            // Initialize core systems
-            initializeCoreSystems();
+            // Handle window resize
+            window.addEventListener('resize', () => state.engine.resize());
             
-            // Queue asset loading
-            queueAssetLoading();
-            
-            // Start loading process
-            LoaderSystem.startLoading();
-            
-            // Listen for loading completion
-            EventSystem.on('loader.complete', () => {
-                // Initialize remaining systems after assets are loaded
-                initializeGameSystems();
-                
-                // Setup main render loop
-                setupRenderLoop();
-                
-                // Handle window resize
-                window.addEventListener('resize', () => state.engine.resize());
-                
-                // Mark as initialized
-                state.initialized = true;
-                Logger.log("> SYSTEM READY");
-                Logger.log("> INITIALIZE GRID NAVIGATION...");
-            });
+            // Mark as initialized
+            state.initialized = true;
+            Logger.log("> SYSTEM READY");
+            Logger.log("> INITIALIZE GRID NAVIGATION...");
             
         } catch (error) {
             Logger.error(error.message);
@@ -86,27 +68,125 @@ const App = (function() {
         }
     }
     
-    // Set up event listeners
-    function setupEventListeners() {
-        // System readiness events
-        EventSystem.on('loader.error', data => {
-            Logger.error(`Loading error: ${data.taskName} - ${data.error}`);
-        });
-        
-        EventSystem.on('loader.progress', data => {
-            // Could add a loading screen here
-            console.log(`Loading progress: ${Math.round(data.progress * 100)}%`);
-        });
-    }
-    
-    // Initialize the loader system
-    function initializeLoader() {
+    // Initialize all systems at once (keeping original ordering)
+    function initializeAllSystems() {
         try {
-            LoaderSystem.initialize(state.scene);
-            Logger.log("> ASSET LOADER INITIALIZED");
-            state.systems.loader = true;
+            // Initialize loader first if available
+            if (window.LoaderSystem) {
+                LoaderSystem.initialize(state.scene);
+                Logger.log("> ASSET LOADER INITIALIZED");
+                state.systems.loader = true;
+            }
+            
+            // Initialize grid
+            try {
+                GridSystem.create(state.scene);
+                Logger.log("> NEON GREEN GRID INITIALIZED");
+                state.systems.grid = true;
+            } catch (e) {
+                Logger.error(`Grid initialization failed: ${e.message}`);
+            }
+
+            // Initialize fireworks
+            try {
+                FireworksSystem.init();
+                Logger.log("> BIRTHDAY FIREWORKS ACTIVATED");
+                state.systems.fireworks = true;
+            } catch (e) {
+                Logger.error(`Fireworks initialization failed: ${e.message}`);
+            }
+            
+            // Initialize skybox
+            try {
+                SkyboxSystem.create(state.scene);
+                Logger.log("> VAPORWAVE SKYBOX INITIALIZED");
+                state.systems.skybox = true;
+            } catch (e) {
+                Logger.error(`Skybox initialization failed: ${e.message}`);
+            }
+            
+            // Initialize camera
+            try {
+                const canvas = document.getElementById('renderCanvas');
+                state.systems.camera = CameraManager.create(state.scene, canvas);
+                Logger.log("> CAMERA INITIALIZED");
+            } catch (e) {
+                Logger.error(`Camera initialization failed: ${e.message}`);
+                // Create fallback camera
+                state.systems.camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, 0), state.scene);
+            }
+            
+            // Initialize hands
+            try {
+                state.systems.hands = HandsSystem.create(state.scene, state.systems.camera);
+                Logger.log("> HANDS SYSTEM INITIALIZED");
+            } catch (e) {
+                Logger.error(`Hands initialization failed: ${e.message}`);
+                state.systems.hands = null;
+            }
+            
+            // Initialize audio
+            try {
+                state.systems.audio = AudioSystem.create();
+                Logger.log("> AUDIO SYSTEM INITIALIZED");
+            } catch (e) {
+                Logger.error(`Audio initialization failed: ${e.message}`);
+                // Create dummy audio system
+                state.systems.audio = {
+                    sfx: { footsteps: {}, jump: {}, strike: {} },
+                    isWalking: false
+                };
+            }
+            
+            // Initialize controls - CRITICAL for joysticks and buttons
+            try {
+                ControlSystem.setupControls(state.scene, state.systems.camera, state.gameState, state.systems.audio);
+                Logger.log("> CONTROLS INITIALIZED");
+                state.systems.controls = true;
+            } catch (e) {
+                Logger.error(`Controls initialization failed: ${e.message}`);
+            }
+            
+            // Setup performance monitoring
+            try {
+                SceneManager.addPerformanceMonitor(state.engine, state.scene);
+                state.systems.performance = true;
+            } catch (e) {
+                Logger.error(`Performance monitor initialization failed: ${e.message}`);
+            }
+            
+            // Initialize birthday text
+            try {
+                let birthdayText = BirthdayTextSystem.create(state.scene);
+                if (!birthdayText) {
+                    // Fallback to primitive version if CreateText is not available
+                    birthdayText = BirthdayTextSystem.createWithPrimitives(state.scene);
+                }
+                Logger.log("> 3D BIRTHDAY MESSAGE INITIALIZED");
+                state.systems.birthdayText = true;
+            } catch (e) {
+                Logger.error(`Birthday text initialization failed: ${e.message}`);
+            }
+            
+            // Initialize radio player
+            try {
+                if (window.RadioPlayerSystem) {
+                    // RadioPlayerSystem will self-initialize on DOM ready
+                    Logger.log("> RADIO PLAYER INITIALIZED");
+                    state.systems.radioPlayer = true;
+                }
+            } catch (e) {
+                Logger.error(`Radio player reference failed: ${e.message}`);
+            }
+            
+            // If asset loader is available, queue and load assets
+            if (state.systems.loader) {
+                queueAssetLoading();
+                LoaderSystem.startLoading();
+            }
+            
         } catch (e) {
-            Logger.error(`Loader initialization failed: ${e.message}`);
+            Logger.error(`System initialization failed: ${e.message}`);
         }
     }
     
@@ -130,95 +210,6 @@ const App = (function() {
         } catch (e) {
             Logger.error(`Failed to queue assets: ${e.message}`);
         }
-    }
-
-    // Initialize core systems needed before asset loading
-    function initializeCoreSystems() {
-        const coreInitializers = [
-            { name: "grid", fn: () => {
-                GridSystem.create(state.scene);
-                Logger.log("> NEON GREEN GRID INITIALIZED");
-            }},
-            { name: "skybox", fn: () => {
-                SkyboxSystem.create(state.scene);
-                Logger.log("> VAPORWAVE SKYBOX INITIALIZED");
-            }},
-            { name: "camera", fn: () => {
-                const canvas = document.getElementById('renderCanvas');
-                state.systems.camera = CameraManager.create(state.scene, canvas);
-                Logger.log("> CAMERA INITIALIZED");
-            }}
-        ];
-
-        // Initialize each core system with error handling
-        coreInitializers.forEach(system => {
-            try {
-                system.fn();
-                state.systems[system.name] = true;
-            } catch (e) {
-                Logger.error(`${system.name} initialization failed: ${e.message}`);
-                
-                // Create fallbacks for critical systems
-                if (system.name === "camera" && !state.systems.camera) {
-                    state.systems.camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, 0), state.scene);
-                }
-            }
-        });
-    }
-
-    // Initialize game systems after assets are loaded
-    function initializeGameSystems() {
-        const systemInitializers = [
-            { name: "fireworks", fn: () => {
-                FireworksSystem.init();
-                Logger.log("> BIRTHDAY FIREWORKS ACTIVATED");
-            }},
-            { name: "hands", fn: () => {
-                state.systems.hands = HandsSystem.create(state.scene, state.systems.camera);
-                Logger.log("> HANDS SYSTEM INITIALIZED");
-            }},
-            { name: "audio", fn: () => {
-                state.systems.audio = AudioSystem.create();
-                Logger.log("> AUDIO SYSTEM INITIALIZED");
-            }},
-            { name: "controls", fn: () => {
-                ControlSystem.setupControls(state.scene, state.systems.camera, state.gameState, state.systems.audio);
-                Logger.log("> CONTROLS INITIALIZED");
-            }},
-            { name: "performance", fn: () => {
-                SceneManager.addPerformanceMonitor(state.engine, state.scene);
-            }},
-            { name: "birthdayText", fn: () => {
-                let birthdayText = BirthdayTextSystem.create(state.scene);
-                if (!birthdayText) {
-                    birthdayText = BirthdayTextSystem.createWithPrimitives(state.scene);
-                }
-                Logger.log("> 3D BIRTHDAY MESSAGE INITIALIZED");
-            }},
-            { name: "radioPlayer", fn: () => {
-                if (window.RadioPlayerSystem) {
-                    Logger.log("> RADIO PLAYER WILL SELF-INITIALIZE");
-                }
-            }}
-        ];
-
-        // Initialize each game system with error handling
-        systemInitializers.forEach(system => {
-            try {
-                system.fn();
-                state.systems[system.name] = true;
-            } catch (e) {
-                Logger.error(`${system.name} initialization failed: ${e.message}`);
-                
-                // Create fallbacks for critical systems
-                if (system.name === "audio" && !state.systems.audio) {
-                    state.systems.audio = {
-                        sfx: { footsteps: {}, jump: {}, strike: {} },
-                        isWalking: false
-                    };
-                }
-            }
-        });
     }
 
     // Setup the main render and update loops

@@ -2,9 +2,37 @@
 const EventSystem = (function() {
     // Private event registry
     const events = {};
+    let initialized = false;
+    
+    // Initialize the event system
+    function init() {
+        if (initialized) return;
+        
+        // Clear any existing events
+        clear();
+        
+        // Mark as initialized
+        initialized = true;
+        
+        // Log initialization if logger is available
+        if (window.Logger) {
+            Logger.log("> EVENT SYSTEM INITIALIZED");
+        } else {
+            console.log("> EVENT SYSTEM INITIALIZED");
+        }
+        
+        return true;
+    }
     
     // Subscribe to an event
     function on(eventName, callback) {
+        if (!eventName || typeof callback !== 'function') {
+            console.error("Invalid event subscription:", eventName);
+            return null;
+        }
+        
+        if (!initialized) init();
+        
         if (!events[eventName]) {
             events[eventName] = [];
         }
@@ -17,7 +45,7 @@ const EventSystem = (function() {
     
     // Unsubscribe from an event
     function off(eventName, callback) {
-        if (!events[eventName]) return;
+        if (!eventName || !events[eventName]) return;
         
         if (callback) {
             events[eventName] = events[eventName].filter(cb => cb !== callback);
@@ -29,7 +57,7 @@ const EventSystem = (function() {
     
     // Emit an event with data
     function emit(eventName, data) {
-        if (!events[eventName]) return;
+        if (!eventName || !events[eventName] || events[eventName].length === 0) return;
         
         events[eventName].forEach(callback => {
             try {
@@ -57,13 +85,23 @@ const EventSystem = (function() {
         });
     }
     
+    // Check if initialized
+    function isInitialized() {
+        return initialized;
+    }
+    
+    // Try to initialize automatically
+    init();
+    
     // Public API
     return {
+        init,
         on,
         off,
         emit,
         listenerCount,
         eventNames,
-        clear
+        clear,
+        isInitialized
     };
 })(); 
