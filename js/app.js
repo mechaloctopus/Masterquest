@@ -291,7 +291,6 @@ const App = (function() {
             
             // Get realm config
             const realmConfig = CONFIG.REALMS[`REALM_${realmIndex}`];
-            console.log("Realm config:", realmConfig);
             
             if (!realmConfig) {
                 console.error(`Realm configuration for realm ${realmIndex} not found`);
@@ -316,29 +315,28 @@ const App = (function() {
                 Logger.log(`> SKYBOX UPDATED FOR REALM: ${realmConfig.NAME}`);
             }
             
+            Logger.log(`> CREATING SCENE OBJECTS`);
+            
             // Initialize NPCs for this realm
             if (window.NPCSystem) {
-                console.log("Calling NPCSystem.loadNPCsForRealm with realmIndex:", realmIndex);
                 NPCSystem.loadNPCsForRealm(realmIndex);
-                console.log("NPCs loaded");
-                Logger.log(`> NPCS LOADED FOR REALM: ${realmConfig.NAME}`);
             } else {
+                Logger.error("> NPC SYSTEM NOT AVAILABLE");
                 console.error("NPCSystem not available globally");
             }
             
             // Initialize Foes for this realm
             if (window.FoeSystem) {
-                console.log("Calling FoeSystem.loadFoesForRealm with realmIndex:", realmIndex);
                 FoeSystem.loadFoesForRealm(realmIndex);
-                console.log("Foes loaded");
-                Logger.log(`> FOES LOADED FOR REALM: ${realmConfig.NAME}`);
             } else {
+                Logger.error("> FOE SYSTEM NOT AVAILABLE");
                 console.error("FoeSystem not available globally");
             }
             
-            Logger.log(`> REALM ${realmConfig.NAME} INITIALIZED`);
+            Logger.log(`> REALM ${realmConfig.NAME} INITIALIZATION COMPLETE`);
         } catch (e) {
             Logger.error(`Realm initialization failed: ${e.message}`);
+            console.error("Error initializing realm:", e);
         }
     }
     

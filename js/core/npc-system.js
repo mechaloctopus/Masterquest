@@ -16,8 +16,9 @@ const NPCSystem = (function() {
             console.log("NPC System init called with scene:", sceneInstance);
             scene = sceneInstance;
             initialized = true;
-            console.log("NPC System initialized successfully");
             
+            // Log to both console and on-screen Logger
+            console.log("NPC System initialized successfully");
             Logger.log("> NPC SYSTEM INITIALIZED");
             
             // Initialize event handlers
@@ -40,35 +41,55 @@ const NPCSystem = (function() {
     // Load NPCs for a specific realm
     function loadNPCsForRealm(realmIndex) {
         console.log(`NPC System: Loading NPCs for realm ${realmIndex}`);
+        Logger.log(`> LOADING NPCS FOR REALM ${realmIndex}`);
         
         // Clear existing NPCs
         clearNPCs();
-        console.log("NPC System: Cleared existing NPCs");
         
-        // Get realm config
-        const realm = `REALM_${realmIndex}`;
-        const realmConfig = CONFIG.REALMS[realm];
-        console.log(`NPC System: Retrieved realm config for ${realm}:`, realmConfig);
+        // Create a single visible NPC right in front of the camera
+        Logger.log("> CREATING BLUE NPC ORB");
+        createVisibleNPC();
         
-        if (!realmConfig) {
-            console.error(`NPC System: Realm ${realmIndex} configuration not found`);
-            return;
+        Logger.log(`> CREATED ${npcs.length} NPCS`);
+        return true;
+    }
+    
+    // Create a single highly visible NPC
+    function createVisibleNPC() {
+        try {
+            // Create a simple blue sphere that will definitely be visible
+            const npcMesh = BABYLON.MeshBuilder.CreateSphere("visible_npc", {
+                diameter: 1.0,
+                segments: 16
+            }, scene);
+            
+            // Create bright blue material
+            const material = new BABYLON.StandardMaterial("npc_material", scene);
+            material.diffuseColor = BABYLON.Color3.Blue();
+            material.emissiveColor = BABYLON.Color3.Blue();
+            material.specularColor = BABYLON.Color3.White();
+            npcMesh.material = material;
+            
+            // Position directly in front of camera's starting position
+            npcMesh.position = new BABYLON.Vector3(0, 2, -10);
+            
+            Logger.log(`> NPC POSITIONED AT (0, 2, -10)`);
+            console.log("NPC created at position:", npcMesh.position);
+            
+            // Store NPC in the array
+            const npc = {
+                id: "visible_npc",
+                mesh: npcMesh,
+                position: npcMesh.position
+            };
+            
+            npcs.push(npc);
+            return npc;
+        } catch (e) {
+            Logger.error(`Failed to create visible NPC: ${e.message}`);
+            console.error("Error creating NPC:", e);
+            return null;
         }
-        
-        // Always create at least one NPC as a fallback
-        console.log("NPC System: Creating default NPC");
-        const npc = createNPC(0, realmIndex, { NAME: "Guide" });
-        console.log("NPC System: Default NPC created:", npc);
-        
-        // If realm has NPCs configured, create them
-        if (realmConfig.NPCS && Array.isArray(realmConfig.NPCS)) {
-            for (let i = 0; i < realmConfig.NPCS.length; i++) {
-                createNPC(i + 1, realmIndex, realmConfig.NPCS[i]);
-            }
-        }
-        
-        Logger.log(`Created ${npcs.length} NPCs for realm ${realmIndex}`);
-        console.log("NPCs in scene:", npcs);
     }
     
     // Create a single NPC
@@ -141,6 +162,8 @@ const NPCSystem = (function() {
     // Clear all NPCs from the scene
     function clearNPCs() {
         if (npcs.length > 0) {
+            Logger.log("> CLEARING EXISTING NPCS");
+            
             // Remove each NPC mesh from the scene
             npcs.forEach(npc => {
                 if (npc.mesh) {
@@ -150,7 +173,7 @@ const NPCSystem = (function() {
             
             // Clear the array
             npcs = [];
-            Logger.log("All NPCs cleared from scene");
+            Logger.log("> ALL NPCS CLEARED");
         }
     }
     
