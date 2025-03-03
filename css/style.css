@@ -34,91 +34,108 @@ canvas { width: 100%; height: 100%; }
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    transition: opacity 0.5s ease-in-out;
+    transition: opacity 0.3s ease-in-out;
+    will-change: opacity;
 }
 
 #loadingScreen.hidden {
     opacity: 0;
     pointer-events: none;
+    z-index: -1;
 }
 
 .loading-grid {
     position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     perspective: 1000px;
     overflow: hidden;
-    opacity: 0.3;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
 }
 
 .grid-horizontal, .grid-vertical {
     position: absolute;
-    left: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
+    width: 100%;
+    height: 100%;
     transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+    transform-origin: center bottom;
+    transition: transform 0.5s ease-out;
+    will-change: transform;
 }
 
 .grid-line {
     position: absolute;
-    background: #ff00cc;
-    box-shadow: 0 0 10px #ff00cc, 0 0 20px #ff00cc;
+    background: #ff00ff;
+    box-shadow: 0 0 15px #ff00ff;
+    transition: transform 0.5s ease-out;
+    will-change: transform;
 }
 
 .horizontal-line {
     width: 100%;
     height: 1px;
-    transform: translateZ(0);
+    transform: translateZ(-1000px);
 }
 
 .vertical-line {
     width: 1px;
     height: 100%;
-    transform: translateZ(0);
+    transform: translateZ(-1000px);
 }
 
 .loading-content {
     position: relative;
-    z-index: 2;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 90%;
+    max-width: 600px;
+    padding: 2rem;
     text-align: center;
-    max-width: 80%;
-    padding: 40px;
-    background: rgba(0, 0, 0, 0.6);
-    border: 2px solid #00ffcc;
-    box-shadow: 0 0 20px #00ffcc, inset 0 0 20px rgba(0, 255, 204, 0.5);
+    background: rgba(0, 0, 0, 0.4);
     border-radius: 10px;
 }
 
 .loading-title {
-    font-family: 'Orbitron', 'Courier New', sans-serif;
+    font-family: 'Orbitron', sans-serif;
     font-size: 2.5rem;
-    color: #ff00cc;
-    margin-bottom: 30px;
+    font-weight: 700;
+    color: #ff00ff;
+    margin-bottom: 1.5rem;
     text-transform: uppercase;
-    letter-spacing: 4px;
-    text-shadow: 0 0 10px #ff00cc, 0 0 20px #ff00cc;
+    letter-spacing: 0.5rem;
+    text-shadow: 
+        0 0 10px #ff00ff,
+        0 0 20px #ff00ff,
+        0 0 30px #ff00ff;
     animation: pulse 2s infinite alternate;
 }
 
 .loading-bar-container {
+    position: relative;
     width: 100%;
     height: 20px;
     background: rgba(0, 0, 0, 0.5);
-    border: 1px solid #ff00cc;
+    border: 1px solid #00ffff;
     border-radius: 10px;
     overflow: hidden;
-    margin: 20px 0;
-    position: relative;
+    margin: 0 0 1rem 0;
+    box-shadow: 0 0 10px #00ffff;
 }
 
 .loading-bar {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #ff00cc, #00ffcc);
-    box-shadow: 0 0 10px #ff00cc;
-    transition: width 0.3s ease-out;
-    border-radius: 10px;
+    background: linear-gradient(90deg, #ff0066, #ff00cc);
+    border-radius: 9px;
+    transition: width 0.3s ease;
+    will-change: width;
 }
 
 .loading-bar-glow {
@@ -126,45 +143,45 @@ canvas { width: 100%; height: 100%; }
     top: 0;
     left: 0;
     height: 100%;
-    width: 20px;
-    background: rgba(255, 255, 255, 0.8);
+    width: 20px; 
+    background: rgba(255, 0, 255, 0.5);
     filter: blur(5px);
-    animation: barGlow 2s linear infinite;
-    opacity: 0.7;
+    border-radius: 9px;
+    animation: barGlow 1.5s infinite linear;
+    pointer-events: none;
 }
 
 .loading-status {
-    font-family: 'Courier New', monospace;
-    color: #00ffcc;
+    font-family: 'Orbitron', sans-serif;
     font-size: 1rem;
-    margin: 10px 0;
-    text-shadow: 0 0 5px #00ffcc;
-    height: 20px;
+    color: #00ffff;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 5px #00ffff;
+    min-height: 1.2em;
 }
 
 .loading-console {
     background: rgba(0, 0, 0, 0.7);
-    border: 1px solid #00ffcc;
+    border: 1px solid #00ff00;
     border-radius: 5px;
-    color: #00ffcc;
-    font-family: 'Courier New', monospace;
-    font-size: 0.8rem;
-    height: 120px;
-    margin-top: 20px;
-    overflow-y: auto;
-    padding: 10px;
-    text-align: left;
+    padding: 1rem;
     width: 100%;
-    box-sizing: border-box;
+    height: 150px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: #00ff00;
+    text-align: left;
+    box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.3);
+    scrollbar-width: thin;
+    scrollbar-color: #00ff00 rgba(0, 0, 0, 0.5);
 }
 
 .loading-console-line {
-    line-height: 1.4;
-    text-shadow: 0 0 5px #00ffcc;
+    margin-bottom: 0.5rem;
+    animation: typewriter 0.3s steps(30, end);
     white-space: nowrap;
     overflow: hidden;
-    width: 0;
-    animation: typewriter 3s forwards;
 }
 
 .sun {

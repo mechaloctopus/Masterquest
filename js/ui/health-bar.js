@@ -21,8 +21,9 @@ const HealthBarSystem = (function() {
         healthFillElement = document.getElementById('healthFill');
         healthTextElement = document.getElementById('healthText');
         
-        // Set initial health
-        setHealth(currentHealth, maxHealth);
+        // Set initial health WITHOUT calling setHealth to avoid recursion
+        // Just update the UI directly
+        updateHealthUI(currentHealth, maxHealth);
         
         initialized = true;
         
@@ -34,16 +35,10 @@ const HealthBarSystem = (function() {
         return true;
     }
     
-    // Set health value and update the UI
-    function setHealth(health, max = maxHealth) {
-        if (!initialized && !init()) return;
-        
-        // Update health values with validation
-        currentHealth = Math.max(0, Math.min(health, max));
-        maxHealth = Math.max(max, 1); // Prevent division by zero
-        
+    // Internal function to update health UI without recursion checks
+    function updateHealthUI(health, max) {
         // Calculate health percentage
-        const percentage = (currentHealth / maxHealth) * 100;
+        const percentage = (health / max) * 100;
         
         // Update health fill element width
         if (healthFillElement) {
@@ -61,8 +56,27 @@ const HealthBarSystem = (function() {
         
         // Update health text
         if (healthTextElement) {
-            healthTextElement.textContent = `${Math.round(currentHealth)} / ${Math.round(maxHealth)}`;
+            healthTextElement.textContent = `${Math.round(health)} / ${Math.round(max)}`;
         }
+        
+        return percentage;
+    }
+    
+    // Set health value and update the UI
+    function setHealth(health, max = maxHealth) {
+        // If not initialized, just store the values but don't call init()
+        if (!initialized) {
+            currentHealth = Math.max(0, Math.min(health, max));
+            maxHealth = Math.max(max, 1);
+            return (currentHealth / maxHealth) * 100;
+        }
+        
+        // Update health values with validation
+        currentHealth = Math.max(0, Math.min(health, max));
+        maxHealth = Math.max(max, 1); // Prevent division by zero
+        
+        // Update the UI
+        const percentage = updateHealthUI(currentHealth, maxHealth);
         
         // Emit health change event if event system is available
         if (window.EventSystem) {

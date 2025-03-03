@@ -97,6 +97,7 @@ const App = (function() {
             // Initialize fireworks
             try {
                 FireworksSystem.init();
+                Logger.log("> FIREWORKS INITIALIZED");
                 Logger.log("> BIRTHDAY FIREWORKS ACTIVATED");
                 state.systems.fireworks = true;
             } catch (e) {
@@ -221,6 +222,32 @@ const App = (function() {
             if (state.systems.loader) {
                 queueAssetLoading();
                 LoaderSystem.startLoading();
+                
+                // Set a timer to force loader completion if it doesn't complete on its own
+                setTimeout(() => {
+                    if (window.EventSystem && state.initialized) {
+                        // Check if the loading screen is still visible
+                        const loadingScreen = document.getElementById('loadingScreen');
+                        if (loadingScreen && loadingScreen.style.display !== 'none' && !loadingScreen.classList.contains('hidden')) {
+                            console.log("Forcing loader completion event after timeout");
+                            EventSystem.emit('loader.complete', { 
+                                forced: true,
+                                message: "Loading completed (forced)"
+                            });
+                        }
+                    }
+                }, 8000); // 8 seconds max loading time
+            } else {
+                // If no loader is available, emit loader complete immediately
+                if (window.EventSystem) {
+                    console.log("No loader system available, emitting completion immediately");
+                    setTimeout(() => {
+                        EventSystem.emit('loader.complete', { 
+                            forced: true,
+                            message: "Loading completed (no loader available)"
+                        });
+                    }, 2000); // Give 2 seconds to view the loading screen anyway
+                }
             }
             
             // Set up system event listeners

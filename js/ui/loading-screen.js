@@ -10,6 +10,7 @@ const LoadingScreenSystem = (function() {
     let gridVerticalElement = null;
     let horizontalLines = [];
     let verticalLines = [];
+    let forceHideTimer = null;
     
     // Initialize the loading screen
     function init() {
@@ -27,7 +28,7 @@ const LoadingScreenSystem = (function() {
         gridHorizontalElement = document.getElementById('gridHorizontal');
         gridVerticalElement = document.getElementById('gridVertical');
         
-        // Initialize the grid
+        // Initialize the grid with fewer lines for better performance
         createGrid();
         
         // Listen for loader events
@@ -43,11 +44,15 @@ const LoadingScreenSystem = (function() {
             EventSystem.on('logAdded', handleLogEvent);
         }
         
+        // Set a maximum time for the loading screen to be visible
+        // This ensures we transition to the game even if loader.complete isn't fired
+        forceHideTimer = setTimeout(hideLoadingScreen, 10000); // 10 seconds max
+        
         initialized = true;
         return true;
     }
     
-    // Create the grid lines for the background effect
+    // Create the grid lines for the background effect - optimized for performance
     function createGrid() {
         if (!gridHorizontalElement || !gridVerticalElement) return;
         
@@ -57,8 +62,8 @@ const LoadingScreenSystem = (function() {
         horizontalLines = [];
         verticalLines = [];
         
-        // Create horizontal lines
-        const horizontalCount = 20;
+        // Create horizontal lines - reduced count for better performance
+        const horizontalCount = 10; // Reduced from 20
         const horizontalSpacing = 100 / (horizontalCount - 1);
         
         for (let i = 0; i < horizontalCount; i++) {
@@ -70,8 +75,8 @@ const LoadingScreenSystem = (function() {
             horizontalLines.push(line);
         }
         
-        // Create vertical lines
-        const verticalCount = 20;
+        // Create vertical lines - reduced count for better performance
+        const verticalCount = 10; // Reduced from 20
         const verticalSpacing = 100 / (verticalCount - 1);
         
         for (let i = 0; i < verticalCount; i++) {
@@ -95,24 +100,37 @@ const LoadingScreenSystem = (function() {
         // Start vertical grid animation
         gridVerticalElement.style.transform = 'rotateX(60deg) translateZ(-100px)';
         
-        // Animate individual lines for better effect
+        // Animate individual lines for better effect - with fewer animations
         animateLines();
     }
     
-    // Animate individual grid lines
+    // Animate individual grid lines - optimized for better performance
     function animateLines() {
+        // Use a batch approach for line animations
+        const batchSize = 3; // Animate every 3 lines instead of every line
+        
         horizontalLines.forEach((line, index) => {
-            const delay = index * 50;
-            setTimeout(() => {
+            if (index % batchSize === 0) {
+                const delay = (index / batchSize) * 100; // Increased delay between batches
+                setTimeout(() => {
+                    line.style.transform = 'translateZ(0px)';
+                }, delay);
+            } else {
+                // Set transform directly without delay for intermediate lines
                 line.style.transform = 'translateZ(0px)';
-            }, delay);
+            }
         });
         
         verticalLines.forEach((line, index) => {
-            const delay = index * 50;
-            setTimeout(() => {
+            if (index % batchSize === 0) {
+                const delay = (index / batchSize) * 100; // Increased delay between batches
+                setTimeout(() => {
+                    line.style.transform = 'translateZ(0px)';
+                }, delay);
+            } else {
+                // Set transform directly without delay for intermediate lines
                 line.style.transform = 'translateZ(0px)';
-            }, delay);
+            }
         });
     }
     
@@ -129,8 +147,15 @@ const LoadingScreenSystem = (function() {
         updateProgressBar(progress);
         updateStatus(`Loading assets: ${completedTasks} / ${totalTasks}`);
         
-        if (lastTask) {
+        // Only log every few tasks to avoid console spam
+        if (lastTask && completedTasks % 3 === 0) {
             addConsoleMessage(`> LOADED: ${lastTask}`);
+        }
+        
+        // If progress is high (90%+) but complete event hasn't fired,
+        // start a short timer to force transition
+        if (progress > 0.9 && forceHideTimer === null) {
+            forceHideTimer = setTimeout(hideLoadingScreen, 2000);
         }
     }
     
@@ -140,16 +165,30 @@ const LoadingScreenSystem = (function() {
         updateStatus("Loading complete!");
         addConsoleMessage("> ALL ASSETS LOADED SUCCESSFULLY");
         
-        // Hide the loading screen after a short delay
+        // Clear any existing force hide timer
+        if (forceHideTimer !== null) {
+            clearTimeout(forceHideTimer);
+            forceHideTimer = null;
+        }
+        
+        // Hide the loading screen after a shorter delay
         setTimeout(() => {
             hideLoadingScreen();
-        }, 1000);
+        }, 500); // Reduced from 1000
     }
     
     // Handle loader error event
     function handleLoaderError(data) {
         const { taskName, error } = data;
         addConsoleMessage(`> ERROR LOADING: ${taskName} - ${error}`, 'error');
+        
+        // If we get an error and progress is reasonably high, consider finishing loading
+        // This prevents getting stuck on the loading screen due to minor asset failures
+        setTimeout(() => {
+            if (loadingBarElement && loadingBarElement.style.width.replace('%', '') > 50) {
+                hideLoadingScreen();
+            }
+        }, 2000);
     }
     
     // Handle log events
@@ -194,17 +233,34 @@ const LoadingScreenSystem = (function() {
         
         // Auto-scroll to bottom
         loadingConsoleElement.scrollTop = loadingConsoleElement.scrollHeight;
+        
+        // Limit number of messages for performance
+        while (loadingConsoleElement.children.length > 15) {
+            loadingConsoleElement.removeChild(loadingConsoleElement.firstChild);
+        }
     }
     
     // Hide the loading screen
     function hideLoadingScreen() {
         if (!loadingScreenElement) return;
         
+        // Clear any existing force hide timer
+        if (forceHideTimer !== null) {
+            clearTimeout(forceHideTimer);
+            forceHideTimer = null;
+        }
+        
         loadingScreenElement.classList.add('hidden');
         
         // Remove it from the DOM after the transition completes
         setTimeout(() => {
             loadingScreenElement.style.display = 'none';
+            
+            // Cleanup to free memory
+            horizontalLines = [];
+            verticalLines = [];
+            if (gridHorizontalElement) gridHorizontalElement.innerHTML = '';
+            if (gridVerticalElement) gridVerticalElement.innerHTML = '';
         }, 500);
     }
     
