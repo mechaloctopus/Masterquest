@@ -2,11 +2,8 @@
 window.CoordinateSystem = (function() {
     // Private properties
     let initialized = false;
-    let displayElement = null;
-    let positionElement = null;
-    let directionElement = null;
-    let gridCoordElement = null;
-    let compassElement = null;
+    let mapContainer = null;
+    let coordDisplayElement = null;
     
     // Current player data
     let position = { x: 0, y: 0, z: 0 };
@@ -20,44 +17,27 @@ window.CoordinateSystem = (function() {
         if (initialized) return true;
         
         try {
-            // Create UI container
-            displayElement = document.createElement('div');
-            displayElement.id = 'coordinateDisplay';
-            displayElement.className = 'coordinate-display';
+            // Find the map container
+            mapContainer = document.getElementById('mapContainer');
+            if (!mapContainer) {
+                console.error('Map container not found!');
+                return false;
+            }
             
-            // Create position display
-            positionElement = document.createElement('div');
-            positionElement.className = 'coord-position';
-            positionElement.innerHTML = 'Position: X:0 Z:0';
-            displayElement.appendChild(positionElement);
+            // Create coordinate display within map container
+            coordDisplayElement = document.createElement('div');
+            coordDisplayElement.id = 'coordinateDisplay';
+            coordDisplayElement.className = 'map-coordinates';
             
-            // Create grid coordinate display
-            gridCoordElement = document.createElement('div');
-            gridCoordElement.className = 'coord-grid';
-            gridCoordElement.innerHTML = 'Grid: (0, 0)';
-            displayElement.appendChild(gridCoordElement);
+            // Set initial content
+            updateCoordinateText();
             
-            // Create compass direction display
-            compassElement = document.createElement('div');
-            compassElement.className = 'coord-compass';
-            compassElement.innerHTML = 'Facing: N';
-            displayElement.appendChild(compassElement);
-            
-            // Create angle direction display
-            directionElement = document.createElement('div');
-            directionElement.className = 'coord-direction';
-            directionElement.innerHTML = 'Angle: 0°';
-            displayElement.appendChild(directionElement);
-            
-            // Add to the DOM
-            document.body.appendChild(displayElement);
+            // Add to the map container (after the canvas but before any other controls)
+            mapContainer.appendChild(coordDisplayElement);
             
             // Mark as initialized
             initialized = true;
-            console.log('Coordinate display system initialized');
-            
-            // Show the display immediately
-            show();
+            console.log('Coordinate display system initialized (embedded in map)');
             
             return true;
         } catch (e) {
@@ -66,44 +46,21 @@ window.CoordinateSystem = (function() {
         }
     }
     
-    // Apply CSS styles
-    function applyStyles() {
-        const css = `
-            .coordinate-display {
-                position: fixed;
-                top: 10px;
-                right: 10px;
-                background-color: rgba(0, 0, 0, 0.8);
-                border: 2px solid #00ffff;
-                border-radius: 5px;
-                padding: 12px;
-                color: #00ffff;
-                font-family: 'Orbitron', sans-serif;
-                font-size: 16px;
-                z-index: 1000;
-                box-shadow: 0 0 15px #00ffff;
-                min-width: 220px;
-            }
-            
-            .coord-position, .coord-direction, .coord-grid, .coord-compass {
-                margin-bottom: 8px;
-                text-shadow: 0 0 5px #00ffff;
-            }
-            
-            .coord-grid {
-                color: #ff00cc;
-            }
-            
-            .coord-compass {
-                color: #ffff00;
-                font-weight: bold;
-                font-size: 18px;
-            }
-        `;
+    // Update the coordinates text
+    function updateCoordinateText() {
+        if (!coordDisplayElement) return;
         
-        const styleElement = document.createElement('style');
-        styleElement.textContent = css;
-        document.head.appendChild(styleElement);
+        // Normalize coordinates to 0-100 range
+        const normX = normalizeCoordinate(position.x);
+        const normZ = normalizeCoordinate(position.z);
+        
+        // Get compass direction
+        const compassDir = getCompassDirection(direction);
+        
+        // Create formatted HTML
+        coordDisplayElement.innerHTML = 
+            `<div class="coord-item">X: ${normX} Z: ${normZ}</div>
+            <div class="coord-item coord-compass">${compassDir}</div>`;
     }
     
     // Get compass direction from angle
@@ -130,7 +87,7 @@ window.CoordinateSystem = (function() {
         direction = newDirection;
         
         // Update the display
-        updateDisplay();
+        updateCoordinateText();
     }
     
     // Map world coordinates to 0-100 range
@@ -141,48 +98,18 @@ window.CoordinateSystem = (function() {
         return Math.max(0, Math.min(100, normalized)); // Clamp between 0-100
     }
     
-    // Update the display with current values
-    function updateDisplay() {
-        if (!initialized || !displayElement) return;
-        
-        // Make sure the display is visible
-        displayElement.style.display = 'block';
-        
-        // Normalize coordinates to 0-100 range
-        const normX = normalizeCoordinate(position.x);
-        const normZ = normalizeCoordinate(position.z);
-        
-        // Update position display with normalized coordinates (0-100)
-        positionElement.innerHTML = `Position: X:${normX} Z:${normZ}`;
-        
-        // Calculate grid coordinates
-        const gridX = Math.round(position.x / gridSize);
-        const gridZ = Math.round(position.z / gridSize);
-        gridCoordElement.innerHTML = `Grid: (${gridX}, ${gridZ})`;
-        
-        // Update compass direction
-        const compassDir = getCompassDirection(direction);
-        compassElement.innerHTML = `Facing: ${compassDir}`;
-        
-        // Convert direction from radians to degrees (0-360)
-        const degrees = ((direction * 180 / Math.PI) % 360 + 360) % 360;
-        directionElement.innerHTML = `Angle: ${Math.round(degrees)}°`;
-    }
-    
     // Show the coordinate display
     function show() {
-        if (displayElement) {
-            displayElement.style.display = 'block';
-            // Force an update of the display values
-            updateDisplay();
+        if (coordDisplayElement) {
+            coordDisplayElement.style.display = 'block';
             console.log("Coordinate display shown");
         }
     }
     
     // Hide the coordinate display
     function hide() {
-        if (displayElement) {
-            displayElement.style.display = 'none';
+        if (coordDisplayElement) {
+            coordDisplayElement.style.display = 'none';
             console.log("Coordinate display hidden");
         }
     }

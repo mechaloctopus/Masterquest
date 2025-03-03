@@ -322,6 +322,32 @@ canvas { width: 100%; height: 100%; }
     height: calc(100% - 30px);
 }
 
+/* Map Coordinates */
+.map-coordinates {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #00ffcc;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    padding: 5px;
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid #00ffcc;
+    z-index: 11;
+}
+
+.coord-item {
+    text-shadow: 0 0 3px #00ffcc;
+}
+
+.coord-compass {
+    color: #ffff00;
+    font-weight: bold;
+}
+
 /* Inventory UI */
 #inventoryContainer {
     position: absolute;
@@ -1449,36 +1475,4 @@ body.mobile-detected .radio-player {
     margin-top: 15px;
     padding: 5px 0;
     border-top: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-/* Coordinate Display */
-.coordinate-display {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    background-color: rgba(0, 0, 0, 0.8);
-    border: 2px solid #00ffff;
-    border-radius: 5px;
-    padding: 12px;
-    color: #00ffff;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 16px;
-    z-index: 1000;
-    box-shadow: 0 0 15px #00ffff;
-    min-width: 220px;
-}
-
-.coord-position, .coord-direction, .coord-grid, .coord-compass {
-    margin-bottom: 8px;
-    text-shadow: 0 0 5px #00ffff;
-}
-
-.coord-grid {
-    color: #ff00cc;
-}
-
-.coord-compass {
-    color: #ffff00;
-    font-weight: bold;
-    font-size: 18px;
 } 
