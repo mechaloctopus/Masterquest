@@ -214,23 +214,35 @@ const App = (function() {
             
             // Initialize NPC system
             try {
-                if (window.NPCSystem) {
+                console.log("Initializing NPC system, checking window.NPCSystem:", typeof window.NPCSystem);
+                if (typeof window.NPCSystem !== 'undefined') {
                     NPCSystem.init(state.scene);
                     Logger.log("> NPC SYSTEM INITIALIZED");
                     state.systems.npcs = true;
+                    console.log("NPC system initialized successfully");
+                } else {
+                    console.error("NPCSystem is not defined globally");
+                    Logger.error("> NPC SYSTEM NOT FOUND");
                 }
             } catch (e) {
+                console.error("NPC system initialization failed:", e);
                 Logger.error(`NPC system initialization failed: ${e.message}`);
             }
             
             // Initialize Foe system
             try {
-                if (window.FoeSystem) {
+                console.log("Initializing Foe system, checking window.FoeSystem:", typeof window.FoeSystem);
+                if (typeof window.FoeSystem !== 'undefined') {
                     FoeSystem.init(state.scene);
                     Logger.log("> FOE SYSTEM INITIALIZED");
                     state.systems.foes = true;
+                    console.log("Foe system initialized successfully");
+                } else {
+                    console.error("FoeSystem is not defined globally");
+                    Logger.error("> FOE SYSTEM NOT FOUND");
                 }
             } catch (e) {
+                console.error("Foe system initialization failed:", e);
                 Logger.error(`Foe system initialization failed: ${e.message}`);
             }
             
@@ -273,6 +285,26 @@ const App = (function() {
             console.log("About to initialize current realm...");
             initializeCurrentRealm();
             console.log("Current realm initialization complete");
+            
+            // Direct test - Create orbs regardless of realm initialization
+            try {
+                console.log("DIRECT TEST: Attempting to create orbs directly");
+                
+                if (typeof window.NPCSystem !== 'undefined') {
+                    console.log("Creating test NPC directly...");
+                    NPCSystem.createVisibleNPC();
+                    Logger.log("> TEST NPC CREATED DIRECTLY");
+                }
+                
+                if (typeof window.FoeSystem !== 'undefined') {
+                    console.log("Creating test foe directly...");
+                    FoeSystem.createVisibleFoe();
+                    Logger.log("> TEST FOE CREATED DIRECTLY");
+                }
+            } catch (e) {
+                console.error("Direct orb creation failed:", e);
+                Logger.error("> DIRECT ORB CREATION FAILED");
+            }
             
             return true;
         } catch (e) {
@@ -317,20 +349,28 @@ const App = (function() {
             
             Logger.log(`> CREATING SCENE OBJECTS`);
             
+            // Force ensure the systems are defined globally
+            console.log("Checking for NPC System:", typeof window.NPCSystem);
+            console.log("Checking for Foe System:", typeof window.FoeSystem);
+            
             // Initialize NPCs for this realm
-            if (window.NPCSystem) {
+            if (typeof window.NPCSystem !== 'undefined') {
+                console.log("Found NPCSystem, initializing...");
                 NPCSystem.loadNPCsForRealm(realmIndex);
+                Logger.log("> NPC SYSTEM LOADED SUCCESSFULLY");
             } else {
-                Logger.error("> NPC SYSTEM NOT AVAILABLE");
                 console.error("NPCSystem not available globally");
+                Logger.error("> NPC SYSTEM NOT AVAILABLE");
             }
             
             // Initialize Foes for this realm
-            if (window.FoeSystem) {
+            if (typeof window.FoeSystem !== 'undefined') {
+                console.log("Found FoeSystem, initializing...");
                 FoeSystem.loadFoesForRealm(realmIndex);
+                Logger.log("> FOE SYSTEM LOADED SUCCESSFULLY");
             } else {
-                Logger.error("> FOE SYSTEM NOT AVAILABLE");
                 console.error("FoeSystem not available globally");
+                Logger.error("> FOE SYSTEM NOT AVAILABLE");
             }
             
             Logger.log(`> REALM ${realmConfig.NAME} INITIALIZATION COMPLETE`);

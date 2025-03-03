@@ -1,14 +1,26 @@
 // NPC System - Handles NPCs for all realms
-const NPCSystem = (function() {
+window.NPCSystem = (function() {
     // Private properties
     const npcs = [];
     let initialized = false;
     let scene = null;
     
+    // Helper function to safely log messages
+    function safeLog(message, isError = false) {
+        console.log(message);
+        if (window.Logger) {
+            if (isError) {
+                Logger.error(message);
+            } else {
+                Logger.log(message);
+            }
+        }
+    }
+    
     // Initialize the NPC system
     function init(sceneInstance) {
         if (initialized) {
-            Logger.warning("NPC System already initialized");
+            safeLog("NPC System already initialized", true);
             return;
         }
         
@@ -17,9 +29,9 @@ const NPCSystem = (function() {
             scene = sceneInstance;
             initialized = true;
             
-            // Log to both console and on-screen Logger
+            // Log successful initialization
             console.log("NPC System initialized successfully");
-            Logger.log("> NPC SYSTEM INITIALIZED");
+            safeLog("> NPC SYSTEM INITIALIZED");
             
             // Initialize event handlers
             if (window.EventSystem) {
@@ -33,7 +45,7 @@ const NPCSystem = (function() {
             return true;
         } catch (e) {
             console.error("NPC System init error:", e);
-            Logger.error(`NPC System initialization failed: ${e.message}`);
+            safeLog(`NPC System initialization failed: ${e.message}`, true);
             return false;
         }
     }
@@ -41,16 +53,16 @@ const NPCSystem = (function() {
     // Load NPCs for a specific realm
     function loadNPCsForRealm(realmIndex) {
         console.log(`NPC System: Loading NPCs for realm ${realmIndex}`);
-        Logger.log(`> LOADING NPCS FOR REALM ${realmIndex}`);
+        safeLog(`> LOADING NPCS FOR REALM ${realmIndex}`);
         
         // Clear existing NPCs
         clearNPCs();
         
         // Create a single visible NPC right in front of the camera
-        Logger.log("> CREATING BLUE NPC ORB");
+        safeLog("> CREATING BLUE NPC ORB");
         createVisibleNPC();
         
-        Logger.log(`> CREATED ${npcs.length} NPCS`);
+        safeLog(`> CREATED ${npcs.length} NPCS`);
         return true;
     }
     
@@ -73,7 +85,7 @@ const NPCSystem = (function() {
             // Position directly in front of camera's starting position
             npcMesh.position = new BABYLON.Vector3(0, 2, -10);
             
-            Logger.log(`> NPC POSITIONED AT (0, 2, -10)`);
+            safeLog(`> NPC POSITIONED AT (0, 2, -10)`);
             console.log("NPC created at position:", npcMesh.position);
             
             // Store NPC in the array
@@ -86,7 +98,7 @@ const NPCSystem = (function() {
             npcs.push(npc);
             return npc;
         } catch (e) {
-            Logger.error(`Failed to create visible NPC: ${e.message}`);
+            safeLog(`Failed to create visible NPC: ${e.message}`);
             console.error("Error creating NPC:", e);
             return null;
         }
@@ -162,7 +174,7 @@ const NPCSystem = (function() {
     // Clear all NPCs from the scene
     function clearNPCs() {
         if (npcs.length > 0) {
-            Logger.log("> CLEARING EXISTING NPCS");
+            safeLog("> CLEARING EXISTING NPCS");
             
             // Remove each NPC mesh from the scene
             npcs.forEach(npc => {
@@ -173,7 +185,7 @@ const NPCSystem = (function() {
             
             // Clear the array
             npcs = [];
-            Logger.log("> ALL NPCS CLEARED");
+            safeLog("> ALL NPCS CLEARED");
         }
     }
     
@@ -317,6 +329,7 @@ const NPCSystem = (function() {
         init: init,
         loadNPCsForRealm: loadNPCsForRealm,
         createNPC: createNPC,
+        createVisibleNPC: createVisibleNPC,
         clearNPCs: clearNPCs
     };
 })(); 

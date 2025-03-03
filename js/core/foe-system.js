@@ -1,14 +1,26 @@
 // Foe System - Handles foes and quiz battles for all realms
-const FoeSystem = (function() {
+window.FoeSystem = (function() {
     // Private properties
     const foes = [];
     let initialized = false;
     let scene = null;
     
+    // Helper function to safely log messages
+    function safeLog(message, isError = false) {
+        console.log(message);
+        if (window.Logger) {
+            if (isError) {
+                Logger.error(message);
+            } else {
+                Logger.log(message);
+            }
+        }
+    }
+    
     // Initialize the Foe system
     function init(sceneInstance) {
         if (initialized) {
-            Logger.warning("Foe System already initialized");
+            safeLog("Foe System already initialized", true);
             return;
         }
         
@@ -17,9 +29,9 @@ const FoeSystem = (function() {
             scene = sceneInstance;
             initialized = true;
             
-            // Log to both console and on-screen Logger
+            // Log successful initialization
             console.log("Foe System initialized successfully");
-            Logger.log("> FOE SYSTEM INITIALIZED");
+            safeLog("> FOE SYSTEM INITIALIZED");
             
             // Initialize event handlers
             if (window.EventSystem) {
@@ -36,7 +48,7 @@ const FoeSystem = (function() {
             return true;
         } catch (e) {
             console.error("Foe System init error:", e);
-            Logger.error(`Foe System initialization failed: ${e.message}`);
+            safeLog(`Foe System initialization failed: ${e.message}`, true);
             return false;
         }
     }
@@ -44,16 +56,16 @@ const FoeSystem = (function() {
     // Load foes for a specific realm
     function loadFoesForRealm(realmIndex) {
         console.log(`Foe System: Loading foes for realm ${realmIndex}`);
-        Logger.log(`> LOADING FOES FOR REALM ${realmIndex}`);
+        safeLog(`> LOADING FOES FOR REALM ${realmIndex}`);
         
         // Clear existing foes
         clearFoes();
         
         // Create a single visible foe
-        Logger.log("> CREATING RED FOE ORB");
+        safeLog("> CREATING RED FOE ORB");
         createVisibleFoe();
         
-        Logger.log(`> CREATED ${foes.length} FOES`);
+        safeLog(`> CREATED ${foes.length} FOES`);
         return true;
     }
     
@@ -76,7 +88,7 @@ const FoeSystem = (function() {
             // Position directly in front of camera's starting position, slightly to the right
             foeMesh.position = new BABYLON.Vector3(3, 2, -10);
             
-            Logger.log(`> FOE POSITIONED AT (3, 2, -10)`);
+            safeLog(`> FOE POSITIONED AT (3, 2, -10)`);
             console.log("Foe created at position:", foeMesh.position);
             
             // Store foe in the array
@@ -89,7 +101,7 @@ const FoeSystem = (function() {
             foes.push(foe);
             return foe;
         } catch (e) {
-            Logger.error(`Failed to create visible foe: ${e.message}`);
+            safeLog(`Failed to create visible foe: ${e.message}`);
             console.error("Error creating foe:", e);
             return null;
         }
@@ -296,7 +308,7 @@ const FoeSystem = (function() {
     // Clear all foes from the scene
     function clearFoes() {
         if (foes.length > 0) {
-            Logger.log("> CLEARING EXISTING FOES");
+            safeLog("> CLEARING EXISTING FOES");
             
             // Remove each foe mesh from the scene
             foes.forEach(foe => {
@@ -307,7 +319,7 @@ const FoeSystem = (function() {
             
             // Clear the array
             foes = [];
-            Logger.log("> ALL FOES CLEARED");
+            safeLog("> ALL FOES CLEARED");
         }
     }
     
@@ -561,6 +573,7 @@ const FoeSystem = (function() {
         init: init,
         loadFoesForRealm: loadFoesForRealm,
         createFoe: createVisibleFoe,
+        createVisibleFoe: createVisibleFoe,
         clearFoes: clearFoes
     };
 })(); 
