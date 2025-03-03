@@ -131,10 +131,10 @@ const CONFIG = {
     
     // REALM SETTINGS
     REALMS: {
-        CURRENT_REALM: 1,
+        CURRENT_REALM: 1,  // Which realm to load by default
         COMMON: {
-            NPC_COUNT: 10,
-            FOE_COUNT: 10,
+            NPC_COUNT: 10,  // Default number of NPCs per realm
+            FOE_COUNT: 10,  // Default number of foes per realm
             // Common settings for all realms
             NPC_TEMPLATES: {
                 DIALOGUE: {

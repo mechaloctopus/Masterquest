@@ -13,8 +13,10 @@ const NPCSystem = (function() {
         }
         
         try {
+            console.log("NPC System init called with scene:", sceneInstance);
             scene = sceneInstance;
             initialized = true;
+            console.log("NPC System initialized successfully");
             
             Logger.log("> NPC SYSTEM INITIALIZED");
             
@@ -29,6 +31,7 @@ const NPCSystem = (function() {
             
             return true;
         } catch (e) {
+            console.error("NPC System init error:", e);
             Logger.error(`NPC System initialization failed: ${e.message}`);
             return false;
         }
@@ -36,41 +39,36 @@ const NPCSystem = (function() {
     
     // Load NPCs for a specific realm
     function loadNPCsForRealm(realmIndex) {
-        if (!initialized) {
-            Logger.error("Cannot load NPCs - system not initialized");
-            return false;
+        console.log(`NPC System: Loading NPCs for realm ${realmIndex}`);
+        
+        // Clear existing NPCs
+        clearNPCs();
+        console.log("NPC System: Cleared existing NPCs");
+        
+        // Get realm config
+        const realm = `REALM_${realmIndex}`;
+        const realmConfig = CONFIG.REALMS[realm];
+        console.log(`NPC System: Retrieved realm config for ${realm}:`, realmConfig);
+        
+        if (!realmConfig) {
+            console.error(`NPC System: Realm ${realmIndex} configuration not found`);
+            return;
         }
         
-        try {
-            Logger.log(`> LOADING NPCS FOR REALM ${realmIndex}`);
-            
-            // Clear existing NPCs
-            clearAllNPCs();
-            
-            // Get realm configuration
-            const realmConfig = CONFIG.REALMS[`REALM_${realmIndex}`];
-            if (!realmConfig) {
-                Logger.error(`Realm configuration for realm ${realmIndex} not found`);
-                return false;
+        // Always create at least one NPC as a fallback
+        console.log("NPC System: Creating default NPC");
+        const npc = createNPC(0, realmIndex, { NAME: "Guide" });
+        console.log("NPC System: Default NPC created:", npc);
+        
+        // If realm has NPCs configured, create them
+        if (realmConfig.NPCS && Array.isArray(realmConfig.NPCS)) {
+            for (let i = 0; i < realmConfig.NPCS.length; i++) {
+                createNPC(i + 1, realmIndex, realmConfig.NPCS[i]);
             }
-            
-            // Get NPC count from common config or realm-specific override
-            const npcCount = realmConfig.NPC_COUNT || CONFIG.REALMS.COMMON.NPC_COUNT || 10;
-            
-            // Get NPC template
-            const npcTemplate = CONFIG.REALMS.COMMON.NPC_TEMPLATES.DIALOGUE;
-            
-            // Create NPCs for this realm
-            for (let i = 0; i < npcCount; i++) {
-                createNPC(i, realmIndex, npcTemplate);
-            }
-            
-            Logger.log(`> ${npcs.length} NPCS CREATED FOR REALM ${realmIndex}`);
-            return true;
-        } catch (e) {
-            Logger.error(`Failed to load NPCs for realm ${realmIndex}: ${e.message}`);
-            return false;
         }
+        
+        Logger.log(`Created ${npcs.length} NPCs for realm ${realmIndex}`);
+        console.log("NPCs in scene:", npcs);
     }
     
     // Create a single NPC
@@ -78,58 +76,19 @@ const NPCSystem = (function() {
         // Generate a unique ID for this NPC
         const npcId = `npc_${realmIndex}_${index}`;
         
-        // Use template position if available, otherwise use random position
-        const position = template.POSITION ? 
-            new BABYLON.Vector3(template.POSITION.x, template.POSITION.y, template.POSITION.z) :
-            new BABYLON.Vector3(
-                Math.random() * 40 - 20, // -20 to 20
-                1.8,                      // Floating at eye level
-                Math.random() * 40 - 20   // -20 to 20
-            );
+        // Use fixed position right in the center of view
+        const position = new BABYLON.Vector3(0, 2, -5);
         
-        // Create NPC mesh based on template
-        let npcMesh;
+        // Create a simple blue sphere
+        const npcMesh = BABYLON.MeshBuilder.CreateSphere(npcId, {
+            diameter: 1.0
+        }, scene);
         
-        // Default to neon_orb type if not specified
-        const npcType = template.TYPE || "neon_orb";
-        
-        if (npcType === "neon_orb") {
-            // Create a neon orb
-            npcMesh = BABYLON.MeshBuilder.CreateSphere(npcId, {
-                diameter: template.SCALE || 1.0
-            }, scene);
-            
-            // Create material for the orb
-            const material = new BABYLON.StandardMaterial(`${npcId}_material`, scene);
-            material.emissiveColor = new BABYLON.Color3.FromHexString(template.COLOR || "#00ffff");
-            material.specularColor = new BABYLON.Color3(0, 0, 0); // No specular
-            
-            // Add glow layer if not already added
-            let glowLayer = scene.getGlowLayerByName("npcGlowLayer");
-            if (!glowLayer) {
-                glowLayer = new BABYLON.GlowLayer("npcGlowLayer", scene);
-                glowLayer.intensity = 1.0; // Increase intensity
-            }
-            glowLayer.addIncludedOnlyMesh(npcMesh);
-            
-            // Make the orb more visible
-            material.diffuseColor = new BABYLON.Color3.FromHexString(template.COLOR || "#00ffff");
-            material.emissiveColor = new BABYLON.Color3.FromHexString(template.COLOR || "#00ffff");
-            material.specularColor = new BABYLON.Color3(0, 0, 0); // No specular
-            npcMesh.material = material;
-        } else {
-            // Default simple box as fallback
-            npcMesh = BABYLON.MeshBuilder.CreateBox(npcId, {
-                width: template.SCALE || 1.0,
-                height: template.SCALE || 1.0, 
-                depth: template.SCALE || 1.0
-            }, scene);
-            
-            // Apply a default material
-            const material = new BABYLON.StandardMaterial(`${npcId}_material`, scene);
-            material.diffuseColor = new BABYLON.Color3.FromHexString(template.COLOR || "#00ffff");
-            npcMesh.material = material;
-        }
+        // Create material for the orb - SIMPLE BLUE
+        const material = new BABYLON.StandardMaterial(`${npcId}_material`, scene);
+        material.diffuseColor = new BABYLON.Color3(0, 0, 1); // Pure blue in RGB
+        material.emissiveColor = new BABYLON.Color3(0, 0, 1); // Make it glow blue
+        npcMesh.material = material;
         
         // Position the NPC
         npcMesh.position = position;
@@ -137,52 +96,19 @@ const NPCSystem = (function() {
         // Make NPC pickable (clickable)
         npcMesh.isPickable = true;
         
-        // Add action manager for interactions
-        npcMesh.actionManager = new BABYLON.ActionManager(scene);
-        
-        // Add click interaction
-        npcMesh.actionManager.registerAction(
-            new BABYLON.ExecuteCodeAction(
-                BABYLON.ActionManager.OnPickTrigger,
-                function() {
-                    startInteraction(npcId);
-                }
-            )
-        );
-        
-        // Store the NPC data
+        // Add to the NPCs array
         const npc = {
             id: npcId,
             mesh: npcMesh,
             realmIndex: realmIndex,
             template: template,
-            position: position,
-            dialogueData: template.DIALOGUE || {
-                // Default dialogue if none provided in template
-                greetings: [template.NAME ? `Hello, I am ${template.NAME}` : "Hello, traveler!"],
-                conversations: [
-                    { 
-                        id: "intro",
-                        text: "I am an NPC in this digital realm.",
-                        responses: [
-                            { id: "ask_more", text: "Tell me more about yourself" },
-                            { id: "goodbye", text: "Goodbye" }
-                        ]
-                    }
-                ]
-            },
-            isInteracting: false,
-            hoverParams: {
-                originalY: position.y,
-                phase: Math.random() * Math.PI * 2 // Random starting phase
-            }
+            position: position
         };
         
-        // Add to the NPCs array
         npcs.push(npc);
         
-        // Setup hovering animation
-        setupHoverAnimation(npc);
+        // Log for debugging
+        console.log(`Created NPC at position:`, position);
         
         return npc;
     }
@@ -213,16 +139,19 @@ const NPCSystem = (function() {
     }
     
     // Clear all NPCs from the scene
-    function clearAllNPCs() {
-        // Remove each NPC mesh from the scene
-        npcs.forEach(npc => {
-            if (npc.mesh) {
-                npc.mesh.dispose();
-            }
-        });
-        
-        // Clear the array
-        npcs.length = 0;
+    function clearNPCs() {
+        if (npcs.length > 0) {
+            // Remove each NPC mesh from the scene
+            npcs.forEach(npc => {
+                if (npc.mesh) {
+                    npc.mesh.dispose();
+                }
+            });
+            
+            // Clear the array
+            npcs = [];
+            Logger.log("All NPCs cleared from scene");
+        }
     }
     
     // Check player proximity to NPCs
@@ -365,10 +294,6 @@ const NPCSystem = (function() {
         init: init,
         loadNPCsForRealm: loadNPCsForRealm,
         createNPC: createNPC,
-        clearAllNPCs: clearAllNPCs,
-        startInteraction: startInteraction,
-        endInteraction: endInteraction,
-        getNPC: getNPC,
-        getAllNPCs: getAllNPCs
+        clearNPCs: clearNPCs
     };
 })(); 

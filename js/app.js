@@ -269,11 +269,15 @@ const App = (function() {
             // Set up system event listeners
             setupEventListeners();
             
-            // Initialize the current realm
+            // Now explicitly initialize the current realm
+            console.log("About to initialize current realm...");
             initializeCurrentRealm();
+            console.log("Current realm initialization complete");
             
+            return true;
         } catch (e) {
             Logger.error(`System initialization failed: ${e.message}`);
+            return false;
         }
     }
     
@@ -282,11 +286,15 @@ const App = (function() {
         try {
             // Get current realm from config or state
             const realmIndex = CONFIG.REALMS.CURRENT_REALM || 1;
+            console.log("Initializing realm:", realmIndex);
             state.gameState.currentRealm = realmIndex;
             
             // Get realm config
             const realmConfig = CONFIG.REALMS[`REALM_${realmIndex}`];
+            console.log("Realm config:", realmConfig);
+            
             if (!realmConfig) {
+                console.error(`Realm configuration for realm ${realmIndex} not found`);
                 Logger.error(`Realm configuration for realm ${realmIndex} not found`);
                 return;
             }
@@ -309,15 +317,23 @@ const App = (function() {
             }
             
             // Initialize NPCs for this realm
-            if (state.systems.npcs && window.NPCSystem) {
+            if (window.NPCSystem) {
+                console.log("Calling NPCSystem.loadNPCsForRealm with realmIndex:", realmIndex);
                 NPCSystem.loadNPCsForRealm(realmIndex);
+                console.log("NPCs loaded");
                 Logger.log(`> NPCS LOADED FOR REALM: ${realmConfig.NAME}`);
+            } else {
+                console.error("NPCSystem not available globally");
             }
             
             // Initialize Foes for this realm
-            if (state.systems.foes && window.FoeSystem) {
+            if (window.FoeSystem) {
+                console.log("Calling FoeSystem.loadFoesForRealm with realmIndex:", realmIndex);
                 FoeSystem.loadFoesForRealm(realmIndex);
+                console.log("Foes loaded");
                 Logger.log(`> FOES LOADED FOR REALM: ${realmConfig.NAME}`);
+            } else {
+                console.error("FoeSystem not available globally");
             }
             
             Logger.log(`> REALM ${realmConfig.NAME} INITIALIZED`);
@@ -596,54 +612,67 @@ const App = (function() {
 
     // Setup the main render and update loops
     function setupRenderLoop() {
-        // Main game update loop
-        state.scene.registerBeforeRender(() => {
-            try {
-                const deltaTime = state.engine.getDeltaTime() / 1000;
-                
-                // Update systems
-                MovementSystem.update(state.systems.camera, state.gameState, deltaTime);
-                
-                if (state.systems.audio) {
-                    AudioSystem.update(state.gameState, state.systems.audio);
-                }
-                
-                if (state.systems.hands) {
-                    HandsSystem.updateHands(state.systems.hands, state.gameState, deltaTime);
-                }
-                
-                // Update animation time for other possible uses
-                state.gameState.bobTime += deltaTime;
-                
-                // Future: Update realm-specific entities and animations
-                // if (state.realm.npcs.length > 0) {
-                //     updateNPCs(deltaTime);
-                // }
-                // 
-                // if (state.realm.foes.length > 0) {
-                //     updateFoes(deltaTime);
-                // }
-
-                // Update player position for NPCs and Foes
-                if (state.systems.camera) {
-                    const camera = state.systems.camera;
-                    const position = camera.position;
+        if (!state.engine || !state.scene) {
+            Logger.error("Cannot setup render loop - missing engine or scene");
+            return false;
+        }
+        
+        try {
+            // Main game update loop
+            state.scene.registerBeforeRender(() => {
+                try {
+                    const deltaTime = state.engine.getDeltaTime() / 1000;
                     
-                    // Emit player position event for NPC and Foe proximity checks
-                    if (window.EventSystem) {
-                        EventSystem.emit('player.moved', {
-                            position: position
-                        });
+                    // Update systems
+                    MovementSystem.update(state.systems.camera, state.gameState, deltaTime);
+                    
+                    if (state.systems.audio) {
+                        AudioSystem.update(state.gameState, state.systems.audio);
                     }
+                    
+                    if (state.systems.hands) {
+                        HandsSystem.updateHands(state.systems.hands, state.gameState, deltaTime);
+                    }
+                    
+                    // Update animation time for other possible uses
+                    state.gameState.bobTime += deltaTime;
+                    
+                    // Update player position for NPCs and Foes
+                    if (state.systems.camera) {
+                        const camera = state.systems.camera;
+                        const position = camera.position;
+                        
+                        // Emit player position event for NPC and Foe proximity checks
+                        if (window.EventSystem) {
+                            EventSystem.emit('player.position', {
+                                position: { x: position.x, y: position.y, z: position.z },
+                                rotation: camera.rotation.y
+                            });
+                        }
+                    }
+                } catch (e) {
+                    // Don't log every frame to avoid console spam
+                    console.error("Update loop error:", e);
                 }
-            } catch (e) {
-                // Don't log every frame to avoid console spam
-                console.error("Update loop error:", e);
-            }
-        });
-
-        // Start the render loop
-        state.engine.runRenderLoop(() => state.scene.render());
+            });
+            
+            // Start the render loop with error handling
+            state.engine.runRenderLoop(function() {
+                try {
+                    if (state.scene && !state.gameState.paused) {
+                        state.scene.render();
+                    }
+                } catch (e) {
+                    console.error("Error in render loop:", e);
+                }
+            });
+            
+            Logger.log("> RENDER LOOP STARTED");
+            return true;
+        } catch (e) {
+            Logger.error(`Failed to setup render loop: ${e.message}`);
+            return false;
+        }
     }
     
     // Example function to damage the player (for testing)

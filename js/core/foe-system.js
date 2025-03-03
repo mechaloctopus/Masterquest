@@ -13,8 +13,10 @@ const FoeSystem = (function() {
         }
         
         try {
+            console.log("Foe System init called with scene:", sceneInstance);
             scene = sceneInstance;
             initialized = true;
+            console.log("Foe System initialized successfully");
             
             Logger.log("> FOE SYSTEM INITIALIZED");
             
@@ -32,6 +34,7 @@ const FoeSystem = (function() {
             
             return true;
         } catch (e) {
+            console.error("Foe System init error:", e);
             Logger.error(`Foe System initialization failed: ${e.message}`);
             return false;
         }
@@ -39,41 +42,36 @@ const FoeSystem = (function() {
     
     // Load foes for a specific realm
     function loadFoesForRealm(realmIndex) {
-        if (!initialized) {
-            Logger.error("Cannot load foes - system not initialized");
-            return false;
+        console.log(`Foe System: Loading foes for realm ${realmIndex}`);
+        
+        // Clear existing foes
+        clearFoes();
+        console.log("Foe System: Cleared existing foes");
+        
+        // Get realm config
+        const realm = `REALM_${realmIndex}`;
+        const realmConfig = CONFIG.REALMS[realm];
+        console.log(`Foe System: Retrieved realm config for ${realm}:`, realmConfig);
+        
+        if (!realmConfig) {
+            console.error(`Foe System: Realm ${realmIndex} configuration not found`);
+            return;
         }
         
-        try {
-            Logger.log(`> LOADING FOES FOR REALM ${realmIndex}`);
-            
-            // Clear existing foes
-            clearAllFoes();
-            
-            // Get realm configuration
-            const realmConfig = CONFIG.REALMS[`REALM_${realmIndex}`];
-            if (!realmConfig) {
-                Logger.error(`Realm configuration for realm ${realmIndex} not found`);
-                return false;
+        // Always create at least one foe as a fallback
+        console.log("Foe System: Creating default foe");
+        const foe = createFoe(0, realmIndex, { NAME: "Logic Guardian" });
+        console.log("Foe System: Default foe created:", foe);
+        
+        // If realm has foes configured, create them
+        if (realmConfig.FOES && Array.isArray(realmConfig.FOES)) {
+            for (let i = 0; i < realmConfig.FOES.length; i++) {
+                createFoe(i + 1, realmIndex, realmConfig.FOES[i]);
             }
-            
-            // Get foe count from common config or realm-specific override
-            const foeCount = realmConfig.FOE_COUNT || CONFIG.REALMS.COMMON.FOE_COUNT || 10;
-            
-            // Get foe template
-            const foeTemplate = CONFIG.REALMS.COMMON.NPC_TEMPLATES.QUIZ;
-            
-            // Create foes for this realm
-            for (let i = 0; i < foeCount; i++) {
-                createFoe(i, realmIndex, foeTemplate);
-            }
-            
-            Logger.log(`> ${foes.length} FOES CREATED FOR REALM ${realmIndex}`);
-            return true;
-        } catch (e) {
-            Logger.error(`Failed to load foes for realm ${realmIndex}: ${e.message}`);
-            return false;
         }
+        
+        Logger.log(`Created ${foes.length} foes for realm ${realmIndex}`);
+        console.log("Foes in scene:", foes);
     }
     
     // Create a single foe
@@ -81,63 +79,19 @@ const FoeSystem = (function() {
         // Generate a unique ID for this foe
         const foeId = `foe_${realmIndex}_${index}`;
         
-        // Use template position if available, otherwise use random position
-        const position = template.POSITION ? 
-            new BABYLON.Vector3(template.POSITION.x, template.POSITION.y, template.POSITION.z) :
-            new BABYLON.Vector3(
-                Math.random() * 40 - 20, // -20 to 20
-                1.8,                      // Floating at eye level
-                Math.random() * 40 - 20   // -20 to 20
-            );
+        // Use fixed position to ensure visibility
+        const position = new BABYLON.Vector3(3, 2, -5);
         
-        // Create foe mesh based on template
-        let foeMesh;
+        // Create a simple red sphere
+        const foeMesh = BABYLON.MeshBuilder.CreateSphere(foeId, {
+            diameter: 1.0
+        }, scene);
         
-        // Default to spike_orb type if not specified
-        const foeType = template.TYPE || "spike_orb";
-        
-        if (foeType === "spike_orb") {
-            // Create a spiked orb for foes to distinguish them from NPCs
-            foeMesh = BABYLON.MeshBuilder.CreateSphere(foeId, {
-                diameter: template.SCALE || 1.0
-            }, scene);
-            
-            // Create material for the orb
-            const material = new BABYLON.StandardMaterial(`${foeId}_material`, scene);
-            material.emissiveColor = new BABYLON.Color3.FromHexString(template.COLOR || "#ff00ff");
-            material.specularColor = new BABYLON.Color3(0, 0, 0); // No specular
-            
-            // Add glow layer if not already added
-            let glowLayer = scene.getGlowLayerByName("foeGlowLayer");
-            if (!glowLayer) {
-                glowLayer = new BABYLON.GlowLayer("foeGlowLayer", scene);
-                glowLayer.intensity = 1.2; // Increase intensity for foes
-            }
-            glowLayer.addIncludedOnlyMesh(foeMesh);
-            
-            // Make the orb more visible
-            material.diffuseColor = new BABYLON.Color3.FromHexString(template.COLOR || "#ff0000");
-            material.emissiveColor = new BABYLON.Color3.FromHexString(template.COLOR || "#ff0000");
-            material.specularColor = new BABYLON.Color3(0, 0, 0); // No specular
-            foeMesh.material = material;
-            
-            // Add spikes if specified in template
-            if (template.SPIKES) {
-                addSpikesToOrb(foeMesh, template.COLOR || "#ff00ff");
-            }
-        } else {
-            // Default simple box as fallback
-            foeMesh = BABYLON.MeshBuilder.CreateBox(foeId, {
-                width: template.SCALE || 1.2,
-                height: template.SCALE || 1.2, 
-                depth: template.SCALE || 1.2
-            }, scene);
-            
-            // Apply a default material
-            const material = new BABYLON.StandardMaterial(`${foeId}_material`, scene);
-            material.diffuseColor = new BABYLON.Color3.FromHexString(template.COLOR || "#ff00ff");
-            foeMesh.material = material;
-        }
+        // Create material for the orb - SIMPLE RED
+        const material = new BABYLON.StandardMaterial(`${foeId}_material`, scene);
+        material.diffuseColor = new BABYLON.Color3(1, 0, 0); // Pure red in RGB
+        material.emissiveColor = new BABYLON.Color3(1, 0, 0); // Make it glow red
+        foeMesh.material = material;
         
         // Position the foe
         foeMesh.position = position;
@@ -145,43 +99,19 @@ const FoeSystem = (function() {
         // Make foe pickable (clickable)
         foeMesh.isPickable = true;
         
-        // Add action manager for interactions
-        foeMesh.actionManager = new BABYLON.ActionManager(scene);
-        
-        // Add click interaction
-        foeMesh.actionManager.registerAction(
-            new BABYLON.ExecuteCodeAction(
-                BABYLON.ActionManager.OnPickTrigger,
-                function() {
-                    startBattle(foeId);
-                }
-            )
-        );
-        
-        // Generate quiz questions for this foe
-        const quizData = template.QUIZ || generateQuizQuestions(index, realmIndex);
-        
-        // Store the foe data
+        // Add to the foes array
         const foe = {
             id: foeId,
             mesh: foeMesh,
             realmIndex: realmIndex,
             template: template,
-            position: position,
-            quizData: quizData,
-            isBattling: false,
-            defeated: false,
-            hoverParams: {
-                originalY: position.y,
-                phase: Math.random() * Math.PI * 2 // Random starting phase
-            }
+            position: position
         };
         
-        // Add to the foes array
         foes.push(foe);
         
-        // Setup hovering animation
-        setupHoverAnimation(foe);
+        // Log for debugging
+        console.log(`Created Foe at position:`, position);
         
         return foe;
     }
@@ -385,16 +315,19 @@ const FoeSystem = (function() {
     }
     
     // Clear all foes from the scene
-    function clearAllFoes() {
-        // Remove each foe mesh from the scene
-        foes.forEach(foe => {
-            if (foe.mesh) {
-                foe.mesh.dispose();
-            }
-        });
-        
-        // Clear the array
-        foes.length = 0;
+    function clearFoes() {
+        if (foes.length > 0) {
+            // Remove each foe mesh from the scene
+            foes.forEach(foe => {
+                if (foe.mesh) {
+                    foe.mesh.dispose();
+                }
+            });
+            
+            // Clear the array
+            foes = [];
+            Logger.log("All foes cleared from scene");
+        }
     }
     
     // Check player proximity to foes
@@ -647,10 +580,6 @@ const FoeSystem = (function() {
         init: init,
         loadFoesForRealm: loadFoesForRealm,
         createFoe: createFoe,
-        clearAllFoes: clearAllFoes,
-        startBattle: startBattle,
-        endBattle: endBattle,
-        getFoe: getFoe,
-        getAllFoes: getAllFoes
+        clearFoes: clearFoes
     };
 })(); 
