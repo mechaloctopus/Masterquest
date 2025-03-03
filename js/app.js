@@ -428,6 +428,14 @@ const App = (function() {
                     
                     // Update coordinate display
                     if (window.CoordinateSystem && state.systems.coordinates) {
+                        // Debug position information
+                        console.log("Player position update:", { 
+                            x: parseFloat(position.x.toFixed(2)), 
+                            y: parseFloat(position.y.toFixed(2)), 
+                            z: parseFloat(position.z.toFixed(2)),
+                            rotation: parseFloat(rotation.toFixed(2))
+                        });
+                        
                         CoordinateSystem.updatePosition(
                             { x: position.x, y: position.y, z: position.z },
                             rotation

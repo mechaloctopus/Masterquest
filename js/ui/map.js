@@ -161,8 +161,15 @@ const MapSystem = (function() {
             
             mapContext.beginPath();
             mapContext.moveTo(mapX, 0);
-            mapContext.lineTo(mapX, mapCanvasElement.height);
+            mapContext.lineTo(mapX, mapCanvasElement.height - 40); // Leave space for coordinates
             mapContext.stroke();
+            
+            // Draw grid coordinate labels for major grid lines
+            if (x % 10 === 0) {
+                mapContext.fillStyle = "#00ffcc";
+                mapContext.font = "8px Orbitron";
+                mapContext.fillText(x.toString(), mapX - 5, mapCanvasElement.height - 42);
+            }
         }
         
         // Draw horizontal lines
@@ -173,6 +180,13 @@ const MapSystem = (function() {
             mapContext.moveTo(0, mapZ);
             mapContext.lineTo(mapCanvasElement.width, mapZ);
             mapContext.stroke();
+            
+            // Draw grid coordinate labels for major grid lines
+            if (z % 10 === 0) {
+                mapContext.fillStyle = "#00ffcc";
+                mapContext.font = "8px Orbitron";
+                mapContext.fillText(z.toString(), 5, mapZ + 8);
+            }
         }
         
         mapContext.globalAlpha = 1.0;

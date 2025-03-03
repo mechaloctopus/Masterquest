@@ -12,6 +12,9 @@ window.CoordinateSystem = (function() {
     // Grid settings
     const gridSize = CONFIG.GRID.SPACING || 2; // Grid cell size
     
+    // Debug flag
+    const DEBUG = true;
+    
     // Initialize the coordinate display
     function init() {
         if (initialized) return true;
@@ -34,6 +37,14 @@ window.CoordinateSystem = (function() {
             
             // Add to the map container (after the canvas but before any other controls)
             mapContainer.appendChild(coordDisplayElement);
+            
+            // Register an event listener for player position updates
+            if (window.EventSystem) {
+                EventSystem.on('player.position', function(data) {
+                    if (DEBUG) console.log('Position event received:', data);
+                    updatePosition(data.position, data.rotation);
+                });
+            }
             
             // Mark as initialized
             initialized = true;
@@ -61,6 +72,8 @@ window.CoordinateSystem = (function() {
         coordDisplayElement.innerHTML = 
             `<div class="coord-item">X: ${normX} Z: ${normZ}</div>
             <div class="coord-item coord-compass">${compassDir}</div>`;
+            
+        if (DEBUG) console.log(`Coordinates updated: X:${normX} Z:${normZ} Dir:${compassDir}`);
     }
     
     // Get compass direction from angle
@@ -83,6 +96,14 @@ window.CoordinateSystem = (function() {
     
     // Update player position and direction
     function updatePosition(newPosition, newDirection) {
+        if (DEBUG) console.log('updatePosition called:', newPosition, newDirection);
+        
+        // Ensure we have valid data
+        if (!newPosition || typeof newPosition.x === 'undefined') {
+            console.error('Invalid position data:', newPosition);
+            return;
+        }
+        
         position = newPosition;
         direction = newDirection;
         
@@ -92,6 +113,12 @@ window.CoordinateSystem = (function() {
     
     // Map world coordinates to 0-100 range
     function normalizeCoordinate(value) {
+        // Check for valid input
+        if (typeof value !== 'number') {
+            console.error('Invalid coordinate value:', value);
+            return 0;
+        }
+        
         // Assuming the world is roughly -50 to 50 in size
         // Map to 0-100 range
         const normalized = Math.floor(((value + 50) / 100) * 100);
@@ -102,6 +129,12 @@ window.CoordinateSystem = (function() {
     function show() {
         if (coordDisplayElement) {
             coordDisplayElement.style.display = 'block';
+            
+            // Force an update to make sure we have current data
+            if (window.EventSystem) {
+                EventSystem.emit('coordinate.display.show');
+            }
+            
             console.log("Coordinate display shown");
         }
     }
@@ -131,6 +164,35 @@ window.CoordinateSystem = (function() {
         };
     }
     
+    // Get the grid cell at a specific world position
+    function getGridCellAt(worldPos) {
+        const gridPos = worldToGrid(worldPos);
+        return {
+            gridX: gridPos.x,
+            gridZ: gridPos.z,
+            worldX: gridPos.x * gridSize,
+            worldZ: gridPos.z * gridSize
+        };
+    }
+    
+    // Place an asset at a specific grid position
+    function placeAssetAtGrid(gridX, gridZ, assetType) {
+        const worldPos = gridToWorld({x: gridX, z: gridZ});
+        
+        if (DEBUG) {
+            console.log(`Placing asset of type ${assetType} at grid (${gridX}, ${gridZ}), world position:`, worldPos);
+        }
+        
+        // This is just a placeholder for the actual asset placement logic
+        // You would need to integrate with your asset management system
+        
+        return {
+            gridPosition: {x: gridX, z: gridZ},
+            worldPosition: worldPos,
+            assetType: assetType
+        };
+    }
+    
     // Public API
     return {
         init: init,
@@ -138,6 +200,8 @@ window.CoordinateSystem = (function() {
         show: show,
         hide: hide,
         worldToGrid: worldToGrid,
-        gridToWorld: gridToWorld
+        gridToWorld: gridToWorld,
+        getGridCellAt: getGridCellAt,
+        placeAssetAtGrid: placeAssetAtGrid
     };
 })(); 
