@@ -163,13 +163,24 @@ const App = (function() {
             
             // Initialize coordinate display system
             try {
-                if (window.CoordinateSystem) {
-                    CoordinateSystem.init();
-                    Logger.log("> COORDINATE SYSTEM INITIALIZED");
-                    state.systems.coordinates = true;
-                    Logger.log("> GRID NAVIGATION ENABLED");
+                console.log("Initializing coordinate display system...");
+                if (typeof window.CoordinateSystem !== 'undefined') {
+                    if (CoordinateSystem.init()) {
+                        Logger.log("> COORDINATE SYSTEM INITIALIZED");
+                        state.systems.coordinates = true;
+                        
+                        // Make sure it's shown
+                        setTimeout(() => {
+                            CoordinateSystem.show();
+                            console.log("Coordinate system display shown after timeout");
+                        }, 500); // Add a small delay to ensure DOM is ready
+                    }
+                } else {
+                    console.error("CoordinateSystem is not defined globally");
+                    Logger.error("> COORDINATE SYSTEM NOT FOUND");
                 }
             } catch (e) {
+                console.error("Coordinate system initialization failed:", e);
                 Logger.error(`Coordinate system initialization failed: ${e.message}`);
             }
             
