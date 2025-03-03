@@ -1,8 +1,16 @@
-// Logging System
+// Enhanced Logging System
 const Logger = (function() {
-    // Reference to the log content element
+    // Private variables
     let logContentElement = null;
     let initialized = false;
+    
+    // Message types
+    const MESSAGE_TYPES = {
+        INFO: 'info',
+        ERROR: 'error',
+        WARNING: 'warning',
+        DEBUG: 'debug'
+    };
     
     // Initialize logger
     function init() {
@@ -14,24 +22,77 @@ const Logger = (function() {
             return false;
         }
         
+        // Subscribe to log events from other modules
+        if (window.EventSystem) {
+            EventSystem.on('log', handleLogEvent);
+        }
+        
         initialized = true;
         return true;
     }
     
-    // Try to initialize when the module is loaded
-    document.addEventListener('DOMContentLoaded', init);
+    // Handle log events from the event system
+    function handleLogEvent(eventData) {
+        const { type = MESSAGE_TYPES.INFO, message } = eventData;
+        
+        switch (type) {
+            case MESSAGE_TYPES.ERROR:
+                error(message);
+                break;
+            case MESSAGE_TYPES.WARNING:
+                warning(message);
+                break;
+            case MESSAGE_TYPES.DEBUG:
+                debug(message);
+                break;
+            default:
+                log(message);
+        }
+    }
     
-    // Log a message
-    function log(message) {
+    // Generic logging function that handles all message types
+    function logMessage(message, type = MESSAGE_TYPES.INFO) {
         if (!initialized && !init()) {
-            console.log(message);
+            // Fallback to console
+            switch (type) {
+                case MESSAGE_TYPES.ERROR:
+                    console.error(message);
+                    break;
+                case MESSAGE_TYPES.WARNING:
+                    console.warn(message);
+                    break;
+                case MESSAGE_TYPES.DEBUG:
+                    console.debug(message);
+                    break;
+                default:
+                    console.log(message);
+            }
             return;
         }
         
-        // Add message to log
+        // Create UI element
         const messageElement = document.createElement('div');
         messageElement.className = 'log-message';
-        messageElement.textContent = message;
+        
+        // Add type-specific classes and prefixes
+        let prefix = '';
+        
+        switch (type) {
+            case MESSAGE_TYPES.ERROR:
+                messageElement.classList.add('log-error');
+                prefix = 'ERROR: ';
+                break;
+            case MESSAGE_TYPES.WARNING:
+                messageElement.classList.add('log-warning');
+                prefix = 'WARNING: ';
+                break;
+            case MESSAGE_TYPES.DEBUG:
+                messageElement.classList.add('log-debug');
+                prefix = 'DEBUG: ';
+                break;
+        }
+        
+        messageElement.textContent = prefix + message;
         
         // Add to DOM
         logContentElement.appendChild(messageElement);
@@ -39,52 +100,34 @@ const Logger = (function() {
         // Auto-scroll to bottom
         logContentElement.scrollTop = logContentElement.scrollHeight;
         
-        // Also log to console
+        // Emit event if event system is available
+        if (window.EventSystem) {
+            EventSystem.emit('logAdded', { type, message });
+        }
+    }
+    
+    // Log a standard message
+    function log(message) {
+        logMessage(message, MESSAGE_TYPES.INFO);
         console.log(message);
     }
     
     // Log an error message
     function error(message) {
-        if (!initialized && !init()) {
-            console.error(message);
-            return;
-        }
-        
-        // Add error message to log
-        const errorElement = document.createElement('div');
-        errorElement.className = 'log-message log-error';
-        errorElement.textContent = "ERROR: " + message;
-        
-        // Add to DOM
-        logContentElement.appendChild(errorElement);
-        
-        // Auto-scroll to bottom
-        logContentElement.scrollTop = logContentElement.scrollHeight;
-        
-        // Also log to console
+        logMessage(message, MESSAGE_TYPES.ERROR);
         console.error(message);
     }
     
     // Log a warning message
     function warning(message) {
-        if (!initialized && !init()) {
-            console.warn(message);
-            return;
-        }
-        
-        // Add warning message to log
-        const warningElement = document.createElement('div');
-        warningElement.className = 'log-message log-warning';
-        warningElement.textContent = "WARNING: " + message;
-        
-        // Add to DOM
-        logContentElement.appendChild(warningElement);
-        
-        // Auto-scroll to bottom
-        logContentElement.scrollTop = logContentElement.scrollHeight;
-        
-        // Also log to console
+        logMessage(message, MESSAGE_TYPES.WARNING);
         console.warn(message);
+    }
+    
+    // Log a debug message (only shown in dev mode)
+    function debug(message) {
+        logMessage(message, MESSAGE_TYPES.DEBUG);
+        console.debug(message);
     }
     
     // Clear the log
@@ -92,7 +135,15 @@ const Logger = (function() {
         if (!initialized && !init()) return;
         
         logContentElement.innerHTML = '';
+        
+        // Emit clear event
+        if (window.EventSystem) {
+            EventSystem.emit('logCleared');
+        }
     }
+    
+    // Try to initialize when the module is loaded
+    document.addEventListener('DOMContentLoaded', init);
     
     // Public API
     return {
@@ -100,6 +151,8 @@ const Logger = (function() {
         log,
         error,
         warning,
-        clear
+        debug,
+        clear,
+        types: MESSAGE_TYPES
     };
 })(); 
