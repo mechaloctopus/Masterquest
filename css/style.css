@@ -347,11 +347,44 @@ canvas { width: 100%; height: 100%; }
     letter-spacing: 1px;
 }
 
+.coord-position, .coord-grid {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.coord-label {
+    color: #ff00cc;
+    font-weight: bold;
+    margin-right: 4px;
+}
+
+.coord-value {
+    color: #00ffcc;
+}
+
 .coord-compass {
     color: #ffff00;
     font-weight: bold;
     font-size: 14px;
     text-shadow: 0 0 8px #ffff00;
+    margin-left: 8px;
+}
+
+/* Debug Panel */
+.coord-debug {
+    position: fixed;
+    left: 10px;
+    bottom: 10px;
+    background-color: rgba(0, 0, 0, 0.8);
+    border: 1px solid #00ffcc;
+    color: #00ffcc;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 12px;
+    z-index: 1000;
+    max-width: 300px;
+    border-radius: 4px;
 }
 
 /* Inventory UI */

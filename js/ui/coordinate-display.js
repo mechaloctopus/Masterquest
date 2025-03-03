@@ -4,6 +4,7 @@ window.CoordinateSystem = (function() {
     let initialized = false;
     let mapContainer = null;
     let coordDisplayElement = null;
+    let debugElement = null;
     
     // Current player data
     let position = { x: 0, y: 0, z: 0 };
@@ -15,11 +16,16 @@ window.CoordinateSystem = (function() {
     // Debug flag
     const DEBUG = true;
     
+    // Last update timestamp to track changes
+    let lastUpdateTime = 0;
+    
     // Initialize the coordinate display
     function init() {
         if (initialized) return true;
         
         try {
+            console.log("Initializing coordinate display system...");
+            
             // Find the map container
             mapContainer = document.getElementById('mapContainer');
             if (!mapContainer) {
@@ -32,48 +38,90 @@ window.CoordinateSystem = (function() {
             coordDisplayElement.id = 'coordinateDisplay';
             coordDisplayElement.className = 'map-coordinates';
             
+            // Create debug element to show raw data if needed
+            debugElement = document.createElement('div');
+            debugElement.id = 'coordDebug';
+            debugElement.className = 'coord-debug';
+            debugElement.style.display = DEBUG ? 'block' : 'none';
+            debugElement.innerHTML = 'Waiting for position data...';
+            
+            // Append elements to map container
+            mapContainer.appendChild(coordDisplayElement);
+            if (DEBUG) document.body.appendChild(debugElement);
+            
             // Set initial content
             updateCoordinateText();
             
-            // Add to the map container (after the canvas but before any other controls)
-            mapContainer.appendChild(coordDisplayElement);
+            // Set up a direct timer to periodically update the display
+            // This ensures updates even if the normal update mechanism fails
+            setInterval(function() {
+                updateCoordinateText();
+            }, 200); // Update 5 times per second
             
-            // Register an event listener for player position updates
+            // Register an event listener for player position updates as a backup
             if (window.EventSystem) {
                 EventSystem.on('player.position', function(data) {
                     if (DEBUG) console.log('Position event received:', data);
-                    updatePosition(data.position, data.rotation);
+                    updatePositionFromEvent(data);
                 });
             }
             
-            // Mark as initialized
+            // Mark as initialized and log success
             initialized = true;
-            console.log('Coordinate display system initialized (embedded in map)');
+            console.log('✅ Coordinate display system initialized (embedded in map)');
             
             return true;
         } catch (e) {
-            console.error('Failed to initialize coordinate display:', e);
+            console.error('❌ Failed to initialize coordinate display:', e);
             return false;
         }
     }
     
-    // Update the coordinates text
-    function updateCoordinateText() {
-        if (!coordDisplayElement) return;
+    // Handle position updates from events
+    function updatePositionFromEvent(data) {
+        if (!data || !data.position) return;
+        updatePosition(data.position, data.rotation);
+    }
+    
+    // Update player position and direction (main method)
+    function updatePosition(newPosition, newDirection) {
+        if (!newPosition) {
+            console.error('Invalid position data provided:', newPosition);
+            return;
+        }
         
-        // Normalize coordinates to 0-100 range
-        const normX = normalizeCoordinate(position.x);
-        const normZ = normalizeCoordinate(position.z);
+        // Update timestamp to track changes
+        lastUpdateTime = Date.now();
         
-        // Get compass direction
-        const compassDir = getCompassDirection(direction);
+        // Update stored position and direction
+        position = {
+            x: newPosition.x || 0,
+            y: newPosition.y || 0,
+            z: newPosition.z || 0
+        };
         
-        // Create formatted HTML
-        coordDisplayElement.innerHTML = 
-            `<div class="coord-item">X: ${normX} Z: ${normZ}</div>
-            <div class="coord-item coord-compass">${compassDir}</div>`;
-            
-        if (DEBUG) console.log(`Coordinates updated: X:${normX} Z:${normZ} Dir:${compassDir}`);
+        direction = newDirection || 0;
+        
+        // Update displayed text
+        updateCoordinateText();
+        
+        // Show debug information if enabled
+        if (DEBUG && debugElement) {
+            debugElement.innerHTML = `
+                Raw Position: x=${position.x.toFixed(2)}, y=${position.y.toFixed(2)}, z=${position.z.toFixed(2)}<br>
+                Direction: ${direction.toFixed(2)} rad<br>
+                Last Update: ${new Date().toLocaleTimeString()}
+            `;
+        }
+    }
+    
+    // Map world coordinates to 0-100 range
+    function normalizeCoordinate(value) {
+        if (typeof value !== 'number') return 0;
+        
+        // Map from -50 to 50 range to 0-100 range
+        const normalized = Math.floor(((value + 50) / 100) * 100);
+        return Math.max(0, Math.min(100, normalized));
     }
     
     // Get compass direction from angle
@@ -94,48 +142,42 @@ window.CoordinateSystem = (function() {
         return 'N'; // fallback
     }
     
-    // Update player position and direction
-    function updatePosition(newPosition, newDirection) {
-        if (DEBUG) console.log('updatePosition called:', newPosition, newDirection);
+    // Update the coordinates text display
+    function updateCoordinateText() {
+        if (!coordDisplayElement) return;
         
-        // Ensure we have valid data
-        if (!newPosition || typeof newPosition.x === 'undefined') {
-            console.error('Invalid position data:', newPosition);
-            return;
-        }
+        // Get normalized coordinates (0-100)
+        const normX = normalizeCoordinate(position.x);
+        const normZ = normalizeCoordinate(position.z);
         
-        position = newPosition;
-        direction = newDirection;
+        // Get compass direction
+        const compassDir = getCompassDirection(direction);
         
-        // Update the display
-        updateCoordinateText();
-    }
-    
-    // Map world coordinates to 0-100 range
-    function normalizeCoordinate(value) {
-        // Check for valid input
-        if (typeof value !== 'number') {
-            console.error('Invalid coordinate value:', value);
-            return 0;
-        }
+        // Get grid coordinates
+        const gridX = Math.round(position.x / gridSize);
+        const gridZ = Math.round(position.z / gridSize);
         
-        // Assuming the world is roughly -50 to 50 in size
-        // Map to 0-100 range
-        const normalized = Math.floor(((value + 50) / 100) * 100);
-        return Math.max(0, Math.min(100, normalized)); // Clamp between 0-100
+        // Create formatted HTML with all information
+        coordDisplayElement.innerHTML = `
+            <div class="coord-position">
+                <span class="coord-label">POS:</span> 
+                <span class="coord-value">X:${normX} Z:${normZ}</span>
+            </div>
+            <div class="coord-grid">
+                <span class="coord-label">GRID:</span> 
+                <span class="coord-value">(${gridX}, ${gridZ})</span>
+            </div>
+            <div class="coord-compass">${compassDir}</div>
+        `;
     }
     
     // Show the coordinate display
     function show() {
         if (coordDisplayElement) {
-            coordDisplayElement.style.display = 'block';
-            
-            // Force an update to make sure we have current data
-            if (window.EventSystem) {
-                EventSystem.emit('coordinate.display.show');
-            }
-            
-            console.log("Coordinate display shown");
+            coordDisplayElement.style.display = 'flex';
+        }
+        if (DEBUG && debugElement) {
+            debugElement.style.display = 'block';
         }
     }
     
@@ -143,7 +185,9 @@ window.CoordinateSystem = (function() {
     function hide() {
         if (coordDisplayElement) {
             coordDisplayElement.style.display = 'none';
-            console.log("Coordinate display hidden");
+        }
+        if (debugElement) {
+            debugElement.style.display = 'none';
         }
     }
     
@@ -164,7 +208,7 @@ window.CoordinateSystem = (function() {
         };
     }
     
-    // Get the grid cell at a specific world position
+    // Get grid cell at world position
     function getGridCellAt(worldPos) {
         const gridPos = worldToGrid(worldPos);
         return {

@@ -428,18 +428,29 @@ const App = (function() {
                     
                     // Update coordinate display
                     if (window.CoordinateSystem && state.systems.coordinates) {
-                        // Debug position information
-                        console.log("Player position update:", { 
-                            x: parseFloat(position.x.toFixed(2)), 
-                            y: parseFloat(position.y.toFixed(2)), 
-                            z: parseFloat(position.z.toFixed(2)),
-                            rotation: parseFloat(rotation.toFixed(2))
-                        });
+                        // Get precise position data
+                        const playerPos = { 
+                            x: position.x, 
+                            y: position.y, 
+                            z: position.z 
+                        };
                         
-                        CoordinateSystem.updatePosition(
-                            { x: position.x, y: position.y, z: position.z },
-                            rotation
-                        );
+                        // Debug position with less frequency to avoid console spam
+                        if (Math.random() < 0.05) { // Only log about 5% of updates
+                            console.log("FPS Position:", {
+                                x: parseFloat(position.x.toFixed(2)),
+                                y: parseFloat(position.y.toFixed(2)),
+                                z: parseFloat(position.z.toFixed(2)),
+                                rotation: parseFloat(rotation.toFixed(2))
+                            });
+                        }
+                        
+                        // Force direct update of coordinate display
+                        try {
+                            CoordinateSystem.updatePosition(playerPos, rotation);
+                        } catch (e) {
+                            console.error("Error updating coordinates:", e);
+                        }
                     }
                     
                     // Emit player position for NPC and Foe proximity checks
