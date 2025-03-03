@@ -21,7 +21,7 @@ const NPCSystem = (function() {
             // Initialize event handlers
             if (window.EventSystem) {
                 // Listen for player proximity
-                EventSystem.on('player.moved', checkNPCProximity);
+                EventSystem.on('player.position', checkNPCProximity);
                 
                 // Listen for realm changes
                 EventSystem.on('realm.change', handleRealmChange);
@@ -78,17 +78,22 @@ const NPCSystem = (function() {
         // Generate a unique ID for this NPC
         const npcId = `npc_${realmIndex}_${index}`;
         
-        // Default position (would be replaced with actual realm positions)
-        const position = new BABYLON.Vector3(
-            Math.random() * 40 - 20, // -20 to 20
-            0.5,                     // Just above ground
-            Math.random() * 40 - 20  // -20 to 20
-        );
+        // Use template position if available, otherwise use random position
+        const position = template.POSITION ? 
+            new BABYLON.Vector3(template.POSITION.x, template.POSITION.y, template.POSITION.z) :
+            new BABYLON.Vector3(
+                Math.random() * 40 - 20, // -20 to 20
+                1.8,                      // Floating at eye level
+                Math.random() * 40 - 20   // -20 to 20
+            );
         
         // Create NPC mesh based on template
         let npcMesh;
         
-        if (template.TYPE === "neon_orb") {
+        // Default to neon_orb type if not specified
+        const npcType = template.TYPE || "neon_orb";
+        
+        if (npcType === "neon_orb") {
             // Create a neon orb
             npcMesh = BABYLON.MeshBuilder.CreateSphere(npcId, {
                 diameter: template.SCALE || 1.0
@@ -96,16 +101,22 @@ const NPCSystem = (function() {
             
             // Create material for the orb
             const material = new BABYLON.StandardMaterial(`${npcId}_material`, scene);
-            material.emissiveColor = new BABYLON.Color3.FromHexString(template.COLOR);
+            material.emissiveColor = new BABYLON.Color3.FromHexString(template.COLOR || "#00ffff");
             material.specularColor = new BABYLON.Color3(0, 0, 0); // No specular
-            material.alpha = 0.8; // Slightly transparent
             
-            npcMesh.material = material;
-            
-            // Add glow effect
-            const glowLayer = new BABYLON.GlowLayer(`${npcId}_glow`, scene);
-            glowLayer.intensity = template.GLOW_INTENSITY || 1.0;
+            // Add glow layer if not already added
+            let glowLayer = scene.getGlowLayerByName("npcGlowLayer");
+            if (!glowLayer) {
+                glowLayer = new BABYLON.GlowLayer("npcGlowLayer", scene);
+                glowLayer.intensity = 1.0; // Increase intensity
+            }
             glowLayer.addIncludedOnlyMesh(npcMesh);
+            
+            // Make the orb more visible
+            material.diffuseColor = new BABYLON.Color3.FromHexString(template.COLOR || "#00ffff");
+            material.emissiveColor = new BABYLON.Color3.FromHexString(template.COLOR || "#00ffff");
+            material.specularColor = new BABYLON.Color3(0, 0, 0); // No specular
+            npcMesh.material = material;
         } else {
             // Default simple box as fallback
             npcMesh = BABYLON.MeshBuilder.CreateBox(npcId, {
@@ -123,6 +134,22 @@ const NPCSystem = (function() {
         // Position the NPC
         npcMesh.position = position;
         
+        // Make NPC pickable (clickable)
+        npcMesh.isPickable = true;
+        
+        // Add action manager for interactions
+        npcMesh.actionManager = new BABYLON.ActionManager(scene);
+        
+        // Add click interaction
+        npcMesh.actionManager.registerAction(
+            new BABYLON.ExecuteCodeAction(
+                BABYLON.ActionManager.OnPickTrigger,
+                function() {
+                    startInteraction(npcId);
+                }
+            )
+        );
+        
         // Store the NPC data
         const npc = {
             id: npcId,
@@ -130,9 +157,9 @@ const NPCSystem = (function() {
             realmIndex: realmIndex,
             template: template,
             position: position,
-            dialogueData: {
-                // This would be populated with actual dialogue content
-                greetings: ["Hello, traveler!", "Welcome to the grid!"],
+            dialogueData: template.DIALOGUE || {
+                // Default dialogue if none provided in template
+                greetings: [template.NAME ? `Hello, I am ${template.NAME}` : "Hello, traveler!"],
                 conversations: [
                     { 
                         id: "intro",

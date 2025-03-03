@@ -2,7 +2,7 @@
 const CONFIG = {
     // CAMERA SETTINGS
     CAMERA: {
-        START_POSITION: {x: 0, y: 1.6, z: -25},
+        START_POSITION: {x: 0, y: 1.6, z: 0},
         SPEED: 0.1,
         GROUND_Y: 1.6,
         SENSITIVITY: 0.05,  // Look sensitivity for right joystick/mouse
@@ -161,7 +161,56 @@ const CONFIG = {
             SKYBOX: {
                 TOP_COLOR: "#000033",    // Deep blue
                 BOTTOM_COLOR: "#ff69b4", // Hot pink
-            }
+            },
+            NPCS: [
+                {
+                    ID: "guide_npc",
+                    NAME: "Digital Guide",
+                    POSITION: { x: 3, y: 1.8, z: -10 },
+                    COLOR: "#0088ff", // Bright blue
+                    SCALE: 0.8,
+                    HOVER_HEIGHT: 0.3,
+                    HOVER_SPEED: 1.5,
+                    DIALOGUE: {
+                        GREETING: "Welcome to Synthwave Beach! I'm your digital guide.",
+                        RESPONSES: [
+                            {
+                                ID: "about_realm",
+                                TEXT: "Tell me about this realm",
+                                RESPONSE: "Synthwave Beach is the first realm in your journey. Here you'll learn the basics of navigation and interaction."
+                            },
+                            {
+                                ID: "about_quests",
+                                TEXT: "What should I do here?",
+                                RESPONSE: "Explore the area, talk to other NPCs, and defeat the quiz foes to earn knowledge and progress to the next realm."
+                            }
+                        ]
+                    }
+                }
+            ],
+            FOES: [
+                {
+                    ID: "quiz_foe_1",
+                    NAME: "Logic Guardian",
+                    POSITION: { x: -3, y: 1.8, z: -10 },
+                    COLOR: "#ff0000", // Bright red
+                    SCALE: 0.8,
+                    HOVER_HEIGHT: 0.4,
+                    HOVER_SPEED: 1.2,
+                    SPIKES: true,
+                    QUIZ: {
+                        INTRO: "I am the Logic Guardian! Answer my questions to prove your worth.",
+                        QUESTIONS: [
+                            {
+                                QUESTION: "What data type would you use to store a user's response of Yes or No?",
+                                OPTIONS: ["String", "Boolean", "Integer", "Float"],
+                                CORRECT: 1,
+                                EXPLANATION: "Boolean values (true/false) are perfect for yes/no responses."
+                            }
+                        ]
+                    }
+                }
+            ]
         },
         REALM_2: {
             NAME: "Digital Mountains",

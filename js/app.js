@@ -337,7 +337,16 @@ const App = (function() {
                     const position = camera.position;
                     const rotation = camera.rotation.y;
                     
+                    // Update map with player position
                     MapSystem.updatePlayerPosition({ x: position.x, z: position.z }, rotation);
+                    
+                    // Emit player position for NPC and Foe proximity checks
+                    if (window.EventSystem) {
+                        EventSystem.emit('player.position', {
+                            position: { x: position.x, y: position.y, z: position.z },
+                            rotation: rotation
+                        });
+                    }
                 }
             });
         }

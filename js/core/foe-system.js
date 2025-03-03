@@ -21,7 +21,7 @@ const FoeSystem = (function() {
             // Initialize event handlers
             if (window.EventSystem) {
                 // Listen for player proximity
-                EventSystem.on('player.moved', checkFoeProximity);
+                EventSystem.on('player.position', checkFoeProximity);
                 
                 // Listen for realm changes
                 EventSystem.on('realm.change', handleRealmChange);
@@ -81,37 +81,50 @@ const FoeSystem = (function() {
         // Generate a unique ID for this foe
         const foeId = `foe_${realmIndex}_${index}`;
         
-        // Default position (would be replaced with actual realm positions)
-        const position = new BABYLON.Vector3(
-            Math.random() * 40 - 20, // -20 to 20
-            0.5,                     // Just above ground
-            Math.random() * 40 - 20  // -20 to 20
-        );
+        // Use template position if available, otherwise use random position
+        const position = template.POSITION ? 
+            new BABYLON.Vector3(template.POSITION.x, template.POSITION.y, template.POSITION.z) :
+            new BABYLON.Vector3(
+                Math.random() * 40 - 20, // -20 to 20
+                1.8,                      // Floating at eye level
+                Math.random() * 40 - 20   // -20 to 20
+            );
         
         // Create foe mesh based on template
         let foeMesh;
         
-        if (template.TYPE === "neon_orb") {
-            // Create a neon orb
+        // Default to spike_orb type if not specified
+        const foeType = template.TYPE || "spike_orb";
+        
+        if (foeType === "spike_orb") {
+            // Create a spiked orb for foes to distinguish them from NPCs
             foeMesh = BABYLON.MeshBuilder.CreateSphere(foeId, {
-                diameter: template.SCALE || 1.2
+                diameter: template.SCALE || 1.0
             }, scene);
             
             // Create material for the orb
             const material = new BABYLON.StandardMaterial(`${foeId}_material`, scene);
-            material.emissiveColor = new BABYLON.Color3.FromHexString(template.COLOR);
+            material.emissiveColor = new BABYLON.Color3.FromHexString(template.COLOR || "#ff00ff");
             material.specularColor = new BABYLON.Color3(0, 0, 0); // No specular
-            material.alpha = 0.8; // Slightly transparent
             
-            foeMesh.material = material;
-            
-            // Add glow effect
-            const glowLayer = new BABYLON.GlowLayer(`${foeId}_glow`, scene);
-            glowLayer.intensity = template.GLOW_INTENSITY || 1.8;
+            // Add glow layer if not already added
+            let glowLayer = scene.getGlowLayerByName("foeGlowLayer");
+            if (!glowLayer) {
+                glowLayer = new BABYLON.GlowLayer("foeGlowLayer", scene);
+                glowLayer.intensity = 1.2; // Increase intensity for foes
+            }
             glowLayer.addIncludedOnlyMesh(foeMesh);
             
-            // Add spikes or additional geometry to distinguish from regular NPCs
-            addSpikesToOrb(foeMesh, template.COLOR);
+            // Make the orb more visible
+            material.diffuseColor = new BABYLON.Color3.FromHexString(template.COLOR || "#ff0000");
+            material.emissiveColor = new BABYLON.Color3.FromHexString(template.COLOR || "#ff0000");
+            material.specularColor = new BABYLON.Color3(0, 0, 0); // No specular
+            foeMesh.material = material;
+            
+            // Add spikes if specified in template
+            if (template.SPIKES) {
+                addSpikesToOrb(foeMesh, template.COLOR || "#ff00ff");
+            }
         } else {
             // Default simple box as fallback
             foeMesh = BABYLON.MeshBuilder.CreateBox(foeId, {
@@ -129,8 +142,24 @@ const FoeSystem = (function() {
         // Position the foe
         foeMesh.position = position;
         
+        // Make foe pickable (clickable)
+        foeMesh.isPickable = true;
+        
+        // Add action manager for interactions
+        foeMesh.actionManager = new BABYLON.ActionManager(scene);
+        
+        // Add click interaction
+        foeMesh.actionManager.registerAction(
+            new BABYLON.ExecuteCodeAction(
+                BABYLON.ActionManager.OnPickTrigger,
+                function() {
+                    startBattle(foeId);
+                }
+            )
+        );
+        
         // Generate quiz questions for this foe
-        const quizQuestions = generateQuizQuestions(index, realmIndex);
+        const quizData = template.QUIZ || generateQuizQuestions(index, realmIndex);
         
         // Store the foe data
         const foe = {
@@ -139,15 +168,9 @@ const FoeSystem = (function() {
             realmIndex: realmIndex,
             template: template,
             position: position,
-            quizData: {
-                questions: quizQuestions,
-                currentQuestion: 0,
-                score: 0,
-                maxScore: quizQuestions.length,
-                completed: false
-            },
-            state: 'idle', // idle, engaging, battle, defeated
-            isInteracting: false,
+            quizData: quizData,
+            isBattling: false,
+            defeated: false,
             hoverParams: {
                 originalY: position.y,
                 phase: Math.random() * Math.PI * 2 // Random starting phase
@@ -165,12 +188,13 @@ const FoeSystem = (function() {
     
     // Add spikes to orb to distinguish foes from regular NPCs
     function addSpikesToOrb(foeMesh, color) {
-        // Add spikes or particles to make the foe look more threatening
-        const spikeCount = 8;
-        const spikeLength = 0.5;
+        // Add spikes to make the foe look more threatening
+        const spikeCount = 12; // Increase number of spikes
+        const spikeLength = 0.7; // Make spikes longer
         
+        // Add spikes in multiple directions
         for (let i = 0; i < spikeCount; i++) {
-            // Calculate position around the sphere
+            // Calculate position around the sphere horizontally
             const angle = (i / spikeCount) * Math.PI * 2;
             const direction = new BABYLON.Vector3(
                 Math.cos(angle),
@@ -180,7 +204,45 @@ const FoeSystem = (function() {
             
             // Create spike mesh
             const spike = BABYLON.MeshBuilder.CreateCylinder(
-                `spike_${i}`,
+                `spike_h_${i}`,
+                {
+                    height: spikeLength,
+                    diameterTop: 0,
+                    diameterBottom: 0.2,
+                    tessellation: 4 // Make spikes more angular/sharp
+                },
+                scene
+            );
+            
+            // Position and orient the spike
+            const radius = foeMesh.getBoundingInfo().boundingSphere.radius;
+            spike.position = foeMesh.position.clone().add(direction.scale(radius));
+            spike.lookAt(spike.position.add(direction));
+            spike.rotate(BABYLON.Axis.X, Math.PI / 2);
+            
+            // Create glowing material for spike
+            const spikeMaterial = new BABYLON.StandardMaterial(`spike_material_h_${i}`, scene);
+            spikeMaterial.emissiveColor = new BABYLON.Color3.FromHexString(color || "#ff0000");
+            spikeMaterial.diffuseColor = new BABYLON.Color3.FromHexString(color || "#ff0000");
+            spike.material = spikeMaterial;
+            
+            // Parent to the orb so it moves with it
+            spike.parent = foeMesh;
+        }
+        
+        // Add vertical spikes too for a more 3D threatening appearance
+        for (let i = 0; i < 6; i++) {
+            // Calculate position around the sphere vertically
+            const angle = (i / 6) * Math.PI * 2;
+            const direction = new BABYLON.Vector3(
+                Math.cos(angle),
+                Math.sin(angle),
+                0
+            );
+            
+            // Create spike mesh
+            const spike = BABYLON.MeshBuilder.CreateCylinder(
+                `spike_v_${i}`,
                 {
                     height: spikeLength,
                     diameterTop: 0,
@@ -190,16 +252,18 @@ const FoeSystem = (function() {
                 scene
             );
             
-            // Position and rotate spike
-            spike.position = foeMesh.position.clone().add(direction.scale(0.6));
-            spike.lookAt(foeMesh.position);
+            // Position and orient the spike
+            const radius = foeMesh.getBoundingInfo().boundingSphere.radius;
+            spike.position = foeMesh.position.clone().add(direction.scale(radius));
+            spike.lookAt(spike.position.add(direction));
             
-            // Apply material
-            const spikeMaterial = new BABYLON.StandardMaterial(`spike_material_${i}`, scene);
-            spikeMaterial.emissiveColor = new BABYLON.Color3.FromHexString(color);
+            // Create glowing material for spike
+            const spikeMaterial = new BABYLON.StandardMaterial(`spike_material_v_${i}`, scene);
+            spikeMaterial.emissiveColor = new BABYLON.Color3.FromHexString(color || "#ff0000");
+            spikeMaterial.diffuseColor = new BABYLON.Color3.FromHexString(color || "#ff0000");
             spike.material = spikeMaterial;
             
-            // Parent to main mesh for easier management
+            // Parent to the orb so it moves with it
             spike.parent = foeMesh;
         }
     }
