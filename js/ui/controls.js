@@ -1,5 +1,18 @@
 // Control System
 const ControlSystem = {
+    // Store references to control elements and state
+    _controls: {
+        leftJoystick: null,
+        rightJoystick: null,
+        keyboard: {
+            enabled: true,
+            keysDown: {}
+        },
+        jumpButton: null,
+        strikeButton: null,
+        enabled: true
+    },
+    
     setupControls: function(scene, camera, state, audioSystem) {
         // Joystick setup
         const createJoystick = (element) => {
@@ -11,6 +24,10 @@ const ControlSystem = {
                 size: CONFIG.UI.JOYSTICKS.SIZE
             });
         };
+        
+        // Store scene and state references
+        this._scene = scene;
+        this._state = state;
         
         // Unified function to handle movement vector updates
         const updateMovementVector = (x, z) => {
@@ -33,35 +50,84 @@ const ControlSystem = {
             }
         };
 
-        // Movement joystick
-        const leftStick = createJoystick(document.getElementById('leftJoystick'));
-        leftStick.on('move', (evt, data) => {
-            updateMovementVector(data.vector.x, data.vector.y);
-        });
-        leftStick.on('end', () => {
-            // Check if moveVector exists and has the set method
-            if (state.moveVector && typeof state.moveVector.set === 'function') {
-                state.moveVector.set(0, 0, 0);
-            } else {
-                // Fallback in case moveVector isn't properly initialized
-                state.moveVector = new BABYLON.Vector3(0, 0, 0);
-            }
-        });
-
-        // Look joystick
-        const rightStick = createJoystick(document.getElementById('rightJoystick'));
-        rightStick.on('move', (event, data) => {
-            const lookY = data.vector.x * CONFIG.CAMERA.SENSITIVITY;
-            const lookX = -data.vector.y * CONFIG.CAMERA.SENSITIVITY;
+        // Create left joystick (movement)
+        const leftJoystickContainer = document.getElementById('leftJoystick');
+        if (leftJoystickContainer) {
+            this._controls.leftJoystick = createJoystick(leftJoystickContainer);
             
-            camera.rotation.y += lookY;
-            camera.rotation.x += lookX;
-        });
-
-        // Add keyboard controls for desktop users
-        const keyState = {};
+            // Movement joystick events
+            this._controls.leftJoystick.on('move', (event, data) => {
+                if (!this._controls.enabled) return;
+                
+                updateMovementVector(data.vector.x, data.vector.y);
+            });
+            
+            this._controls.leftJoystick.on('end', () => {
+                if (!this._controls.enabled) return;
+                
+                updateMovementVector(0, 0);
+            });
+        }
+        
+        // Create right joystick (camera)
+        const rightJoystickContainer = document.getElementById('rightJoystick');
+        if (rightJoystickContainer) {
+            this._controls.rightJoystick = createJoystick(rightJoystickContainer);
+            
+            // Look joystick events
+            this._controls.rightJoystick.on('move', (event, data) => {
+                if (!this._controls.enabled) return;
+                
+                const lookY = data.vector.x * CONFIG.CAMERA.SENSITIVITY;
+                const lookX = -data.vector.y * CONFIG.CAMERA.SENSITIVITY;
+                
+                camera.rotation.y += lookY;
+                camera.rotation.x += lookX;
+            });
+        }
+        
+        // Set up jump button
+        const jumpButton = document.getElementById('jumpButton');
+        if (jumpButton) {
+            this._controls.jumpButton = jumpButton;
+            
+            jumpButton.addEventListener('touchstart', (e) => {
+                if (!this._controls.enabled) return;
+                
+                this.triggerJump(state, audioSystem);
+            });
+            
+            jumpButton.addEventListener('click', (e) => {
+                if (!this._controls.enabled) return;
+                
+                this.triggerJump(state, audioSystem);
+            });
+        }
+        
+        // Set up strike button
+        const strikeButton = document.getElementById('strikeButton');
+        if (strikeButton) {
+            this._controls.strikeButton = strikeButton;
+            
+            strikeButton.addEventListener('touchstart', (e) => {
+                if (!this._controls.enabled) return;
+                
+                this.triggerStrike(state, audioSystem);
+            });
+            
+            strikeButton.addEventListener('click', (e) => {
+                if (!this._controls.enabled) return;
+                
+                this.triggerStrike(state, audioSystem);
+            });
+        }
+        
+        // Set up keyboard controls
         document.addEventListener('keydown', (e) => {
-            keyState[e.code] = true;
+            if (!this._controls.enabled || !this._controls.keyboard.enabled) return;
+            
+            this._controls.keyboard.keysDown[e.key.toLowerCase()] = true;
+            
             if (e.code === 'Space' && state.grounded) {
                 this.triggerJump(state, audioSystem);
             }
@@ -71,51 +137,37 @@ const ControlSystem = {
         });
         
         document.addEventListener('keyup', (e) => {
-            keyState[e.code] = false;
+            if (!this._controls.keyboard.enabled) return;
+            
+            this._controls.keyboard.keysDown[e.key.toLowerCase()] = false;
+            
+            // Handle keyboard movement for desktop
+            let xMove = 0, zMove = 0;
+            if (e.code === 'KeyW' || e.code === 'ArrowUp') zMove += 1;
+            if (e.code === 'KeyS' || e.code === 'ArrowDown') zMove -= 1;
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft') xMove -= 1;
+            if (e.code === 'KeyD' || e.code === 'ArrowRight') xMove += 1;
+            
+            // Only update if keys are pressed (preserve joystick values otherwise)
+            if (xMove !== 0 || zMove !== 0) {
+                // Normalize for diagonal movement
+                const length = Math.sqrt(xMove*xMove + zMove*zMove);
+                if (length > 0) {
+                    xMove /= length;
+                    zMove /= length;
+                }
+                updateMovementVector(xMove, zMove);
+            }
         });
 
-        // Setup jump button
-        const jumpButton = document.getElementById('jumpButton');
-        jumpButton.addEventListener('touchstart', () => this.triggerJump(state, audioSystem));
-        jumpButton.addEventListener('mousedown', () => this.triggerJump(state, audioSystem));
-        
-        // Setup strike button
-        const strikeButton = document.getElementById('strikeButton');
-        if (strikeButton) {
-            console.log("Setting up strike button handlers");
-            
-            // Remove any existing handlers first
-            const newStrikeButton = strikeButton.cloneNode(true);
-            strikeButton.parentNode.replaceChild(newStrikeButton, strikeButton);
-            
-            // Add our handlers
-            newStrikeButton.addEventListener('touchstart', () => {
-                console.log("Strike button touched");
-                this.triggerStrike(state, audioSystem);
-            });
-            
-            newStrikeButton.addEventListener('mousedown', () => {
-                console.log("Strike button clicked");
-                this.triggerStrike(state, audioSystem);
-            });
-            
-            // Also add keyboard handler (for testing)
-            document.addEventListener('keydown', (e) => {
-                if (e.code === 'KeyF') {
-                    console.log("Strike key pressed");
-                    this.triggerStrike(state, audioSystem);
-                }
-            });
-        }
-        
         // Process keyboard movement
         scene.registerBeforeRender(() => {
             // Handle keyboard movement for desktop
             let xMove = 0, zMove = 0;
-            if (keyState['KeyW'] || keyState['ArrowUp']) zMove += 1;
-            if (keyState['KeyS'] || keyState['ArrowDown']) zMove -= 1;
-            if (keyState['KeyA'] || keyState['ArrowLeft']) xMove -= 1;
-            if (keyState['KeyD'] || keyState['ArrowRight']) xMove += 1;
+            if (this._controls.keyboard.keysDown['w'] || this._controls.keyboard.keysDown['ArrowUp']) zMove += 1;
+            if (this._controls.keyboard.keysDown['s'] || this._controls.keyboard.keysDown['ArrowDown']) zMove -= 1;
+            if (this._controls.keyboard.keysDown['a'] || this._controls.keyboard.keysDown['ArrowLeft']) xMove -= 1;
+            if (this._controls.keyboard.keysDown['d'] || this._controls.keyboard.keysDown['ArrowRight']) xMove += 1;
             
             // Only update if keys are pressed (preserve joystick values otherwise)
             if (xMove !== 0 || zMove !== 0) {
@@ -216,5 +268,50 @@ const ControlSystem = {
         }, 50);
         
         console.log("Strike action completed");
+    },
+    
+    // Enable all controls
+    enableControls: function() {
+        this._controls.enabled = true;
+        this._controls.keyboard.enabled = true;
+        
+        // Update UI state
+        const strikeButton = document.getElementById('strikeButton');
+        const jumpButton = document.getElementById('jumpButton');
+        
+        if (strikeButton) strikeButton.style.opacity = '1';
+        if (jumpButton) jumpButton.style.opacity = '1';
+        
+        if (window.Logger) {
+            Logger.log("> CONTROLS ENABLED");
+        }
+    },
+    
+    // Disable all controls
+    disableControls: function() {
+        this._controls.enabled = false;
+        
+        // Force movement vector to zero to stop any ongoing movement
+        if (this._state) {
+            this._state.moveVector.x = 0;
+            this._state.moveVector.z = 0;
+            this._state.jumpForce = 0;
+        }
+        
+        // Update UI state
+        const strikeButton = document.getElementById('strikeButton');
+        const jumpButton = document.getElementById('jumpButton');
+        
+        if (strikeButton) strikeButton.style.opacity = '0.5';
+        if (jumpButton) jumpButton.style.opacity = '0.5';
+        
+        if (window.Logger) {
+            Logger.log("> CONTROLS DISABLED");
+        }
+    },
+    
+    // Check if controls are enabled
+    isEnabled: function() {
+        return this._controls.enabled;
     }
 }; 

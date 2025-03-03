@@ -275,34 +275,157 @@ const App = (function() {
         }
         
         // Listen for health changes
-        if (window.EventSystem) {
+        if (window.EventSystem && state.systems.health) {
             EventSystem.on('health.changed', (data) => {
+                // Handle health changes, possibly update UI or game state
                 state.gameState.health = data.current;
                 state.gameState.maxHealth = data.max;
             });
         }
         
         // Listen for inventory events
+        if (window.EventSystem && state.systems.inventory) {
+            EventSystem.on('inventory.itemSelected', (data) => {
+                // Handle item selection
+                console.log(`Selected item: ${data.item.name}`);
+            });
+            
+            EventSystem.on('inventory.itemAdded', (data) => {
+                // Handle item added
+                console.log(`Added item: ${data.item.name}`);
+            });
+            
+            EventSystem.on('inventory.itemRemoved', (data) => {
+                // Handle item removed
+                console.log(`Removed item with ID: ${data.id}`);
+            });
+            
+            // Listen for game pause/resume from inventory
+            EventSystem.on('game.paused', (data) => {
+                if (data.source === 'inventory') {
+                    pauseGame();
+                }
+            });
+            
+            EventSystem.on('game.resumed', (data) => {
+                if (data.source === 'inventory') {
+                    resumeGame();
+                }
+            });
+            
+            // Equipment events
+            EventSystem.on('inventory.itemEquipped', (data) => {
+                console.log(`Equipped ${data.item.name} in ${data.slot} slot`);
+                // Handle equipment effects
+                applyEquipmentEffects(data.item, data.slot, true);
+            });
+            
+            EventSystem.on('inventory.itemUnequipped', (data) => {
+                console.log(`Unequipped ${data.item.name} from ${data.slot} slot`);
+                // Remove equipment effects
+                applyEquipmentEffects(data.item, data.slot, false);
+            });
+        }
+        
+        // Use health potion when selected
         if (window.EventSystem) {
             EventSystem.on('inventory.itemSelected', (data) => {
-                Logger.log(`Selected item: ${data.item.name}`);
-                
-                // Example of using an item
-                if (data.item.type === 'consumable' && data.item.id === 'health_potion') {
+                if (data.item && data.item.id === 'health_potion') {
                     useHealthPotion();
                 }
             });
         }
     }
     
-    // Example function for using a health potion
+    // Apply equipment effects when items are equipped/unequipped
+    function applyEquipmentEffects(item, slot, isEquipped) {
+        if (!item) return;
+        
+        // Example effects based on equipment
+        switch(item.type) {
+            case 'helmet':
+            case 'hat':
+                // Maybe give damage reduction
+                break;
+            case 'armor':
+            case 'chest':
+                // More health or defense
+                break;
+            case 'weapon':
+                // Change player attack style or damage
+                if (slot === 'rightHand') {
+                    console.log('Weapon equipped in right hand');
+                    // Show weapon in right hand
+                    if (window.HandsSystem && isEquipped) {
+                        HandsSystem.setRightHandItem(item);
+                    } else if (window.HandsSystem && !isEquipped) {
+                        HandsSystem.clearRightHandItem();
+                    }
+                } else if (slot === 'leftHand') {
+                    console.log('Weapon equipped in left hand');
+                    // Show weapon in left hand
+                    if (window.HandsSystem && isEquipped) {
+                        HandsSystem.setLeftHandItem(item);
+                    } else if (window.HandsSystem && !isEquipped) {
+                        HandsSystem.clearLeftHandItem();
+                    }
+                }
+                break;
+        }
+    }
+    
+    // Pause the game
+    function pauseGame() {
+        if (state.scene) {
+            console.log("Game paused");
+            state.scene.paused = true;
+            
+            // Disable controls
+            if (window.ControlSystem) {
+                ControlSystem.disableControls();
+            }
+        }
+    }
+    
+    // Resume the game
+    function resumeGame() {
+        if (state.scene) {
+            console.log("Game resumed");
+            state.scene.paused = false;
+            
+            // Re-enable controls
+            if (window.ControlSystem) {
+                ControlSystem.enableControls();
+            }
+        }
+    }
+    
+    // Use a health potion
     function useHealthPotion() {
-        if (!state.systems.health) return;
-        
-        HealthBarSystem.heal(25);
-        InventorySystem.removeItem('health_potion', 1);
-        
-        Logger.log("> USED HEALTH POTION");
+        // Check if we have health potions
+        if (window.InventorySystem) {
+            // Get all items
+            const items = InventorySystem.getAllItems();
+            const healthPotion = items.find(item => item.id === 'health_potion');
+            
+            if (healthPotion && healthPotion.count > 0) {
+                // Use the potion
+                if (window.HealthBarSystem) {
+                    HealthBarSystem.heal(25);
+                    Logger.log("> HEALTH POTION USED");
+                    
+                    // Remove one potion from inventory
+                    InventorySystem.removeItem('health_potion', 1);
+                    
+                    // Play sound effect if available
+                    if (state.systems.audio && state.systems.audio.sfx && state.systems.audio.sfx.heal) {
+                        state.systems.audio.sfx.heal.play();
+                    }
+                }
+            } else {
+                Logger.warning("No health potions available");
+            }
+        }
     }
     
     // Queue assets for loading

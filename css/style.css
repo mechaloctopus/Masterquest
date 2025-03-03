@@ -325,10 +325,10 @@ canvas { width: 100%; height: 100%; }
 /* Inventory UI */
 #inventoryContainer {
     position: absolute;
-    bottom: 50px;
-    right: 10px;
-    width: 300px;
-    height: 250px;
+    top: 60px;
+    left: 10px;
+    width: 220px;
+    height: 200px;
     background: rgba(0, 0, 0, 0.7);
     border: 2px solid #ff00cc;
     border-radius: 5px;
@@ -929,4 +929,281 @@ body.mobile-detected .radio-player {
     0% { transform: translateX(-50%) scale(1); }
     50% { transform: translateX(-50%) scale(1.05); border-color: #00ff88; box-shadow: 0 0 20px #00ff88; }
     100% { transform: translateX(-50%) scale(1); }
+}
+
+/* Pause Button for Inventory */
+.pause-button {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 15px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #ff00cc;
+    border: 1px solid #ff00cc;
+    border-radius: 5px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 100;
+    text-shadow: 0 0 5px #ff00cc;
+    transition: all 0.2s ease;
+}
+
+.pause-button:hover {
+    background: rgba(25, 0, 20, 0.8);
+    box-shadow: 0 0 10px #ff00cc;
+}
+
+/* Expanded Full-Screen Inventory */
+.expanded-inventory {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    box-sizing: border-box;
+    color: #ff00cc;
+    font-family: 'Orbitron', sans-serif;
+    transition: all 0.3s ease;
+}
+
+.expanded-inventory.hidden {
+    display: none;
+}
+
+.expanded-inventory-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #ff00cc;
+    padding-bottom: 10px;
+}
+
+.expanded-inventory-header h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ff00cc;
+    text-shadow: 0 0 10px #ff00cc;
+    margin: 0;
+}
+
+.expanded-inventory-close {
+    background: none;
+    border: none;
+    color: #ff00cc;
+    font-size: 28px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.expanded-inventory-close:hover {
+    color: #ff66cc;
+    text-shadow: 0 0 10px #ff00cc;
+}
+
+.expanded-inventory-content {
+    display: flex;
+    flex: 1;
+    gap: 20px;
+    overflow: hidden;
+}
+
+.equipment-side {
+    flex: 1;
+    border: 1px solid #ff00cc;
+    border-radius: 5px;
+    padding: 15px;
+    background: rgba(25, 0, 20, 0.5);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.character-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-areas:
+        ".       helmet  ."
+        "amulet  .       cloak"
+        ".       armor   ."
+        "bracers .       gloves"
+        ".       pants   ."
+        ".       boots   ."
+        "leftHand .      rightHand";
+    grid-template-rows: repeat(7, 1fr);
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+}
+
+.character-silhouette {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 220"><path d="M50,10 C60,10 65,15 65,25 C65,35 60,45 50,45 C40,45 35,35 35,25 C35,15 40,10 50,10 Z M50,45 C70,45 80,60 80,70 C80,80 75,90 75,100 C75,110 80,120 80,130 C80,140 70,160 70,170 C70,180 65,190 60,200 C55,210 55,220 50,220 C45,220 45,210 40,200 C35,190 30,180 30,170 C30,160 20,140 20,130 C20,120 25,110 25,100 C25,90 20,80 20,70 C20,60 30,45 50,45 Z" fill="none" stroke="%23ff00cc" stroke-width="1" opacity="0.3"/></svg>');
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.equipment-slot {
+    width: 100%;
+    aspect-ratio: 1;
+    border: 1px solid #ff00cc;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.7);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    z-index: 1;
+}
+
+.equipment-slot:hover {
+    border-color: #ff66cc;
+    box-shadow: 0 0 10px #ff00cc;
+}
+
+.equipment-slot.empty {
+    border-color: rgba(255, 0, 204, 0.3);
+}
+
+.equipment-slot img {
+    max-width: 70%;
+    max-height: 70%;
+}
+
+.equipment-slot-label {
+    position: absolute;
+    bottom: -20px;
+    font-size: 10px;
+    color: #ff00cc;
+    text-shadow: 0 0 5px #ff00cc;
+    white-space: nowrap;
+}
+
+.helmet-slot {
+    grid-area: helmet;
+}
+
+.amulet-slot {
+    grid-area: amulet;
+}
+
+.armor-slot {
+    grid-area: armor;
+}
+
+.cloak-slot {
+    grid-area: cloak;
+}
+
+.bracers-slot {
+    grid-area: bracers;
+}
+
+.gloves-slot {
+    grid-area: gloves;
+}
+
+.pants-slot {
+    grid-area: pants;
+}
+
+.boots-slot {
+    grid-area: boots;
+}
+
+.leftHand-slot {
+    grid-area: leftHand;
+}
+
+.rightHand-slot {
+    grid-area: rightHand;
+}
+
+.items-side {
+    flex: 1;
+    border: 1px solid #ff00cc;
+    border-radius: 5px;
+    padding: 15px;
+    background: rgba(25, 0, 20, 0.5);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.items-side h3 {
+    font-size: 18px;
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #ff00cc;
+    text-shadow: 0 0 5px #ff00cc;
+    text-align: center;
+}
+
+.items-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    overflow-y: auto;
+}
+
+/* Media queries for responsive inventory */
+@media screen and (max-width: 768px) {
+    .expanded-inventory-content {
+        flex-direction: column;
+    }
+    
+    .character-container {
+        height: 300px;
+    }
+    
+    .equipment-slot-label {
+        font-size: 8px;
+        bottom: -15px;
+    }
+    
+    .equipment-side, .items-side {
+        flex: none;
+        height: 47%;
+    }
+    
+    .items-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .pause-button {
+        font-size: 10px;
+        padding: 3px 10px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .items-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .expanded-inventory {
+        padding: 10px;
+    }
+    
+    .character-container {
+        height: 250px;
+    }
 } 
