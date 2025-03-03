@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <!-- External Libraries -->
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
@@ -12,11 +13,61 @@
     <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen">
+        <div class="loading-grid">
+            <div class="grid-horizontal" id="gridHorizontal"></div>
+            <div class="grid-vertical" id="gridVertical"></div>
+        </div>
+        
+        <div class="sun"></div>
+        
+        <div class="loading-content">
+            <h1 class="loading-title">Neon Grid FPS</h1>
+            
+            <div class="loading-bar-container">
+                <div class="loading-bar" id="loadingBar"></div>
+                <div class="loading-bar-glow"></div>
+            </div>
+            
+            <div class="loading-status" id="loadingStatus">Initializing...</div>
+            
+            <div class="loading-console" id="loadingConsole">
+                <div class="loading-console-line">SYSTEM BOOT SEQUENCE INITIATED...</div>
+            </div>
+        </div>
+    </div>
+
     <canvas id="renderCanvas"></canvas>
+    
+    <!-- UI Elements -->
     <div id="log">
         <button id="logToggle">▼</button>
         <div id="logContent"></div>
     </div>
+    
+    <!-- Health Bar -->
+    <div id="healthBar">
+        <div id="healthFill"></div>
+        <div id="healthText">100 / 100</div>
+    </div>
+    
+    <!-- Map -->
+    <div id="mapContainer">
+        <div id="mapTitle">MAP</div>
+        <button id="mapToggle">▼</button>
+        <canvas id="mapCanvas"></canvas>
+    </div>
+    
+    <!-- Inventory -->
+    <div id="inventoryContainer" class="collapsed">
+        <div id="inventoryTitle">INVENTORY</div>
+        <button id="inventoryToggle">▲</button>
+        <div id="inventoryContent">
+            <!-- Inventory items will be added dynamically -->
+        </div>
+    </div>
+    
     <div id="leftJoystick" class="joystick-container"></div>
     <div id="rightJoystick" class="joystick-container"></div>
     <div id="leftHand" class="hand"></div>
@@ -78,6 +129,10 @@
     <script src="js/core/skybox.js"></script>
     
     <!-- UI Systems -->
+    <script src="js/ui/loading-screen.js"></script>
+    <script src="js/ui/health-bar.js"></script>
+    <script src="js/ui/map.js"></script>
+    <script src="js/ui/inventory.js"></script>
     <script src="js/ui/hands.js"></script>
     <script src="js/ui/controls.js"></script>
     <script src="js/ui/style-manager.js"></script>

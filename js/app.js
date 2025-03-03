@@ -5,8 +5,19 @@ const App = (function() {
         initialized: false,
         engine: null,
         scene: null,
-        gameState: null,
+        gameState: {
+            moveVector: new BABYLON.Vector3(0, 0, 0),
+            jumpForce: 0,
+            bobTime: 0,
+            grounded: true,
+            smoothedMovementIntensity: 0,
+            striking: false,
+            strikeProgress: 0,
+            health: 100,
+            maxHealth: 100
+        },
         systems: {},
+        assets: {}
     };
 
     // Initialize all application systems
@@ -17,8 +28,15 @@ const App = (function() {
         }
 
         try {
-            Logger.log("> SYSTEM INITIALIZING...");
-            Logger.log("> LOADING NEON GRID PROTOCOL...");
+            // Initialize the loading screen first
+            if (window.LoadingScreenSystem) {
+                LoadingScreenSystem.init();
+                LoadingScreenSystem.addConsoleMessage("> SYSTEM INITIALIZING...");
+                LoadingScreenSystem.addConsoleMessage("> LOADING NEON GRID PROTOCOL...");
+            } else {
+                Logger.log("> SYSTEM INITIALIZING...");
+                Logger.log("> LOADING NEON GRID PROTOCOL...");
+            }
             
             // Setup canvas and engine
             const canvas = document.getElementById('renderCanvas');
@@ -37,18 +55,7 @@ const App = (function() {
                 throw new Error("Failed to create scene");
             }
             
-            // Initialize game state
-            state.gameState = {
-                moveVector: new BABYLON.Vector3(0, 0, 0),
-                jumpForce: 0,
-                bobTime: 0,
-                grounded: true,
-                smoothedMovementIntensity: 0,
-                striking: false,
-                strikeProgress: 0
-            };
-
-            // Initialize all systems at once (keeping original order)
+            // Initialize all systems in order
             initializeAllSystems();
             
             // Setup main render loop
@@ -68,7 +75,7 @@ const App = (function() {
         }
     }
     
-    // Initialize all systems at once (keeping original ordering)
+    // Initialize all systems in order
     function initializeAllSystems() {
         try {
             // Initialize loader first if available
@@ -114,6 +121,37 @@ const App = (function() {
                 Logger.error(`Camera initialization failed: ${e.message}`);
                 // Create fallback camera
                 state.systems.camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, 0), state.scene);
+            }
+            
+            // Initialize health system
+            try {
+                if (window.HealthBarSystem) {
+                    HealthBarSystem.init();
+                    HealthBarSystem.setHealth(state.gameState.health, state.gameState.maxHealth);
+                    state.systems.health = true;
+                }
+            } catch (e) {
+                Logger.error(`Health system initialization failed: ${e.message}`);
+            }
+            
+            // Initialize map system
+            try {
+                if (window.MapSystem) {
+                    MapSystem.init();
+                    state.systems.map = true;
+                }
+            } catch (e) {
+                Logger.error(`Map system initialization failed: ${e.message}`);
+            }
+            
+            // Initialize inventory system
+            try {
+                if (window.InventorySystem) {
+                    InventorySystem.init();
+                    state.systems.inventory = true;
+                }
+            } catch (e) {
+                Logger.error(`Inventory system initialization failed: ${e.message}`);
             }
             
             // Initialize hands
@@ -185,9 +223,59 @@ const App = (function() {
                 LoaderSystem.startLoading();
             }
             
+            // Set up system event listeners
+            setupEventListeners();
+            
         } catch (e) {
             Logger.error(`System initialization failed: ${e.message}`);
         }
+    }
+    
+    // Setup event listeners for system events
+    function setupEventListeners() {
+        // Listen for map position updates
+        if (window.EventSystem && state.systems.map) {
+            // Update map with player position
+            state.scene.registerBeforeRender(() => {
+                if (state.systems.camera) {
+                    const camera = state.systems.camera;
+                    const position = camera.position;
+                    const rotation = camera.rotation.y;
+                    
+                    MapSystem.updatePlayerPosition({ x: position.x, z: position.z }, rotation);
+                }
+            });
+        }
+        
+        // Listen for health changes
+        if (window.EventSystem) {
+            EventSystem.on('health.changed', (data) => {
+                state.gameState.health = data.current;
+                state.gameState.maxHealth = data.max;
+            });
+        }
+        
+        // Listen for inventory events
+        if (window.EventSystem) {
+            EventSystem.on('inventory.itemSelected', (data) => {
+                Logger.log(`Selected item: ${data.item.name}`);
+                
+                // Example of using an item
+                if (data.item.type === 'consumable' && data.item.id === 'health_potion') {
+                    useHealthPotion();
+                }
+            });
+        }
+    }
+    
+    // Example function for using a health potion
+    function useHealthPotion() {
+        if (!state.systems.health) return;
+        
+        HealthBarSystem.heal(25);
+        InventorySystem.removeItem('health_potion', 1);
+        
+        Logger.log("> USED HEALTH POTION");
     }
     
     // Queue assets for loading
@@ -205,8 +293,16 @@ const App = (function() {
                 { name: 'strike', url: 'js/audio/strike.wav' }
             ];
             
+            // Queue music files (example)
+            const musicFiles = [];
+            
+            // Queue all textures, sounds, etc.
             LoaderSystem.loadSounds(audioFiles);
             Logger.log("> QUEUED AUDIO ASSETS FOR LOADING");
+            
+            // You could add more asset types here:
+            // LoaderSystem.loadTextures(textureFiles);
+            // etc.
         } catch (e) {
             Logger.error(`Failed to queue assets: ${e.message}`);
         }
@@ -240,6 +336,41 @@ const App = (function() {
 
         // Start the render loop
         state.engine.runRenderLoop(() => state.scene.render());
+    }
+    
+    // Example function to damage the player (for testing)
+    function damagePlayer(amount) {
+        if (!state.systems.health) return;
+        
+        HealthBarSystem.damage(amount);
+        
+        // Shake the camera to indicate damage
+        if (state.systems.camera) {
+            const camera = state.systems.camera;
+            const originalPosition = camera.position.clone();
+            
+            let shakeTime = 0;
+            const shakeDuration = 0.5;
+            const shakeIntensity = 0.05;
+            
+            // Create a shake animation
+            const shakeInterval = setInterval(() => {
+                shakeTime += 0.05;
+                
+                if (shakeTime >= shakeDuration) {
+                    clearInterval(shakeInterval);
+                    camera.position.set(originalPosition.x, originalPosition.y, originalPosition.z);
+                    return;
+                }
+                
+                // Random offset
+                const offsetX = (Math.random() - 0.5) * shakeIntensity;
+                const offsetY = (Math.random() - 0.5) * shakeIntensity;
+                
+                camera.position.x = originalPosition.x + offsetX;
+                camera.position.y = originalPosition.y + offsetY;
+            }, 50);
+        }
     }
 
     // Emergency fallback mode
@@ -298,6 +429,7 @@ const App = (function() {
         init: init,
         setupServiceWorker: setupServiceWorker,
         getState: () => ({ ...state }), // Return a copy of state for debugging
+        damage: damagePlayer, // Expose damage function for testing
     };
 })();
 
@@ -305,4 +437,9 @@ const App = (function() {
 document.addEventListener('DOMContentLoaded', function() {
     App.init();
     App.setupServiceWorker();
+    
+    // Add a global test function
+    window.testDamage = function(amount = 10) {
+        App.damage(amount);
+    };
 }); 
