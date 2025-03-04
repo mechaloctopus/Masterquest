@@ -40,6 +40,16 @@
 
     <canvas id="renderCanvas"></canvas>
     
+    <!-- Side Menu for Collapsible Panels -->
+    <div id="sideMenu">
+        <div class="menu-header">
+            <span>SYSTEMS</span>
+        </div>
+        <div class="menu-content">
+            <!-- Panel containers will be moved here -->
+        </div>
+    </div>
+    
     <!-- UI Elements -->
     <div id="log">
         <button id="logToggle">▼</button>
@@ -59,14 +69,7 @@
         <canvas id="mapCanvas"></canvas>
     </div>
     
-    <!-- Inventory -->
-    <div id="inventoryContainer" class="collapsed">
-        <div id="inventoryTitle">INVENTORY</div>
-        <button id="inventoryToggle">▲</button>
-        <div id="inventoryContent">
-            <!-- Inventory items will be added dynamically -->
-        </div>
-    </div>
+    <!-- Removing redundant inventory container, keeping only the expanded version -->
     
     <div id="leftJoystick" class="joystick-container"></div>
     <div id="rightJoystick" class="joystick-container"></div>
@@ -141,8 +144,7 @@
     <script src="js/ui/dialogue-system.js"></script>
     <script src="js/ui/log.js"></script>
     <script src="js/ui/health-display.js"></script>
-    <script src="js/ui/ui-interaction.js"></script>
-    <script src="js/test-coordinates.js"></script>
+    <script src="js/ui/side-menu.js"></script>
     
     <!-- Audio System -->
     <script src="js/audio/audio-system.js"></script>

@@ -4,9 +4,14 @@ canvas { width: 100%; height: 100%; }
 #renderCanvas { width: 100%; height: 100%; display: block; z-index: 0; }
 
 #log { 
-    position: absolute; 
-    top: 10px; 
-    left: 10px; 
+    position: relative; 
+    top: 0; 
+    left: 0; 
+    width: auto; 
+    max-height: 200px; 
+    overflow-y: auto; 
+    margin: 0; 
+    border-radius: 5px;
     color: #FFA500;
     font-family: 'Courier New', monospace; 
     font-size: 14px; 
@@ -14,8 +19,6 @@ canvas { width: 100%; height: 100%; }
     padding: 10px;
     border: 1px solid #00ff00;
     text-shadow: 0 0 10px #00ff0080;
-    max-height: 300px;
-    overflow-y: auto;
     transition: all 0.3s ease;
     z-index: 10;
     min-width: 200px;
@@ -271,17 +274,18 @@ canvas { width: 100%; height: 100%; }
 /* Map UI */
 #mapContainer {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    bottom: 20px;
+    right: 20px;
     width: 200px;
     height: 200px;
     background: rgba(0, 0, 0, 0.7);
-    border: 2px solid #00ffcc;
+    border: 1px solid #ff00cc;
     border-radius: 5px;
-    z-index: 10;
-    overflow: hidden;
+    padding: 10px;
+    color: #ff00cc;
+    z-index: 5;
     transition: all 0.3s ease;
-    box-shadow: 0 0 10px #00ffcc;
+    box-shadow: 0 0 15px rgba(255, 0, 204, 0.3);
 }
 
 #mapContainer.collapsed {
@@ -368,22 +372,7 @@ canvas { width: 100%; height: 100%; }
 
 /* Test coordinates button */
 #testCoordButton {
-    position: fixed;
-    right: 20px;
-    bottom: 20px;
-    padding: 10px;
-    background-color: #ff00cc;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    z-index: 10000;
-    opacity: 0.7;
-    transition: opacity 0.3s, background-color 0.3s;
-}
-
-#testCoordButton:hover {
-    opacity: 1;
+    display: none;
 }
 
 /* Debug Panel */
@@ -506,8 +495,8 @@ canvas { width: 100%; height: 100%; }
 
 #logToggle {
     position: absolute;
-    top: 5px;
     right: 10px;
+    top: 10px;
     background: none;
     border: none;
     color: #00ff00;
@@ -662,30 +651,30 @@ canvas { width: 100%; height: 100%; }
 
 /* Radio Player Styles */
 .radio-player {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 280px;
-    background: rgba(0,0,0,0.8);
-    border: 1px solid #ff00cc;
-    color: #ff00cc;
-    font-family: 'Courier New', monospace;
-    font-size: 14px;
-    text-shadow: 0 0 10px #ff00cc80;
-    z-index: 100;
+    position: relative;
+    top: 0;
+    left: 0;
+    width: auto;
+    max-width: 100%;
+    margin: 0;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid #00ffff;
+    border-radius: 5px;
+    color: #00ffff;
+    max-height: 400px;
     transition: all 0.3s ease;
-    overflow: hidden;
-    box-shadow: 0 0 15px rgba(255, 0, 204, 0.5);
 }
 
 .radio-player.collapsed {
-    height: 36px;
+    height: auto;
+    min-height: 30px;
+    opacity: 1;
 }
 
 .radio-header {
     position: relative;
     padding: 8px 10px;
-    background: rgba(25, 0, 20, 0.7);
+    background: rgba(0, 40, 0, 0.8);
     cursor: move;
     display: flex;
     justify-content: space-between;
@@ -872,7 +861,15 @@ canvas { width: 100%; height: 100%; }
 
 /* Add responsive styles for mobile devices */
 @media screen and (max-width: 768px) {
-    /* Adjust log position for mobile */
+    #sideMenu {
+        width: 260px;
+    }
+    
+    #mapContainer {
+        width: 150px;
+        height: 150px;
+    }
+    
     #log {
         top: 10px;
         left: 10px;
@@ -944,6 +941,15 @@ canvas { width: 100%; height: 100%; }
 
 /* For very small screens like phones in portrait mode */
 @media screen and (max-width: 480px) {
+    #sideMenu {
+        width: 230px;
+    }
+    
+    #mapContainer {
+        width: 130px;
+        height: 130px;
+    }
+    
     /* Ensure collapsed state by default on very small screens */
     .radio-player:not(.collapsed) {
         max-height: 70vh; /* Limit maximum height on small screens */
@@ -1565,4 +1571,129 @@ body.mobile-detected .radio-player {
 
 #npcTalkButton:active {
     transform: translateX(-50%) scale(0.95);
+}
+
+/* Side Menu Styling */
+#sideMenu {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 300px;
+    max-height: 90vh;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid #00ff00;
+    border-radius: 5px;
+    color: #00ff00;
+    padding: 0;
+    z-index: 100;
+    font-family: 'Orbitron', sans-serif;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #00ff00 rgba(0, 0, 0, 0.5);
+}
+
+.menu-header {
+    padding: 10px;
+    background: rgba(0, 40, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-bottom: 1px solid #00ff00;
+    font-weight: bold;
+    text-shadow: 0 0 10px #00ff0080;
+}
+
+.menu-content {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Ensure map stays in its fixed position */
+#mapContainer.in-side-menu {
+    position: relative;
+    bottom: auto;
+    right: auto;
+    width: 100%;
+    height: 200px;
+    margin: 0;
+}
+
+/* Responsiveness */
+@media screen and (max-width: 768px) {
+    #sideMenu {
+        width: 260px;
+    }
+    
+    #mapContainer {
+        width: 150px;
+        height: 150px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    #sideMenu {
+        width: 230px;
+    }
+    
+    #mapContainer {
+        width: 130px;
+        height: 130px;
+    }
+}
+
+/* Make panels take full width in the menu */
+#log, .radio-player {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Ensure collapsed panels still show their headers in the side menu */
+#log.collapsed, .radio-player.collapsed {
+    height: auto;
+    min-height: 30px;
+    opacity: 1;
+}
+
+/* Modified toggle button positioning */
+#logToggle, #radioToggle {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+}
+
+/* Ensure map stays in its fixed position */
+#mapContainer.in-side-menu {
+    position: relative;
+    bottom: auto;
+    right: auto;
+    width: 100%;
+    height: 200px;
+    margin: 0;
+}
+
+/* Responsiveness */
+@media screen and (max-width: 768px) {
+    #sideMenu {
+        width: 260px;
+    }
+    
+    #mapContainer {
+        width: 150px;
+        height: 150px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    #sideMenu {
+        width: 230px;
+    }
+    
+    #mapContainer {
+        width: 130px;
+        height: 130px;
+    }
 } 
