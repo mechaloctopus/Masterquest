@@ -54,11 +54,16 @@ window.RadioPlayerSystem = (function() {
                 const initialVolume = window.CONFIG.AUDIO.MUSIC.VOLUME * 100 || 50;
                 volumeControl.value = initialVolume;
                 audioElement.volume = initialVolume / 100;
+                console.log("[Radio] Set initial volume to", initialVolume, "%");
             }
             
             // Set SFX volume
             if (sfxVolumeControl && window.CONFIG && window.CONFIG.AUDIO && window.CONFIG.AUDIO.SFX) {
-                sfxVolumeControl.value = 70; // Default value
+                const sfxVolume = 70; // Default value if not specified in CONFIG
+                sfxVolumeControl.value = sfxVolume;
+                if (window.AudioSystem && window.AudioSystem.setVolume) {
+                    window.AudioSystem.setVolume(sfxVolume / 100);
+                }
             }
             
             initialized = true;
@@ -66,6 +71,16 @@ window.RadioPlayerSystem = (function() {
 
             // Position the radio player in the center
             positionRadioPlayer();
+            
+            // Load the initial track from CONFIG if autoplay is enabled
+            if (window.CONFIG && window.CONFIG.AUDIO && window.CONFIG.AUDIO.MUSIC && 
+                window.CONFIG.AUDIO.MUSIC.AUTOPLAY && trackList.length > 0) {
+                const initialTrackIndex = window.CONFIG.AUDIO.MUSIC.CURRENT_TRACK_INDEX || 0;
+                setTimeout(() => {
+                    playTrack(initialTrackIndex);
+                }, 1000); // Slight delay to ensure everything is loaded
+                console.log("[Radio] Autoplay enabled, queued track:", initialTrackIndex);
+            }
             
             // Re-position on window resize
             window.addEventListener('resize', positionRadioPlayer);
@@ -99,7 +114,9 @@ window.RadioPlayerSystem = (function() {
         tracksContainer.innerHTML = '';
         
         // Get tracks from config if available, or use default tracks
-        if (window.CONFIG && window.CONFIG.AUDIO && window.CONFIG.AUDIO.TRACKS) {
+        if (window.CONFIG && window.CONFIG.AUDIO && window.CONFIG.AUDIO.TRACKS && window.CONFIG.AUDIO.TRACKS.length > 0) {
+            console.log("[Radio] Loading tracks from CONFIG:", window.CONFIG.AUDIO.TRACKS.length);
+            
             // Convert CONFIG.AUDIO.TRACKS format to our format
             trackList = window.CONFIG.AUDIO.TRACKS.map(track => {
                 return {
@@ -108,6 +125,7 @@ window.RadioPlayerSystem = (function() {
                 };
             });
         } else {
+            console.warn("[Radio] No tracks found in CONFIG.AUDIO.TRACKS, using fallback tracks");
             // Fallback to default tracks
             trackList = [
                 { name: "Cyberpunk Mixtape", path: "audio/music/cyberpunk-mixtape.mp3" },
@@ -208,7 +226,14 @@ window.RadioPlayerSystem = (function() {
                 nowPlayingText.textContent = "Loading: " + trackList[index].name;
             }
             
+            // Update the current track in the CONFIG if available
+            if (window.CONFIG && window.CONFIG.AUDIO && window.CONFIG.AUDIO.MUSIC) {
+                window.CONFIG.AUDIO.MUSIC.CURRENT_TRACK_INDEX = index;
+            }
+            
+            // Set audio source
             audioElement.src = trackList[index].path;
+            console.log("[Radio] Loading track:", trackList[index].name, "from", trackList[index].path);
             
             // Play the track
             audioElement.play()
