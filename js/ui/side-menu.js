@@ -117,11 +117,13 @@ window.SideMenuSystem = (function() {
         }
         
         // Remove pause button if it exists
-        const pauseButton = document.querySelector('.pause-button');
-        if (pauseButton) {
-            pauseButton.parentNode.removeChild(pauseButton);
-            console.log("[SideMenu] Removed pause button");
-        }
+        const pauseButtons = document.querySelectorAll('.pause-button');
+        pauseButtons.forEach(button => {
+            if (button && button.parentNode) {
+                button.parentNode.removeChild(button);
+                console.log("[SideMenu] Removed pause button");
+            }
+        });
     }
     
     // Move UI elements to the side menu

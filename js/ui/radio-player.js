@@ -231,6 +231,15 @@ window.RadioPlayerSystem = (function() {
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize after a short delay to ensure DOM is ready
         setTimeout(init, 500);
+        
+        // Remove any standalone pause buttons
+        const pauseButtons = document.querySelectorAll('.pause-button');
+        pauseButtons.forEach(button => {
+            if (button && button.parentNode) {
+                button.parentNode.removeChild(button);
+                console.log("[Radio] Removed standalone pause button");
+            }
+        });
     });
     
     // Public API

@@ -25,6 +25,15 @@ canvas { width: 100%; height: 100%; }
     box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
 }
 
+/* Make sure it has proper styling in side menu */
+.menu-content #log {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
 /* Loading Screen */
 #loadingScreen {
     position: fixed;
@@ -670,6 +679,17 @@ canvas { width: 100%; height: 100%; }
     z-index: 20;
     transition: all 0.3s ease;
     box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+    box-sizing: border-box;
+}
+
+/* Make sure it uses proper width in side menu */
+.menu-content .radio-player {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    width: 100%;
+    margin-bottom: 10px;
 }
 
 .radio-player.collapsed {
