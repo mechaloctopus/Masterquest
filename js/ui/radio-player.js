@@ -33,38 +33,20 @@ window.RadioPlayerSystem = (function() {
     
     // Initialize the radio player
     function init() {
-        if (initialized) return;
+        if (initialized) return false;
         
         try {
-            console.log("[Radio] Initializing radio player...");
+            console.log("[Radio] Initializing player...");
             
-            // Setup track list
+            // Get track data from config
+            trackData = CONFIG.AUDIO_TRACKS || [];
+            
+            // Setup track elements
             setupTracks();
             
             // Setup event handlers
             setupEventHandlers();
             
-            // Setup audio ended handler
-            audioElement.addEventListener('ended', function() {
-                playNextTrack();
-            });
-            
-            // Set initial volume
-            if (volumeControl) {
-                audioElement.volume = volumeControl.value / 100;
-            }
-            
-            // Set global audio volume if AudioSystem exists
-            if (window.AudioSystem && sfxVolumeControl) {
-                AudioSystem.setVolume(sfxVolumeControl.value / 100);
-            }
-            
-            // Log if logger available
-            if (window.Logger) {
-                Logger.log("> RADIO PLAYER INITIALIZED");
-            }
-            
-            // Set as initialized
             initialized = true;
             console.log("[Radio] Player initialized successfully");
 
@@ -73,8 +55,25 @@ window.RadioPlayerSystem = (function() {
             
             // Re-position on window resize
             window.addEventListener('resize', positionRadioPlayer);
+            
+            // Key event listener for 'M' key to toggle radio
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'm' || e.key === 'M') {
+                    const radioPlayer = document.getElementById('radioPlayer');
+                    if (radioPlayer) {
+                        radioPlayer.classList.toggle('collapsed');
+                        const radioToggle = document.getElementById('radioToggle');
+                        if (radioToggle) {
+                            radioToggle.textContent = radioPlayer.classList.contains('collapsed') ? '▲' : '▼';
+                        }
+                    }
+                }
+            });
+            
+            return true;
         } catch (e) {
             console.error("[Radio] Initialization failed:", e);
+            return false;
         }
     }
     

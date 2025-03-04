@@ -26,37 +26,36 @@ const InventorySystem = (function() {
     
     // Initialize the inventory
     function init() {
-        if (initialized) return true;
+        if (initialized) return;
         
-        // Create expanded inventory if it doesn't exist
-        createExpandedInventory();
-        
-        // Add pause button
-        createPauseButton();
-        
-        // Initialize with some example items
-        addExampleItems();
-        
-        // Key event listener for 'I' key to toggle inventory
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'i' || e.key === 'I') {
-                toggleExpandedInventory();
-            }
-            if (e.key === 'Escape') {
-                if (expandedInventoryElement && !expandedInventoryElement.classList.contains('hidden')) {
-                    toggleExpandedInventory(true); // Force close
+        try {
+            console.log("[Inventory] Initializing inventory system");
+            
+            // Setup expanded inventory
+            createExpandedInventory();
+            
+            // Add example items (for testing)
+            addExampleItems();
+            
+            // Key event listener for 'I' key to toggle inventory
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'i' || e.key === 'I') {
+                    toggleExpandedInventory();
                 }
-            }
-        });
-        
-        initialized = true;
-        
-        // Log initialization if logger is available
-        if (window.Logger) {
-            Logger.log("> INVENTORY SYSTEM INITIALIZED");
+                if (e.key === 'Escape') {
+                    if (expandedInventoryElement && !expandedInventoryElement.classList.contains('hidden')) {
+                        toggleExpandedInventory(true); // Force close
+                    }
+                }
+            });
+            
+            initialized = true;
+            console.log("[Inventory] Inventory system initialized successfully");
+            return true;
+        } catch (e) {
+            console.error("[Inventory] Failed to initialize inventory:", e);
+            return false;
         }
-        
-        return true;
     }
     
     // Create the expanded inventory UI
@@ -135,37 +134,6 @@ const InventorySystem = (function() {
         
         // Add to document body
         document.body.appendChild(expandedInventoryElement);
-    }
-    
-    // Create pause button
-    function createPauseButton() {
-        // Create pause button
-        const pauseButton = document.createElement('button');
-        pauseButton.className = 'pause-button';
-        pauseButton.innerHTML = 'PAUSE';
-        pauseButton.addEventListener('click', function() {
-            if (isPaused) {
-                unpauseGame();
-            } else {
-                pauseGame();
-            }
-        });
-        
-        document.body.appendChild(pauseButton);
-    }
-    
-    // Toggle expanded inventory
-    function toggleExpandedInventory(forceClose) {
-        if (forceClose || !expandedInventoryElement.classList.contains('hidden')) {
-            expandedInventoryElement.classList.add('hidden');
-            unpauseGame();
-            return;
-        }
-        
-        // Show inventory and render items
-        expandedInventoryElement.classList.remove('hidden');
-        renderExpandedInventory();
-        pauseGame();
     }
     
     // Create equipment slot element
@@ -516,6 +484,20 @@ const InventorySystem = (function() {
         if (window.EventSystem) {
             EventSystem.emit('game:unpause');
         }
+    }
+    
+    // Toggle expanded inventory
+    function toggleExpandedInventory(forceClose) {
+        if (forceClose || !expandedInventoryElement.classList.contains('hidden')) {
+            expandedInventoryElement.classList.add('hidden');
+            unpauseGame();
+            return;
+        }
+        
+        // Show inventory and render items
+        expandedInventoryElement.classList.remove('hidden');
+        renderExpandedInventory();
+        pauseGame();
     }
     
     // Public API
