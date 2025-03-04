@@ -38,10 +38,15 @@ window.RadioPlayerSystem = (function() {
         try {
             console.log("[Radio] Initializing player...");
             
-            // Check if config exists
-            if (!window.CONFIG) {
-                console.warn("[Radio] CONFIG not found, using default settings");
+            // Check if config exists and has been fully loaded
+            if (!window.CONFIG || !window.CONFIG.AUDIO || !window.CONFIG.AUDIO.TRACKS) {
+                console.warn("[Radio] CONFIG not fully loaded, waiting...");
+                // Try again in 500ms to give CONFIG time to load
+                setTimeout(init, 500);
+                return false;
             }
+            
+            console.log("[Radio] CONFIG loaded, initializing with AUDIO settings");
             
             // Setup track elements
             setupTracks();
@@ -110,29 +115,22 @@ window.RadioPlayerSystem = (function() {
     function setupTracks() {
         if (!tracksContainer) return;
         
+        // Debug logging for CONFIG object
+        console.log("[Radio Debug] CONFIG.AUDIO.TRACKS:", JSON.stringify(window.CONFIG.AUDIO.TRACKS));
+        
         // Clear any existing tracks
         tracksContainer.innerHTML = '';
         
-        // Get tracks from config if available, or use default tracks
-        if (window.CONFIG && window.CONFIG.AUDIO && window.CONFIG.AUDIO.TRACKS && window.CONFIG.AUDIO.TRACKS.length > 0) {
-            console.log("[Radio] Loading tracks from CONFIG:", window.CONFIG.AUDIO.TRACKS.length);
-            
-            // Convert CONFIG.AUDIO.TRACKS format to our format
-            trackList = window.CONFIG.AUDIO.TRACKS.map(track => {
-                return {
-                    name: track.NAME,
-                    path: track.URL
-                };
-            });
-        } else {
-            console.warn("[Radio] No tracks found in CONFIG.AUDIO.TRACKS, using fallback tracks");
-            // Fallback to default tracks
-            trackList = [
-                { name: "Cyberpunk Mixtape", path: "audio/music/cyberpunk-mixtape.mp3" },
-                { name: "Neon Lights", path: "audio/music/neon-lights.mp3" },
-                { name: "Digital Dreams", path: "audio/music/digital-dreams.mp3" }
-            ];
-        }
+        // We should always have CONFIG by this point due to the check in init()
+        trackList = window.CONFIG.AUDIO.TRACKS.map(track => {
+            return {
+                name: track.NAME,
+                path: track.URL
+            };
+        });
+        
+        console.log("[Radio] Using " + trackList.length + " tracks from CONFIG:", 
+            trackList.map(t => t.name).join(", "));
         
         // Add tracks to DOM
         trackList.forEach((track, index) => {
@@ -203,7 +201,10 @@ window.RadioPlayerSystem = (function() {
     
     // Play a specific track
     function playTrack(index) {
-        if (index < 0 || index >= trackList.length) return;
+        if (index < 0 || index >= trackList.length) {
+            console.error("[Radio] Invalid track index:", index);
+            return;
+        }
         
         // Reset all tracks to inactive
         document.querySelectorAll('.track').forEach(track => {
@@ -231,9 +232,12 @@ window.RadioPlayerSystem = (function() {
                 window.CONFIG.AUDIO.MUSIC.CURRENT_TRACK_INDEX = index;
             }
             
+            // Log what we're trying to play
+            console.log("[Radio] Loading track:", trackList[index].name);
+            console.log("[Radio] Track URL:", trackList[index].path);
+            
             // Set audio source
             audioElement.src = trackList[index].path;
-            console.log("[Radio] Loading track:", trackList[index].name, "from", trackList[index].path);
             
             // Play the track
             audioElement.play()
