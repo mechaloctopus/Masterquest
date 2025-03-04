@@ -90,6 +90,23 @@ const MapSystem = (function() {
                 mapToggleElement.textContent = '▼';
             }
             
+            // Make the map take up the full screen when expanded
+            if (!mapContainerElement.classList.contains('expanded')) {
+                mapContainerElement.classList.add('expanded');
+                mapContainerElement.style.width = '90vw';
+                mapContainerElement.style.height = '90vh';
+                mapContainerElement.style.left = '5vw';
+                mapContainerElement.style.top = '5vh';
+                mapContainerElement.style.zIndex = '1000';
+            } else {
+                mapContainerElement.classList.remove('expanded');
+                mapContainerElement.style.width = '';
+                mapContainerElement.style.height = '';
+                mapContainerElement.style.left = '';
+                mapContainerElement.style.top = '';
+                mapContainerElement.style.zIndex = '';
+            }
+            
             // Resize canvas when expanded
             if (mapCanvasElement) {
                 const width = mapCanvasElement.parentElement.clientWidth;
@@ -114,7 +131,13 @@ const MapSystem = (function() {
     
     // Render the map
     function render() {
-        if (!mapContext || !mapData || isCollapsed) {
+        if (!mapContext || !mapData) {
+            requestAnimationFrame(render);
+            return;
+        }
+        
+        // Skip rendering if collapsed or not visible
+        if (isCollapsed) {
             requestAnimationFrame(render);
             return;
         }
@@ -142,22 +165,25 @@ const MapSystem = (function() {
     function drawGrid() {
         if (!mapContext) return;
         
-        const spacing = mapData.gridSpacing * mapScale * mapCanvasElement.width;
+        const expanded = mapContainerElement.classList.contains('expanded');
+        const gridScale = expanded ? 0.5 : mapScale; // Larger scale when expanded
+        
+        const spacing = mapData.gridSpacing * gridScale * mapCanvasElement.width;
         mapContext.strokeStyle = mapData.gridColor;
         mapContext.lineWidth = 0.5;
         mapContext.globalAlpha = 0.3;
         
-        // Calculate center offset
+        // Calculate center offset - static grid, centered
         const centerX = mapCanvasElement.width / 2;
         const centerZ = mapCanvasElement.height / 2;
         
-        // Calculate player offset
-        const playerOffsetX = playerPosition.x * mapScale;
-        const playerOffsetZ = playerPosition.z * mapScale;
+        // When expanded, the grid is fixed and the player moves
+        // When collapsed, we center on the player (keeping the grid fixed)
         
         // Draw vertical lines
         for (let x = -mapData.width / 2; x <= mapData.width / 2; x += mapData.gridSpacing) {
-            const mapX = centerX + (x * mapScale - playerOffsetX) * mapCanvasElement.width;
+            // Calculate grid line position (fixed grid)
+            const mapX = centerX + (x * gridScale * mapCanvasElement.width);
             
             mapContext.beginPath();
             mapContext.moveTo(mapX, 0);
@@ -174,7 +200,8 @@ const MapSystem = (function() {
         
         // Draw horizontal lines
         for (let z = -mapData.height / 2; z <= mapData.height / 2; z += mapData.gridSpacing) {
-            const mapZ = centerZ + (z * mapScale - playerOffsetZ) * mapCanvasElement.height;
+            // Calculate grid line position (fixed grid)
+            const mapZ = centerZ + (z * gridScale * mapCanvasElement.height);
             
             mapContext.beginPath();
             mapContext.moveTo(0, mapZ);
@@ -196,18 +223,30 @@ const MapSystem = (function() {
     function drawPoints() {
         if (!mapContext || !mapData.points) return;
         
+        const expanded = mapContainerElement.classList.contains('expanded');
+        const gridScale = expanded ? 0.5 : mapScale;
+        
         // Calculate center offset
         const centerX = mapCanvasElement.width / 2;
         const centerZ = mapCanvasElement.height / 2;
         
-        // Calculate player offset
-        const playerOffsetX = playerPosition.x * mapScale;
-        const playerOffsetZ = playerPosition.z * mapScale;
-        
         // Draw each point
         mapData.points.forEach(point => {
-            const mapX = centerX + (point.x * mapScale - playerOffsetX) * mapCanvasElement.width;
-            const mapZ = centerZ + (point.z * mapScale - playerOffsetZ) * mapCanvasElement.height;
+            // When expanded, points move relative to the fixed grid
+            // When collapsed, grid moves relative to the centered player
+            let mapX, mapZ;
+            
+            if (expanded) {
+                // In expanded view, points are positioned on the fixed grid
+                mapX = centerX + (point.x * gridScale * mapCanvasElement.width);
+                mapZ = centerZ + (point.z * gridScale * mapCanvasElement.height);
+            } else {
+                // In collapsed view, points are positioned relative to player
+                const offsetX = point.x - playerPosition.x;
+                const offsetZ = point.z - playerPosition.z;
+                mapX = centerX + (offsetX * gridScale * mapCanvasElement.width);
+                mapZ = centerZ + (offsetZ * gridScale * mapCanvasElement.height);
+            }
             
             // Skip points outside the map
             if (mapX < 0 || mapX > mapCanvasElement.width || mapZ < 0 || mapZ > mapCanvasElement.height) {
@@ -233,25 +272,44 @@ const MapSystem = (function() {
     function drawPlayer() {
         if (!mapContext) return;
         
+        const expanded = mapContainerElement.classList.contains('expanded');
         const centerX = mapCanvasElement.width / 2;
         const centerZ = mapCanvasElement.height / 2;
+        const gridScale = expanded ? 0.5 : mapScale;
+        
+        // Calculate player position on the map
+        // When expanded, player moves relative to fixed grid
+        // When collapsed, player is centered and grid moves
+        const playerX = expanded ? 
+            centerX + (playerPosition.x * gridScale * mapCanvasElement.width) : 
+            centerX;
+            
+        const playerZ = expanded ? 
+            centerZ + (playerPosition.z * gridScale * mapCanvasElement.height) : 
+            centerZ;
         
         // Draw player position
         mapContext.fillStyle = "#ff00cc";
         mapContext.beginPath();
-        mapContext.arc(centerX, centerZ, 4, 0, Math.PI * 2);
+        mapContext.arc(playerX, playerZ, 5, 0, Math.PI * 2);
         mapContext.fill();
         
         // Draw direction indicator
-        const dirX = Math.sin(playerRotation) * 8;
-        const dirZ = Math.cos(playerRotation) * 8;
+        const dirX = Math.sin(playerRotation) * 10;
+        const dirZ = Math.cos(playerRotation) * 10;
         
         mapContext.strokeStyle = "#ff00cc";
         mapContext.lineWidth = 2;
         mapContext.beginPath();
-        mapContext.moveTo(centerX, centerZ);
-        mapContext.lineTo(centerX + dirX, centerZ - dirZ);
+        mapContext.moveTo(playerX, playerZ);
+        mapContext.lineTo(playerX + dirX, playerZ + dirZ);
         mapContext.stroke();
+        
+        // Draw player coordinates
+        mapContext.fillStyle = "#ffffff";
+        mapContext.font = "10px Orbitron";
+        const coordText = `X: ${playerPosition.x.toFixed(1)} Z: ${playerPosition.z.toFixed(1)}`;
+        mapContext.fillText(coordText, playerX + 15, playerZ);
     }
     
     // Add a point of interest to the map

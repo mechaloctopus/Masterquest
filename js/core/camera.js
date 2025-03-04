@@ -11,6 +11,15 @@ const CameraManager = {
             scene
         );
         
+        // Set initial rotation (facing south by default)
+        if (CONFIG.CAMERA.START_ROTATION) {
+            camera.rotation = new BABYLON.Vector3(
+                CONFIG.CAMERA.START_ROTATION.x || 0,
+                CONFIG.CAMERA.START_ROTATION.y || 0,
+                CONFIG.CAMERA.START_ROTATION.z || 0
+            );
+        }
+        
         camera.attachControl(canvas, true);
         camera.speed = CONFIG.CAMERA.SPEED;
         

@@ -3,6 +3,7 @@ const CONFIG = {
     // CAMERA SETTINGS
     CAMERA: {
         START_POSITION: {x: 0, y: 1.6, z: 0},
+        START_ROTATION: {y: Math.PI}, // Start facing south (Math.PI is 180 degrees, south)
         SPEED: 0.1,
         GROUND_Y: 1.6,
         SENSITIVITY: 0.05,  // Look sensitivity for right joystick/mouse

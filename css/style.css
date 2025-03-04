@@ -304,6 +304,14 @@ canvas { width: 100%; height: 100%; }
     width: 100px;
 }
 
+#mapContainer.expanded {
+    width: 90vw;
+    height: 90vh;
+    left: 5vw;
+    top: 5vh;
+    z-index: 1000;
+}
+
 #mapToggle {
     position: absolute;
     top: 5px;
@@ -946,21 +954,7 @@ body.mobile-detected .radio-player {
 
 /* Pause Button for Inventory */
 .pause-button {
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 5px 15px;
-    background: rgba(0, 0, 0, 0.7);
-    color: #ff00cc;
-    border: 1px solid #ff00cc;
-    border-radius: 5px;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 12px;
-    cursor: pointer;
-    z-index: 100;
-    text-shadow: 0 0 5px #ff00cc;
-    transition: all 0.2s ease;
+    display: none !important; /* Hide any standalone pause button */
 }
 
 .pause-button:hover {
