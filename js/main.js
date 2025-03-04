@@ -46,14 +46,6 @@ function initGame() {
         }
         
         try {
-            // Initialize fireworks
-            FireworksSystem.init();
-            Logger.log("> BIRTHDAY FIREWORKS ACTIVATED");
-        } catch (e) {
-            Logger.error("Fireworks initialization failed: " + e.message);
-        }
-        
-        try {
             // Change skybox colors to vaporwave theme
             // Override skybox color to vaporwave gradient
             SkyboxSystem.create(scene);
@@ -131,18 +123,6 @@ function initGame() {
         // Log ready state
         Logger.log("> SYSTEM READY");
         Logger.log("> INITIALIZE GRID NAVIGATION...");
-
-        try {
-            // Initialize 3D birthday text (try both methods)
-            let birthdayText = BirthdayTextSystem.create(scene);
-            if (!birthdayText) {
-                // Fallback to primitive version if CreateText is not available
-                birthdayText = BirthdayTextSystem.createWithPrimitives(scene);
-            }
-            Logger.log("> 3D BIRTHDAY MESSAGE INITIALIZED");
-        } catch (e) {
-            Logger.error("Birthday text initialization failed: " + e.message);
-        }
 
         // Initialize the radio player if it exists
         try {
