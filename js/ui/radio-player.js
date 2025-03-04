@@ -38,14 +38,28 @@ window.RadioPlayerSystem = (function() {
         try {
             console.log("[Radio] Initializing player...");
             
-            // Get track data from config
-            trackData = CONFIG.AUDIO_TRACKS || [];
+            // Check if config exists
+            if (!window.CONFIG) {
+                console.warn("[Radio] CONFIG not found, using default settings");
+            }
             
             // Setup track elements
             setupTracks();
             
             // Setup event handlers
             setupEventHandlers();
+            
+            // Set initial volume
+            if (volumeControl && window.CONFIG && window.CONFIG.AUDIO && window.CONFIG.AUDIO.MUSIC) {
+                const initialVolume = window.CONFIG.AUDIO.MUSIC.VOLUME * 100 || 50;
+                volumeControl.value = initialVolume;
+                audioElement.volume = initialVolume / 100;
+            }
+            
+            // Set SFX volume
+            if (sfxVolumeControl && window.CONFIG && window.CONFIG.AUDIO && window.CONFIG.AUDIO.SFX) {
+                sfxVolumeControl.value = 70; // Default value
+            }
             
             initialized = true;
             console.log("[Radio] Player initialized successfully");
@@ -85,11 +99,22 @@ window.RadioPlayerSystem = (function() {
         tracksContainer.innerHTML = '';
         
         // Get tracks from config if available, or use default tracks
-        trackList = window.CONFIG?.AUDIO?.MUSIC || [
-            { name: "Cyberpunk Mixtape", path: "audio/music/cyberpunk-mixtape.mp3" },
-            { name: "Neon Lights", path: "audio/music/neon-lights.mp3" },
-            { name: "Digital Dreams", path: "audio/music/digital-dreams.mp3" }
-        ];
+        if (window.CONFIG && window.CONFIG.AUDIO && window.CONFIG.AUDIO.TRACKS) {
+            // Convert CONFIG.AUDIO.TRACKS format to our format
+            trackList = window.CONFIG.AUDIO.TRACKS.map(track => {
+                return {
+                    name: track.NAME,
+                    path: track.URL
+                };
+            });
+        } else {
+            // Fallback to default tracks
+            trackList = [
+                { name: "Cyberpunk Mixtape", path: "audio/music/cyberpunk-mixtape.mp3" },
+                { name: "Neon Lights", path: "audio/music/neon-lights.mp3" },
+                { name: "Digital Dreams", path: "audio/music/digital-dreams.mp3" }
+            ];
+        }
         
         // Add tracks to DOM
         trackList.forEach((track, index) => {
@@ -177,23 +202,51 @@ window.RadioPlayerSystem = (function() {
         currentTrack = index;
         
         // Set the audio source
-        audioElement.src = trackList[index].path;
-        
-        // Play the track
-        audioElement.play()
-            .then(() => {
-                isPlaying = true;
-                updatePlayerUI();
-            })
-            .catch(err => {
-                console.error("[Radio] Error playing track:", err);
+        try {
+            // Update now playing text to show loading status
+            if (nowPlayingText) {
+                nowPlayingText.textContent = "Loading: " + trackList[index].name;
+            }
+            
+            audioElement.src = trackList[index].path;
+            
+            // Play the track
+            audioElement.play()
+                .then(() => {
+                    isPlaying = true;
+                    updatePlayerUI();
+                    
+                    // Update now playing text
+                    if (nowPlayingText) {
+                        nowPlayingText.textContent = trackList[index].name;
+                    }
+                })
+                .catch(err => {
+                    console.error("[Radio] Error playing track:", err);
+                    // Show error in now playing text
+                    if (nowPlayingText) {
+                        nowPlayingText.textContent = "Error: Could not play " + trackList[index].name;
+                    }
+                    isPlaying = false;
+                    updatePlayerUI();
+                });
+                
+            // Add error handler for missing files
+            audioElement.onerror = function() {
+                console.error("[Radio] Error loading audio file:", trackList[index].path);
+                if (nowPlayingText) {
+                    nowPlayingText.textContent = "Error: File not found - " + trackList[index].name;
+                }
                 isPlaying = false;
                 updatePlayerUI();
-            });
-        
-        // Update now playing text
-        if (nowPlayingText) {
-            nowPlayingText.textContent = trackList[index].name;
+            };
+        } catch (e) {
+            console.error("[Radio] Error setting up track:", e);
+            if (nowPlayingText) {
+                nowPlayingText.textContent = "Error: Failed to load track";
+            }
+            isPlaying = false;
+            updatePlayerUI();
         }
     }
     
