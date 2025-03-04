@@ -38,16 +38,6 @@ window.RadioPlayerSystem = (function() {
         try {
             console.log("[Radio] Initializing player...");
             
-            // Check if config exists and has been fully loaded
-            if (!window.CONFIG || !window.CONFIG.AUDIO || !window.CONFIG.AUDIO.TRACKS) {
-                console.warn("[Radio] CONFIG not fully loaded, waiting...");
-                // Try again in 500ms to give CONFIG time to load
-                setTimeout(init, 500);
-                return false;
-            }
-            
-            console.log("[Radio] CONFIG loaded, initializing with AUDIO settings");
-            
             // Setup track elements
             setupTracks();
             
@@ -55,16 +45,16 @@ window.RadioPlayerSystem = (function() {
             setupEventHandlers();
             
             // Set initial volume
-            if (volumeControl && window.CONFIG && window.CONFIG.AUDIO && window.CONFIG.AUDIO.MUSIC) {
-                const initialVolume = window.CONFIG.AUDIO.MUSIC.VOLUME * 100 || 50;
+            if (volumeControl) {
+                const initialVolume = 50; // Default to 50%
                 volumeControl.value = initialVolume;
                 audioElement.volume = initialVolume / 100;
                 console.log("[Radio] Set initial volume to", initialVolume, "%");
             }
             
             // Set SFX volume
-            if (sfxVolumeControl && window.CONFIG && window.CONFIG.AUDIO && window.CONFIG.AUDIO.SFX) {
-                const sfxVolume = 70; // Default value if not specified in CONFIG
+            if (sfxVolumeControl) {
+                const sfxVolume = 70; // Default value
                 sfxVolumeControl.value = sfxVolume;
                 if (window.AudioSystem && window.AudioSystem.setVolume) {
                     window.AudioSystem.setVolume(sfxVolume / 100);
@@ -77,14 +67,11 @@ window.RadioPlayerSystem = (function() {
             // Position the radio player in the center
             positionRadioPlayer();
             
-            // Load the initial track from CONFIG if autoplay is enabled
-            if (window.CONFIG && window.CONFIG.AUDIO && window.CONFIG.AUDIO.MUSIC && 
-                window.CONFIG.AUDIO.MUSIC.AUTOPLAY && trackList.length > 0) {
-                const initialTrackIndex = window.CONFIG.AUDIO.MUSIC.CURRENT_TRACK_INDEX || 0;
+            // Load the initial track
+            if (trackList.length > 0) {
                 setTimeout(() => {
-                    playTrack(initialTrackIndex);
+                    playTrack(0); // Play the first track
                 }, 1000); // Slight delay to ensure everything is loaded
-                console.log("[Radio] Autoplay enabled, queued track:", initialTrackIndex);
             }
             
             // Re-position on window resize
@@ -113,24 +100,31 @@ window.RadioPlayerSystem = (function() {
     
     // Setup the tracks list
     function setupTracks() {
-        if (!tracksContainer) return;
-        
-        // Debug logging for CONFIG object
-        console.log("[Radio Debug] CONFIG.AUDIO.TRACKS:", JSON.stringify(window.CONFIG.AUDIO.TRACKS));
+        if (!tracksContainer) {
+            console.error("[Radio] Track container not found in DOM");
+            return;
+        }
         
         // Clear any existing tracks
         tracksContainer.innerHTML = '';
         
-        // We should always have CONFIG by this point due to the check in init()
-        trackList = window.CONFIG.AUDIO.TRACKS.map(track => {
+        // Force-read the tracks from CONFIG
+        const configTracks = [
+            { NAME: "vhs", URL: "js/audio/vhs.mp3" },
+            { NAME: "happy airlines", URL: "js/audio/happyairlines.wav" },
+            { NAME: "klaxon", URL: "js/audio/klaxon.wav" },
+            { NAME: "video game land", URL: "js/audio/videogameland.wav" }
+        ];
+        
+        console.log("[Radio] Using hardcoded tracks from CONFIG.AUDIO.TRACKS");
+        
+        // Convert to our format
+        trackList = configTracks.map(track => {
             return {
                 name: track.NAME,
                 path: track.URL
             };
         });
-        
-        console.log("[Radio] Using " + trackList.length + " tracks from CONFIG:", 
-            trackList.map(t => t.name).join(", "));
         
         // Add tracks to DOM
         trackList.forEach((track, index) => {
@@ -150,7 +144,8 @@ window.RadioPlayerSystem = (function() {
             tracksContainer.appendChild(trackElement);
         });
         
-        console.log("[Radio] Added " + trackList.length + " tracks to playlist");
+        console.log("[Radio] Added " + trackList.length + " tracks to playlist:", 
+            trackList.map(t => t.name).join(", "));
     }
     
     // Setup event handlers
@@ -227,11 +222,6 @@ window.RadioPlayerSystem = (function() {
                 nowPlayingText.textContent = "Loading: " + trackList[index].name;
             }
             
-            // Update the current track in the CONFIG if available
-            if (window.CONFIG && window.CONFIG.AUDIO && window.CONFIG.AUDIO.MUSIC) {
-                window.CONFIG.AUDIO.MUSIC.CURRENT_TRACK_INDEX = index;
-            }
-            
             // Log what we're trying to play
             console.log("[Radio] Loading track:", trackList[index].name);
             console.log("[Radio] Track URL:", trackList[index].path);
@@ -249,6 +239,8 @@ window.RadioPlayerSystem = (function() {
                     if (nowPlayingText) {
                         nowPlayingText.textContent = trackList[index].name;
                     }
+                    
+                    console.log("[Radio] Now playing:", trackList[index].name);
                 })
                 .catch(err => {
                     console.error("[Radio] Error playing track:", err);
