@@ -94,6 +94,25 @@ const App = (function() {
                 Logger.error(`Radio player reference failed: ${e.message}`);
             }
             
+            // Initialize side menu system after all other UI systems
+            try {
+                if (window.SideMenuSystem) {
+                    // Force initialize the side menu
+                    SideMenuSystem.init();
+                    Logger.log("> SIDE MENU SYSTEM INITIALIZED");
+                    state.systems.sideMenu = true;
+                    
+                    // Remove any test coordinates button that might be present
+                    const testBtn = document.getElementById('testCoordButton');
+                    if (testBtn) {
+                        testBtn.parentNode.removeChild(testBtn);
+                        Logger.log("> TEST COORDINATES BUTTON REMOVED");
+                    }
+                }
+            } catch (e) {
+                Logger.error(`Side menu initialization failed: ${e.message}`);
+            }
+            
         } catch (error) {
             Logger.error(error.message);
             activateEmergencyFallback();

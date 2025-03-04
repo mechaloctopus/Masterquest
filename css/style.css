@@ -5,23 +5,24 @@ canvas { width: 100%; height: 100%; }
 
 #log { 
     position: relative; 
-    top: 0; 
-    left: 0; 
+    top: auto; 
+    left: auto; 
     width: auto; 
     max-height: 200px; 
     overflow-y: auto; 
     margin: 0; 
+    padding: 10px;
     border-radius: 5px;
     color: #FFA500;
     font-family: 'Courier New', monospace; 
     font-size: 14px; 
-    background: rgba(0,0,0,0.8); 
-    padding: 10px;
+    background: rgba(0, 0, 0, 0.7);
     border: 1px solid #00ff00;
     text-shadow: 0 0 10px #00ff0080;
     transition: all 0.3s ease;
     z-index: 10;
     min-width: 200px;
+    box-sizing: border-box;
 }
 
 /* Loading Screen */
@@ -372,7 +373,12 @@ canvas { width: 100%; height: 100%; }
 
 /* Test coordinates button */
 #testCoordButton {
-    display: none;
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    left: -9999px !important;
 }
 
 /* Debug Panel */
@@ -498,13 +504,11 @@ canvas { width: 100%; height: 100%; }
     right: 10px;
     top: 10px;
     background: none;
+    color: inherit;
     border: none;
-    color: #00ff00;
-    font-family: 'Courier New', monospace;
+    font-size: 16px;
     cursor: pointer;
-    outline: none;
-    font-size: 14px;
-    padding: 2px 6px;
+    z-index: 5;
 }
 
 #logToggle:hover {
@@ -652,8 +656,8 @@ canvas { width: 100%; height: 100%; }
 /* Radio Player Styles */
 .radio-player {
     position: relative;
-    top: 0;
-    left: 0;
+    top: auto;
+    left: auto;
     width: auto;
     max-width: 100%;
     margin: 0;
@@ -663,11 +667,12 @@ canvas { width: 100%; height: 100%; }
     color: #00ffff;
     max-height: 400px;
     transition: all 0.3s ease;
+    box-sizing: border-box;
 }
 
 .radio-player.collapsed {
     height: auto;
-    min-height: 30px;
+    min-height: 40px;
     opacity: 1;
 }
 
@@ -689,11 +694,11 @@ canvas { width: 100%; height: 100%; }
 #radioToggle {
     background: none;
     border: none;
-    color: #ff00cc;
+    color: inherit;
     font-family: 'Courier New', monospace;
     cursor: pointer;
     outline: none;
-    font-size: 14px;
+    font-size: 16px;
     padding: 2px 6px;
 }
 
@@ -863,135 +868,34 @@ canvas { width: 100%; height: 100%; }
 @media screen and (max-width: 768px) {
     #sideMenu {
         width: 260px;
+        top: 10px;
+        right: 10px;
     }
     
     #mapContainer {
         width: 150px;
         height: 150px;
-    }
-    
-    #log {
-        top: 10px;
-        left: 10px;
-        max-width: 80%;
-        font-size: 12px;
-        z-index: 101; /* Ensure it's above the radio player */
-    }
-    
-    #log.collapsed {
-        max-width: 30px;
-        width: auto;
-    }
-    
-    /* Radio player positioning for mobile */
-    .radio-player {
-        top: 10px;
+        bottom: 10px;
         right: 10px;
-        width: calc(100% - 100px); /* Give some space from the left edge */
-        max-width: 280px;
-        font-size: 12px;
-        z-index: 100;
     }
     
-    .radio-player.collapsed {
-        width: auto;
-        max-width: 100px;
-    }
-    
-    /* When both are collapsed, they should just show as small buttons */
-    #log.collapsed + .radio-player.collapsed {
-        max-width: 80px;
-    }
-    
-    /* Make control buttons smaller on mobile */
-    .control-btn {
-        width: 32px;
-        height: 32px;
-        font-size: 14px;
-    }
-    
-    #playPauseButton {
-        width: 40px;
-        height: 40px;
-        font-size: 18px;
-    }
-    
-    /* Smaller track list items */
-    .track {
-        padding: 3px;
-    }
-    
-    .play-btn {
-        width: 20px;
-        height: 20px;
-        min-width: 20px;
-        min-height: 20px;
-    }
-    
-    /* Adjust volume controls */
-    .slider-container {
-        margin-bottom: 5px;
-    }
-    
-    .slider-container label {
-        width: 50px;
-        font-size: 12px;
+    .menu-content {
+        gap: 10px;
     }
 }
 
-/* For very small screens like phones in portrait mode */
 @media screen and (max-width: 480px) {
     #sideMenu {
         width: 230px;
+        top: 5px;
+        right: 5px;
     }
     
     #mapContainer {
         width: 130px;
         height: 130px;
-    }
-    
-    /* Ensure collapsed state by default on very small screens */
-    .radio-player:not(.collapsed) {
-        max-height: 70vh; /* Limit maximum height on small screens */
-        overflow-y: auto;
-    }
-    
-    /* Auto-collapse the radio player initially on small screens */
-    body.mobile-detected .radio-player {
-        position: fixed; /* Use fixed positioning to ensure it's visible */
-    }
-    
-    /* Position the toggle button better on small screens */
-    #radioToggle {
-        padding: 2px 4px;
-        font-size: 12px;
-    }
-    
-    #logToggle {
-        padding: 2px 4px;
-        font-size: 12px;
-    }
-    
-    /* Better spacing in the header */
-    .radio-header {
-        padding: 5px;
-    }
-    
-    .radio-title {
-        font-size: 12px;
-        letter-spacing: 1px;
-    }
-}
-
-/* Add this script to detect mobile and set a class on the body */
-body::after {
-    content: "";
-    display: none;
-}
-
-@media screen and (max-width: 768px) {
-    body::after {
-        display: block;
+        bottom: 5px;
+        right: 5px;
     }
 }
 
@@ -1573,21 +1477,21 @@ body.mobile-detected .radio-player {
     transform: translateX(-50%) scale(0.95);
 }
 
-/* Side Menu Styling */
+/* Side Menu Styling - Updated */
 #sideMenu {
-    position: absolute;
-    top: 10px;
-    right: 10px;
+    position: fixed;
+    top: 20px;
+    right: 20px;
     width: 300px;
-    max-height: 90vh;
-    background: rgba(0, 0, 0, 0.8);
-    border: 1px solid #00ff00;
+    max-height: calc(90vh - 40px);
+    background: rgba(0, 0, 0, 0.85);
+    border: 2px solid #00ff00;
     border-radius: 5px;
     color: #00ff00;
     padding: 0;
     z-index: 100;
     font-family: 'Orbitron', sans-serif;
-    box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: thin;
@@ -1609,7 +1513,7 @@ body.mobile-detected .radio-player {
     padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 15px;
 }
 
 /* Ensure map stays in its fixed position */
@@ -1626,22 +1530,34 @@ body.mobile-detected .radio-player {
 @media screen and (max-width: 768px) {
     #sideMenu {
         width: 260px;
+        top: 10px;
+        right: 10px;
     }
     
     #mapContainer {
         width: 150px;
         height: 150px;
+        bottom: 10px;
+        right: 10px;
+    }
+    
+    .menu-content {
+        gap: 10px;
     }
 }
 
 @media screen and (max-width: 480px) {
     #sideMenu {
         width: 230px;
+        top: 5px;
+        right: 5px;
     }
     
     #mapContainer {
         width: 130px;
         height: 130px;
+        bottom: 5px;
+        right: 5px;
     }
 }
 
@@ -1653,16 +1569,21 @@ body.mobile-detected .radio-player {
 
 /* Ensure collapsed panels still show their headers in the side menu */
 #log.collapsed, .radio-player.collapsed {
-    height: auto;
-    min-height: 30px;
-    opacity: 1;
+    max-height: 40px;
+    overflow: hidden;
 }
 
-/* Modified toggle button positioning */
+/* Toggle button positioning */
 #logToggle, #radioToggle {
     position: absolute;
     right: 10px;
     top: 10px;
+    background: none;
+    color: inherit;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    z-index: 5;
 }
 
 /* Ensure map stays in its fixed position */
@@ -1679,21 +1600,33 @@ body.mobile-detected .radio-player {
 @media screen and (max-width: 768px) {
     #sideMenu {
         width: 260px;
+        top: 10px;
+        right: 10px;
     }
     
     #mapContainer {
         width: 150px;
         height: 150px;
+        bottom: 10px;
+        right: 10px;
+    }
+    
+    .menu-content {
+        gap: 10px;
     }
 }
 
 @media screen and (max-width: 480px) {
     #sideMenu {
         width: 230px;
+        top: 5px;
+        right: 5px;
     }
     
     #mapContainer {
         width: 130px;
         height: 130px;
+        bottom: 5px;
+        right: 5px;
     }
 } 

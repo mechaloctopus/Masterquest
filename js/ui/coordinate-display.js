@@ -15,6 +15,15 @@ window.CoordinateSystem = (function() {
     // Grid settings
     const gridSize = CONFIG.GRID.SPACING || 2; // Grid cell size
     
+    // Remove any test coordinates button
+    (function removeTestButton() {
+        const testBtn = document.getElementById('testCoordButton');
+        if (testBtn) {
+            testBtn.parentNode.removeChild(testBtn);
+            console.log("[CoordSys] Removed test coordinates button");
+        }
+    })();
+    
     // Initialize the coordinate display
     function init() {
         if (initialized) return true;

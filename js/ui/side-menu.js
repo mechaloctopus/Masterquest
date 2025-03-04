@@ -5,7 +5,7 @@ window.SideMenuSystem = (function() {
     let sideMenuElement = null;
     let sideMenuContentElement = null;
     
-    // UI elements to manage
+    // UI elements to forcefully move to side menu
     const uiElements = [
         { id: 'log', preventMove: false },
         { id: 'radioPlayer', preventMove: false }
@@ -16,6 +16,8 @@ window.SideMenuSystem = (function() {
         if (initialized) return true;
         
         try {
+            console.log("[SideMenu] Initializing side menu system...");
+            
             // Get side menu elements
             sideMenuElement = document.getElementById('sideMenu');
             if (!sideMenuElement) {
@@ -28,6 +30,12 @@ window.SideMenuSystem = (function() {
                 console.error("[SideMenu] Side menu content element not found!");
                 return false;
             }
+            
+            // Remove test coordinates button if it exists
+            removeTestCoordinatesButton();
+            
+            // Force clean up any existing panels
+            cleanupExistingPanels();
             
             // Move UI elements to the side menu
             moveElementsToSideMenu();
@@ -51,29 +59,81 @@ window.SideMenuSystem = (function() {
         }
     }
     
+    // Remove the test coordinates button
+    function removeTestCoordinatesButton() {
+        const testButton = document.getElementById('testCoordButton');
+        if (testButton) {
+            testButton.parentNode.removeChild(testButton);
+            console.log("[SideMenu] Test coordinates button removed");
+        }
+    }
+    
+    // Clean up any existing panels outside the side menu
+    function cleanupExistingPanels() {
+        // Remove any duplicate elements that might exist outside the side menu
+        uiElements.forEach(element => {
+            const elementsOutsideSideMenu = document.querySelectorAll(`body > #${element.id}`);
+            elementsOutsideSideMenu.forEach(el => {
+                if (!sideMenuElement.contains(el)) {
+                    el.parentNode.removeChild(el);
+                    console.log(`[SideMenu] Removed duplicate ${element.id} outside side menu`);
+                }
+            });
+        });
+        
+        // Also remove any inventory container that might still be visible
+        const inventoryContainer = document.getElementById('inventoryContainer');
+        if (inventoryContainer) {
+            inventoryContainer.parentNode.removeChild(inventoryContainer);
+            console.log("[SideMenu] Removed redundant inventory container");
+        }
+    }
+    
     // Move UI elements to the side menu
     function moveElementsToSideMenu() {
+        // Clear existing content first
+        const existingContentInSideMenu = Array.from(sideMenuContentElement.children);
+        existingContentInSideMenu.forEach(child => {
+            if (child.id === 'log' || child.id === 'radioPlayer') {
+                child.parentNode.removeChild(child);
+            }
+        });
+        
+        // Now move the elements
         uiElements.forEach(element => {
             const el = document.getElementById(element.id);
             if (el && !element.preventMove) {
-                // Remove the element from its current position and add to side menu
-                el.parentNode.removeChild(el);
-                sideMenuContentElement.appendChild(el);
+                // Check if the element is already a child of side menu content
+                if (!sideMenuContentElement.contains(el)) {
+                    // Clone the element to avoid reference issues
+                    const clone = el.cloneNode(true);
+                    
+                    // Remove the original
+                    if (el.parentNode) {
+                        el.parentNode.removeChild(el);
+                    }
+                    
+                    // Add the clone to side menu
+                    sideMenuContentElement.appendChild(clone);
+                    console.log(`[SideMenu] Moved ${element.id} to side menu`);
+                }
+            } else {
+                console.warn(`[SideMenu] Element ${element.id} not found or prevented from moving`);
             }
         });
     }
     
     // Setup handlers for toggle buttons
     function setupToggleHandlers() {
-        // Logger toggle
-        const logToggle = document.getElementById('logToggle');
-        const log = document.getElementById('log');
+        // Logger toggle - query inside side menu
+        const logToggle = sideMenuContentElement.querySelector('#logToggle');
+        const log = sideMenuContentElement.querySelector('#log');
         
         if (logToggle && log) {
             // Update the toggle button text
             logToggle.textContent = log.classList.contains('collapsed') ? '▲' : '▼';
             
-            // Remove existing event listeners
+            // Remove existing event listeners by cloning
             const newLogToggle = logToggle.cloneNode(true);
             logToggle.parentNode.replaceChild(newLogToggle, logToggle);
             
@@ -82,17 +142,19 @@ window.SideMenuSystem = (function() {
                 log.classList.toggle('collapsed');
                 newLogToggle.textContent = log.classList.contains('collapsed') ? '▲' : '▼';
             });
+            
+            console.log("[SideMenu] Set up log toggle handler");
         }
         
-        // Radio player toggle
-        const radioToggle = document.getElementById('radioToggle');
-        const radioPlayer = document.getElementById('radioPlayer');
+        // Radio player toggle - query inside side menu
+        const radioToggle = sideMenuContentElement.querySelector('#radioToggle');
+        const radioPlayer = sideMenuContentElement.querySelector('#radioPlayer');
         
         if (radioToggle && radioPlayer) {
             // Update the toggle button text
             radioToggle.textContent = radioPlayer.classList.contains('collapsed') ? '▲' : '▼';
             
-            // Remove existing event listeners
+            // Remove existing event listeners by cloning
             const newRadioToggle = radioToggle.cloneNode(true);
             radioToggle.parentNode.replaceChild(newRadioToggle, radioToggle);
             
@@ -101,6 +163,8 @@ window.SideMenuSystem = (function() {
                 radioPlayer.classList.toggle('collapsed');
                 newRadioToggle.textContent = radioPlayer.classList.contains('collapsed') ? '▲' : '▼';
             });
+            
+            console.log("[SideMenu] Set up radio toggle handler");
         }
     }
     
@@ -119,6 +183,8 @@ window.SideMenuSystem = (function() {
             isDragging = true;
             offsetX = e.clientX - element.getBoundingClientRect().left;
             offsetY = e.clientY - element.getBoundingClientRect().top;
+            
+            console.log("[SideMenu] Started dragging");
         });
         
         document.addEventListener('mousemove', function(e) {
@@ -137,6 +203,9 @@ window.SideMenuSystem = (function() {
         });
         
         document.addEventListener('mouseup', function() {
+            if (isDragging) {
+                console.log("[SideMenu] Stopped dragging");
+            }
             isDragging = false;
         });
     }
