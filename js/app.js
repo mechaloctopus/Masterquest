@@ -850,18 +850,58 @@ const App = (function() {
         }
     }
 
+    // Initialize UI components
+    function initializeUI() {
+        // Position console
+        const log = document.getElementById('log');
+        if (log) {
+            log.style.position = 'absolute';
+            log.style.top = '20px';
+            log.style.left = '20px';
+            log.style.width = '300px';
+            log.style.maxWidth = '300px';
+        }
+        
+        // Position radio player
+        const radioPlayer = document.getElementById('radioPlayer');
+        if (radioPlayer) {
+            radioPlayer.style.position = 'absolute';
+            radioPlayer.style.top = '20px';
+            radioPlayer.style.right = '20px';
+            radioPlayer.style.left = 'auto';
+            radioPlayer.style.transform = 'none';
+            radioPlayer.style.width = '300px';
+            radioPlayer.style.maxWidth = '300px';
+        }
+        
+        // Remove any pause buttons
+        const pauseButtons = document.querySelectorAll('.pause-button');
+        pauseButtons.forEach(btn => {
+            if (btn && btn.parentNode) {
+                btn.parentNode.removeChild(btn);
+            }
+        });
+        
+        console.log("UI Components initialized and positioned");
+    }
+
     // Public API
     return {
         init: init,
         setupServiceWorker: setupServiceWorker,
         getState: () => ({ ...state }), // Return a copy of state for debugging
         damage: damagePlayer, // Expose damage function for testing
-        changeRealm: changeRealm // Expose realm change function
+        changeRealm: changeRealm, // Expose realm change function
+        initializeUI: initializeUI
     };
 })();
 
-// Initialize the game when DOM is ready
+// Run once DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize UI components
+    App.initializeUI();
+    
+    // Continue with regular initialization
     App.init();
     App.setupServiceWorker();
     

@@ -23,9 +23,10 @@ canvas { width: 100%; height: 100%; }
     z-index: 10;
     box-sizing: border-box;
     box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+    max-width: 300px;
 }
 
-/* Make sure it has proper styling in side menu */
+/* Remove side menu specific styles */
 .menu-content #log {
     position: relative;
     top: auto;
@@ -680,9 +681,10 @@ canvas { width: 100%; height: 100%; }
     transition: all 0.3s ease;
     box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
     box-sizing: border-box;
+    max-width: 300px;
 }
 
-/* Make sure it uses proper width in side menu */
+/* Remove side menu specific styles */
 .menu-content .radio-player {
     position: relative;
     top: auto;
@@ -1500,98 +1502,38 @@ body.mobile-detected .radio-player {
 
 /* Side Menu Styling - Updated */
 #sideMenu {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    width: 300px;
-    max-height: calc(90vh - 40px);
-    background: rgba(0, 0, 0, 0.85);
-    border: 2px solid #00ff00;
-    border-radius: 5px;
-    color: #00ff00;
-    padding: 0;
-    z-index: 100;
-    font-family: 'Orbitron', sans-serif;
-    box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: thin;
-    scrollbar-color: #00ff00 rgba(0, 0, 0, 0.5);
+    display: none !important;
 }
 
-.menu-header {
-    padding: 10px;
-    background: rgba(0, 40, 0, 0.8);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-bottom: 1px solid #00ff00;
-    font-weight: bold;
-    text-shadow: 0 0 10px #00ff0080;
-}
-
-.menu-content {
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-/* Ensure map stays in its fixed position */
-#mapContainer.in-side-menu {
-    position: relative;
-    bottom: auto;
-    right: auto;
-    width: 100%;
-    height: 200px;
-    margin: 0;
-}
-
-/* Responsiveness */
-@media screen and (max-width: 768px) {
-    #sideMenu {
-        width: 260px;
-        top: 10px;
-        right: 10px;
-    }
-    
-    #mapContainer {
-        width: 150px;
-        height: 150px;
-        top: 10px;
-        right: 280px;
-    }
-    
-    .menu-content {
-        gap: 10px;
-    }
-}
-
-@media screen and (max-width: 480px) {
-    #sideMenu {
-        width: 230px;
-        top: 5px;
-        right: 5px;
-    }
-    
-    #mapContainer {
-        width: 130px;
-        height: 130px;
-        top: 5px;
-        right: 240px;
-    }
-}
-
-/* Make panels take full width in the menu */
+/* Make panels take a fixed width regardless of where they are */
 #log, .radio-player {
-    width: 100%;
-    box-sizing: border-box;
+    width: 300px !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    max-width: 300px !important;
 }
 
-/* Ensure collapsed panels still show their headers in the side menu */
+/* Position radio player in top right */
+.radio-player {
+    position: absolute !important;
+    top: 20px !important;
+    right: 20px !important;
+    left: auto !important;
+    transform: none !important;
+}
+
+/* Position log in top left */
+#log {
+    position: absolute !important;
+    top: 20px !important;
+    left: 20px !important;
+    max-height: 200px !important;
+}
+
+/* Ensure collapsed panels only show their headers */
 #log.collapsed, .radio-player.collapsed {
-    max-height: 40px;
-    overflow: hidden;
+    max-height: 40px !important;
+    overflow: hidden !important;
 }
 
 /* Toggle button positioning */
