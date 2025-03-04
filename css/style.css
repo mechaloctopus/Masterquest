@@ -676,9 +676,9 @@ canvas { width: 100%; height: 100%; }
 /* Radio Player Styles */
 .radio-player {
     position: absolute;
-    top: 20px;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
     width: 300px;
     background: rgba(0, 0, 0, 0.7);
     border: 1px solid #00ffff;
