@@ -94,23 +94,11 @@ const App = (function() {
                 Logger.error(`Radio player reference failed: ${e.message}`);
             }
             
-            // Initialize side menu system after all other UI systems
-            try {
-                if (window.SideMenuSystem) {
-                    // Force initialize the side menu
-                    SideMenuSystem.init();
-                    Logger.log("> SIDE MENU SYSTEM INITIALIZED");
-                    state.systems.sideMenu = true;
-                    
-                    // Remove any test coordinates button that might be present
-                    const testBtn = document.getElementById('testCoordButton');
-                    if (testBtn) {
-                        testBtn.parentNode.removeChild(testBtn);
-                        Logger.log("> TEST COORDINATES BUTTON REMOVED");
-                    }
-                }
-            } catch (e) {
-                Logger.error(`Side menu initialization failed: ${e.message}`);
+            // Remove any test coordinates button that might be present
+            const testBtn = document.getElementById('testCoordButton');
+            if (testBtn) {
+                testBtn.parentNode.removeChild(testBtn);
+                Logger.log("> TEST COORDINATES BUTTON REMOVED");
             }
             
         } catch (error) {
@@ -835,19 +823,10 @@ const App = (function() {
         }
     }
 
-    // PWA support
+    // PWA support - placeholder for future implementation
     function setupServiceWorker() {
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                // Comment out for now since sw.js doesn't exist yet
-                /* navigator.serviceWorker.register('./sw.js').then(
-                    function(registration) {
-                        console.log('ServiceWorker registration successful');
-                    },
-                    function(err) { console.log('ServiceWorker registration failed: ', err); }
-                ); */
-            });
-        }
+        // Service worker support will be implemented in the future
+        console.log("Service worker setup placeholder - not implemented yet");
     }
 
     // Initialize UI components
@@ -860,18 +839,6 @@ const App = (function() {
             log.style.left = '20px';
             log.style.width = '300px';
             log.style.maxWidth = '300px';
-        }
-        
-        // Position radio player
-        const radioPlayer = document.getElementById('radioPlayer');
-        if (radioPlayer) {
-            radioPlayer.style.position = 'absolute';
-            radioPlayer.style.top = '20px';
-            radioPlayer.style.right = '20px';
-            radioPlayer.style.left = 'auto';
-            radioPlayer.style.transform = 'none';
-            radioPlayer.style.width = '300px';
-            radioPlayer.style.maxWidth = '300px';
         }
         
         // Remove any pause buttons
