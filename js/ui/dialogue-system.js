@@ -205,13 +205,13 @@ const DialogueSystem = (function() {
         if (!dialogueContainer) return;
         
         dialogueContainer.style.display = 'none';
-        currentNPC = null;
         
         // Let NPCSystem know the interaction ended
         if (window.NPCSystem && currentNPC) {
             NPCSystem.endInteraction(currentNPC);
-            currentNPC = null;
         }
+        
+        currentNPC = null;
         
         // Emit game resume event
         if (window.EventSystem) {

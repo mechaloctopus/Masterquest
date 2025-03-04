@@ -366,10 +366,20 @@ canvas { width: 100%; height: 100%; }
     text-shadow: 0 0 8px rgba(255, 204, 0, 0.7);
 }
 
-/* Hide the test coordinate button when not needed */
+/* Test coordinates button */
 #testCoordButton {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    padding: 10px;
+    background-color: #ff00cc;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 10000;
     opacity: 0.7;
-    transition: opacity 0.3s;
+    transition: opacity 0.3s, background-color 0.3s;
 }
 
 #testCoordButton:hover {
@@ -1519,4 +1529,40 @@ body.mobile-detected .radio-player {
     margin-top: 15px;
     padding: 5px 0;
     border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* NPC Talk Button */
+#npcTalkButton {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 25px;
+    background-color: rgba(0, 255, 204, 0.8);
+    color: white;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 100;
+    box-shadow: 0 0 15px #00ffcc;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s, transform 0.2s;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
+}
+
+#npcTalkButton.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#npcTalkButton:hover {
+    transform: translateX(-50%) scale(1.1);
+    box-shadow: 0 0 20px #00ffcc;
+}
+
+#npcTalkButton:active {
+    transform: translateX(-50%) scale(0.95);
 } 

@@ -9,8 +9,8 @@ window.CoordinateSystem = (function() {
     let position = { x: 0, y: 0, z: 0 };
     let direction = 0; // In radians
     
-    // Reference to the camera and scene
-    let lastUpdateTime = 0;
+    // Last time we logged position (to prevent log spam)
+    let lastLogTime = 0;
     
     // Grid settings
     const gridSize = CONFIG.GRID.SPACING || 2; // Grid cell size
@@ -20,8 +20,6 @@ window.CoordinateSystem = (function() {
         if (initialized) return true;
         
         try {
-            console.log("[CoordSys] Initializing coordinate display system...");
-            
             // Find the map container
             mapContainer = document.getElementById('mapContainer');
             if (!mapContainer) {
@@ -50,98 +48,78 @@ window.CoordinateSystem = (function() {
             // Add to the map container
             mapContainer.appendChild(coordDisplayElement);
             
-            // Set up a direct connection to the Babylon.js camera
-            setupDirectCameraTracking();
+            // Connect to the Babylon.js camera
+            connectToCamera();
             
             // Mark as initialized
             initialized = true;
-            console.log('[CoordSys] ✅ Coordinate system initialized');
+            console.log('[CoordSys] Coordinate system initialized');
             
             return true;
         } catch (e) {
-            console.error('[CoordSys] ❌ Failed to initialize coordinate display:', e);
+            console.error('[CoordSys] Failed to initialize coordinate display:', e);
             return false;
         }
     }
     
-    // Set up direct tracking of the Babylon.js camera
-    function setupDirectCameraTracking() {
-        // First method: Wait for the Babylon scene to be created
-        const checkForScene = setInterval(function() {
+    // Connect to the camera for position updates
+    function connectToCamera() {
+        const checkInterval = setInterval(function() {
+            // Try to connect to Babylon.js camera first
             if (window.BABYLON && BABYLON.Engine.Instances.length > 0) {
                 const engine = BABYLON.Engine.Instances[0];
-                if (engine && engine.scenes && engine.scenes.length > 0) {
+                if (engine?.scenes?.length > 0) {
                     const scene = engine.scenes[0];
                     
-                    // Get the active camera
                     if (scene.activeCamera) {
-                        console.log("[CoordSys] Found Babylon.js camera!", scene.activeCamera);
-                        
-                        // Register a before render observer that will update our coordinates
+                        // Set up a direct observer on the scene's render loop
                         scene.onBeforeRenderObservable.add(() => {
                             const camera = scene.activeCamera;
-                            if (camera && camera.position) {
-                                // Update the coordinate display with the camera position
-                                updatePositionDirect({
-                                    x: camera.position.x,
-                                    y: camera.position.y,
-                                    z: camera.position.z
-                                }, camera.rotation ? camera.rotation.y : 0);
+                            if (camera?.position) {
+                                updateFromCamera(camera);
                             }
                         });
                         
-                        // Clear the interval as we found the camera
-                        clearInterval(checkForScene);
+                        clearInterval(checkInterval);
+                        return;
                     }
                 }
             }
-        }, 500); // Check every 500ms
-        
-        // Second method (backup): Poll for the camera in state
-        setInterval(function() {
-            if (window.state && state.systems && state.systems.camera) {
+            
+            // Fallback: check state.systems.camera
+            if (window.state?.systems?.camera) {
                 const camera = state.systems.camera;
-                if (camera && camera.position) {
-                    // Use the camera position from state
-                    updatePositionDirect({
-                        x: camera.position.x,
-                        y: camera.position.y,
-                        z: camera.position.z
-                    }, camera.rotation ? camera.rotation.y : 0);
+                if (camera?.position) {
+                    updateFromCamera(camera);
                 }
             }
-        }, 100); // Poll 10 times per second
+        }, 200);
     }
     
-    // Direct update from camera position
-    function updatePositionDirect(cameraPosition, cameraRotation) {
-        if (!cameraPosition) return;
+    // Update position from camera data
+    function updateFromCamera(camera) {
+        if (!camera?.position) return;
         
-        // Only update if we have valid data
-        if (typeof cameraPosition.x === 'number' && 
-            typeof cameraPosition.z === 'number') {
-            
-            // Update stored position
-            position = {
-                x: cameraPosition.x,
-                y: cameraPosition.y || 0,
-                z: cameraPosition.z
-            };
-            direction = cameraRotation || 0;
-            
-            // Only log occasionally to avoid spamming
-            const now = Date.now();
-            if (now - lastUpdateTime > 1000) { // Once per second
-                console.log(`[CoordSys] Position updated: x=${position.x.toFixed(2)}, z=${position.z.toFixed(2)}`);
-                lastUpdateTime = now;
-            }
-            
-            // Update the display
-            updateDisplay();
+        // Update stored position
+        position = {
+            x: camera.position.x,
+            y: camera.position.y || 0,
+            z: camera.position.z
+        };
+        direction = camera.rotation?.y || 0;
+        
+        // Occasional logging (limit to once per second)
+        const now = Date.now();
+        if (now - lastLogTime > 1000) {
+            console.log(`[CoordSys] Position: x=${position.x.toFixed(1)}, z=${position.z.toFixed(1)}`);
+            lastLogTime = now;
         }
+        
+        // Update the display
+        updateDisplay();
     }
     
-    // Public update position method (called from app.js or test script)
+    // Public method for position updates (used by test script)
     function updatePosition(newPosition, newDirection) {
         if (!newPosition) return;
         
@@ -155,17 +133,16 @@ window.CoordinateSystem = (function() {
         updateDisplay();
     }
     
-    // Update the display elements
+    // Update the coordinate display elements
     function updateDisplay() {
         try {
-            // Get elements by ID
             const posElem = document.getElementById('coordPos');
             const gridElem = document.getElementById('coordGrid');
             const compassElem = document.getElementById('coordCompass');
             
             if (!posElem || !gridElem || !compassElem) return;
             
-            // Show raw coordinates from -50 to 50
+            // Get rounded coordinates
             const rawX = Math.round(position.x);
             const rawZ = Math.round(position.z);
             
@@ -176,7 +153,7 @@ window.CoordinateSystem = (function() {
             // Get compass direction
             const compassDir = getCompassDirection(direction);
             
-            // Update DOM elements directly
+            // Update the DOM elements
             posElem.textContent = `X:${rawX} Z:${rawZ}`;
             gridElem.textContent = `(${gridX}, ${gridZ})`;
             compassElem.textContent = compassDir;
@@ -203,21 +180,16 @@ window.CoordinateSystem = (function() {
         return 'N'; // fallback
     }
     
-    // Show the coordinate display
+    // Show/hide methods
     function show() {
-        if (coordDisplayElement) {
-            coordDisplayElement.style.display = 'flex';
-        }
+        if (coordDisplayElement) coordDisplayElement.style.display = 'flex';
     }
     
-    // Hide the coordinate display
     function hide() {
-        if (coordDisplayElement) {
-            coordDisplayElement.style.display = 'none';
-        }
+        if (coordDisplayElement) coordDisplayElement.style.display = 'none';
     }
     
-    // Convert world position to grid position
+    // Grid utility functions
     function worldToGrid(worldPos) {
         return {
             x: Math.round(worldPos.x / gridSize),
@@ -225,16 +197,14 @@ window.CoordinateSystem = (function() {
         };
     }
     
-    // Convert grid position to world position
     function gridToWorld(gridPos) {
         return {
             x: gridPos.x * gridSize,
-            y: 0, // Default y position
+            y: 0,
             z: gridPos.z * gridSize
         };
     }
     
-    // Get grid cell at world position
     function getGridCellAt(worldPos) {
         const gridPos = worldToGrid(worldPos);
         return {
