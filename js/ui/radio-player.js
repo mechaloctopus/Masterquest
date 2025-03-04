@@ -1,5 +1,18 @@
 // Radio Player System
 window.RadioPlayerSystem = (function() {
+    // Ensure the radio player is centered
+    function positionRadioPlayer() {
+        const player = document.getElementById('radioPlayer');
+        if (player) {
+            player.style.position = 'absolute';
+            player.style.top = '20px';
+            player.style.left = '50%';
+            player.style.transform = 'translateX(-50%)';
+            player.style.right = 'auto';
+            console.log("[RadioPlayer] Positioned in center");
+        }
+    }
+
     // Private vars
     let initialized = false;
     let currentTrack = null;
@@ -54,6 +67,12 @@ window.RadioPlayerSystem = (function() {
             // Set as initialized
             initialized = true;
             console.log("[Radio] Player initialized successfully");
+
+            // Position the radio player in the center
+            positionRadioPlayer();
+            
+            // Re-position on window resize
+            window.addEventListener('resize', positionRadioPlayer);
         } catch (e) {
             console.error("[Radio] Initialization failed:", e);
         }

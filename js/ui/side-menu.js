@@ -54,16 +54,16 @@ window.SideMenuSystem = (function() {
     function ensureRadioPlayerIsVisible() {
         const radioPlayer = document.getElementById('radioPlayer');
         if (radioPlayer) {
-            // Position in upper right
+            // Position in top center
             radioPlayer.style.position = 'absolute';
             radioPlayer.style.top = '20px';
-            radioPlayer.style.right = '20px';
-            radioPlayer.style.left = 'auto';
-            radioPlayer.style.transform = 'none';
+            radioPlayer.style.left = '50%';
+            radioPlayer.style.transform = 'translateX(-50%)';
+            radioPlayer.style.right = 'auto';
             radioPlayer.style.width = '300px';
             radioPlayer.style.maxWidth = '300px';
             
-            console.log("[SideMenu] Ensured radio player is visible in upper right");
+            console.log("[SideMenu] Ensured radio player is visible in top center");
         }
     }
     
