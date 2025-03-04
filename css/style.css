@@ -275,8 +275,8 @@ canvas { width: 100%; height: 100%; }
 /* Map UI */
 #mapContainer {
     position: absolute;
-    bottom: 20px;
-    right: 20px;
+    top: 20px;
+    right: 340px;
     width: 200px;
     height: 200px;
     background: rgba(0, 0, 0, 0.7);
@@ -875,8 +875,8 @@ canvas { width: 100%; height: 100%; }
     #mapContainer {
         width: 150px;
         height: 150px;
-        bottom: 10px;
-        right: 10px;
+        top: 10px;
+        right: 280px;
     }
     
     .menu-content {
@@ -894,8 +894,8 @@ canvas { width: 100%; height: 100%; }
     #mapContainer {
         width: 130px;
         height: 130px;
-        bottom: 5px;
-        right: 5px;
+        top: 5px;
+        right: 240px;
     }
 }
 
@@ -1537,8 +1537,8 @@ body.mobile-detected .radio-player {
     #mapContainer {
         width: 150px;
         height: 150px;
-        bottom: 10px;
-        right: 10px;
+        top: 10px;
+        right: 280px;
     }
     
     .menu-content {
@@ -1556,8 +1556,8 @@ body.mobile-detected .radio-player {
     #mapContainer {
         width: 130px;
         height: 130px;
-        bottom: 5px;
-        right: 5px;
+        top: 5px;
+        right: 240px;
     }
 }
 
@@ -1607,8 +1607,8 @@ body.mobile-detected .radio-player {
     #mapContainer {
         width: 150px;
         height: 150px;
-        bottom: 10px;
-        right: 10px;
+        top: 10px;
+        right: 280px;
     }
     
     .menu-content {
@@ -1626,7 +1626,7 @@ body.mobile-detected .radio-player {
     #mapContainer {
         width: 130px;
         height: 130px;
-        bottom: 5px;
-        right: 5px;
+        top: 5px;
+        right: 240px;
     }
 } 
