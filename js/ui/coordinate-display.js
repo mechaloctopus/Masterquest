@@ -9,7 +9,7 @@ window.CoordinateSystem = (function() {
     let position = { x: 0, y: 0, z: 0 };
     let direction = 0; // In radians
     
-    // Reference to the camera
+    // Reference to the camera and scene
     let lastUpdateTime = 0;
     
     // Grid settings
@@ -50,22 +50,8 @@ window.CoordinateSystem = (function() {
             // Add to the map container
             mapContainer.appendChild(coordDisplayElement);
             
-            // Set up a direct polling method for the camera position
-            // This is more reliable than trying to hook into the render loop
-            setInterval(function() {
-                // Try to access the camera directly from the global state
-                if (window.state && state.systems && state.systems.camera) {
-                    const camera = state.systems.camera;
-                    if (camera && camera.position) {
-                        // Camera found, update the coordinates
-                        updatePositionDirect({
-                            x: camera.position.x,
-                            y: camera.position.y,
-                            z: camera.position.z
-                        }, camera.rotation ? camera.rotation.y : 0);
-                    }
-                }
-            }, 100); // Poll 10 times per second
+            // Set up a direct connection to the Babylon.js camera
+            setupDirectCameraTracking();
             
             // Mark as initialized
             initialized = true;
@@ -76,6 +62,55 @@ window.CoordinateSystem = (function() {
             console.error('[CoordSys] ❌ Failed to initialize coordinate display:', e);
             return false;
         }
+    }
+    
+    // Set up direct tracking of the Babylon.js camera
+    function setupDirectCameraTracking() {
+        // First method: Wait for the Babylon scene to be created
+        const checkForScene = setInterval(function() {
+            if (window.BABYLON && BABYLON.Engine.Instances.length > 0) {
+                const engine = BABYLON.Engine.Instances[0];
+                if (engine && engine.scenes && engine.scenes.length > 0) {
+                    const scene = engine.scenes[0];
+                    
+                    // Get the active camera
+                    if (scene.activeCamera) {
+                        console.log("[CoordSys] Found Babylon.js camera!", scene.activeCamera);
+                        
+                        // Register a before render observer that will update our coordinates
+                        scene.onBeforeRenderObservable.add(() => {
+                            const camera = scene.activeCamera;
+                            if (camera && camera.position) {
+                                // Update the coordinate display with the camera position
+                                updatePositionDirect({
+                                    x: camera.position.x,
+                                    y: camera.position.y,
+                                    z: camera.position.z
+                                }, camera.rotation ? camera.rotation.y : 0);
+                            }
+                        });
+                        
+                        // Clear the interval as we found the camera
+                        clearInterval(checkForScene);
+                    }
+                }
+            }
+        }, 500); // Check every 500ms
+        
+        // Second method (backup): Poll for the camera in state
+        setInterval(function() {
+            if (window.state && state.systems && state.systems.camera) {
+                const camera = state.systems.camera;
+                if (camera && camera.position) {
+                    // Use the camera position from state
+                    updatePositionDirect({
+                        x: camera.position.x,
+                        y: camera.position.y,
+                        z: camera.position.z
+                    }, camera.rotation ? camera.rotation.y : 0);
+                }
+            }
+        }, 100); // Poll 10 times per second
     }
     
     // Direct update from camera position
@@ -130,9 +165,9 @@ window.CoordinateSystem = (function() {
             
             if (!posElem || !gridElem || !compassElem) return;
             
-            // Get normalized coordinates (0-100)
-            const normX = normalizeCoordinate(position.x);
-            const normZ = normalizeCoordinate(position.z);
+            // Show raw coordinates from -50 to 50
+            const rawX = Math.round(position.x);
+            const rawZ = Math.round(position.z);
             
             // Get grid coordinates
             const gridX = Math.round(position.x / gridSize);
@@ -142,21 +177,12 @@ window.CoordinateSystem = (function() {
             const compassDir = getCompassDirection(direction);
             
             // Update DOM elements directly
-            posElem.textContent = `X:${normX} Z:${normZ}`;
+            posElem.textContent = `X:${rawX} Z:${rawZ}`;
             gridElem.textContent = `(${gridX}, ${gridZ})`;
             compassElem.textContent = compassDir;
         } catch (e) {
             console.error('[CoordSys] Error updating display:', e);
         }
-    }
-    
-    // Map world coordinates to 0-100 range
-    function normalizeCoordinate(value) {
-        if (typeof value !== 'number') return 0;
-        
-        // Map from -50 to 50 range to 0-100 range
-        const normalized = Math.floor(((value + 50) / 100) * 100);
-        return Math.max(0, Math.min(100, normalized));
     }
     
     // Get compass direction from angle

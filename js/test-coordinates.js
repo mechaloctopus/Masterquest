@@ -6,7 +6,7 @@
         return;
     }
     
-    console.log("Starting coordinate display test...");
+    console.log("Setting up coordinate display test button...");
     
     // Create a dummy camera object
     const dummyCamera = {
@@ -40,20 +40,25 @@
     
     let testInterval = null;
     let testActive = false;
+    let originalUpdateFunction = null;
     
     // Start the test
     function startCoordinateTest() {
         if (testActive) {
+            // Stop the test and restore normal functioning
             clearInterval(testInterval);
             testButton.innerText = 'Test Coordinates';
             testActive = false;
-            console.log("Coordinate test stopped");
+            testButton.style.backgroundColor = '#ff00cc';
+            
+            console.log("Coordinate test stopped - returning to real player tracking");
             return;
         }
         
         testActive = true;
-        testButton.innerText = 'Stop Test';
-        console.log("Coordinate test started");
+        testButton.innerText = 'Stop Test (SIMULATED DATA)';
+        testButton.style.backgroundColor = '#ff5500';
+        console.log("Coordinate test started - USING SIMULATED PLAYER MOVEMENT");
         
         // Reset dummy camera
         dummyCamera.position.x = 0;
