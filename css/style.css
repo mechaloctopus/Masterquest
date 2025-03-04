@@ -322,53 +322,58 @@ canvas { width: 100%; height: 100%; }
     height: calc(100% - 30px);
 }
 
-/* Map Coordinates */
+/* Map Coordinate Styles */
 .map-coordinates {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: rgba(0, 10, 20, 0.9);
-    color: #00ffcc;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 12px;
-    padding: 8px;
+    bottom: 10px;
+    left: 10px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top: 2px solid #00ffcc;
-    z-index: 11;
-    height: 24px;
-    box-shadow: inset 0 1px 5px rgba(0, 255, 204, 0.3);
-}
-
-.coord-item {
-    text-shadow: 0 0 5px #00ffcc;
-    letter-spacing: 1px;
+    flex-direction: column;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #00ff99;
+    padding: 8px;
+    border: 1px solid #00ff99;
+    border-radius: 4px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    z-index: 5;
+    pointer-events: none;
+    text-shadow: 0 0 5px rgba(0, 255, 153, 0.5);
 }
 
 .coord-position, .coord-grid {
     display: flex;
-    align-items: center;
-    gap: 5px;
+    justify-content: space-between;
+    margin-bottom: 3px;
 }
 
 .coord-label {
     color: #ff00cc;
+    margin-right: 5px;
     font-weight: bold;
-    margin-right: 4px;
 }
 
 .coord-value {
-    color: #00ffcc;
+    color: #00ffff;
 }
 
 .coord-compass {
-    color: #ffff00;
-    font-weight: bold;
+    text-align: center;
     font-size: 14px;
-    text-shadow: 0 0 8px #ffff00;
-    margin-left: 8px;
+    font-weight: bold;
+    color: #ffcc00;
+    margin-top: 3px;
+    text-shadow: 0 0 8px rgba(255, 204, 0, 0.7);
+}
+
+/* Hide the test coordinate button when not needed */
+#testCoordButton {
+    opacity: 0.7;
+    transition: opacity 0.3s;
+}
+
+#testCoordButton:hover {
+    opacity: 1;
 }
 
 /* Debug Panel */
