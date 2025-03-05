@@ -24,21 +24,38 @@
         
         // Function to toggle log visibility
         function toggleLog() {
-            logElement.classList.toggle('collapsed');
-            
-            if (logElement.classList.contains('collapsed')) {
-                logToggle.textContent = '▶ CONSOLE';
-            } else {
-                logToggle.textContent = '▼';
+            if (window.togglePanelCollapse) {
+                const isCollapsed = window.togglePanelCollapse(logElement, logToggle);
                 
                 // When opening the console, force scroll to the latest entry
-                if (window.Logger && typeof window.Logger.forceScrollToBottom === 'function') {
-                    window.Logger.forceScrollToBottom();
+                if (!isCollapsed) {
+                    if (window.Logger && typeof window.Logger.forceScrollToBottom === 'function') {
+                        window.Logger.forceScrollToBottom();
+                    } else {
+                        // Fallback if Logger.forceScrollToBottom is not available
+                        setTimeout(() => {
+                            logContent.scrollTop = logContent.scrollHeight;
+                        }, 10);
+                    }
+                }
+            } else {
+                // Fallback to original code
+                logElement.classList.toggle('collapsed');
+                
+                if (logElement.classList.contains('collapsed')) {
+                    logToggle.textContent = '▶ CONSOLE';
                 } else {
-                    // Fallback if Logger.forceScrollToBottom is not available
-                    setTimeout(() => {
-                        logContent.scrollTop = logContent.scrollHeight;
-                    }, 10);
+                    logToggle.textContent = '▼';
+                    
+                    // When opening the console, force scroll to the latest entry
+                    if (window.Logger && typeof window.Logger.forceScrollToBottom === 'function') {
+                        window.Logger.forceScrollToBottom();
+                    } else {
+                        // Fallback if Logger.forceScrollToBottom is not available
+                        setTimeout(() => {
+                            logContent.scrollTop = logContent.scrollHeight;
+                        }, 10);
+                    }
                 }
             }
         }

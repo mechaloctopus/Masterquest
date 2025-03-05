@@ -77,49 +77,70 @@ const MapSystem = (function() {
     function toggleMap() {
         if (!mapContainerElement) return;
         
-        isCollapsed = !isCollapsed;
-        
-        if (isCollapsed) {
-            mapContainerElement.classList.add('collapsed');
-            if (mapToggleElement) {
-                mapToggleElement.textContent = '▲';
-            }
-        } else {
-            mapContainerElement.classList.remove('collapsed');
-            if (mapToggleElement) {
-                mapToggleElement.textContent = '▼';
-            }
-            
-            // Make the map take up the full screen when expanded
-            if (!mapContainerElement.classList.contains('expanded')) {
-                mapContainerElement.classList.add('expanded');
-                mapContainerElement.style.width = '90vw';
-                mapContainerElement.style.height = '90vh';
-                mapContainerElement.style.left = '5vw';
-                mapContainerElement.style.top = '5vh';
-                mapContainerElement.style.zIndex = '1000';
-            } else {
-                mapContainerElement.classList.remove('expanded');
-                mapContainerElement.style.width = '';
-                mapContainerElement.style.height = '';
-                mapContainerElement.style.left = '';
-                mapContainerElement.style.top = '';
-                mapContainerElement.style.zIndex = '';
-            }
-            
-            // Resize canvas when expanded
-            if (mapCanvasElement) {
-                const width = mapCanvasElement.parentElement.clientWidth;
-                const height = mapCanvasElement.parentElement.clientHeight - 30;
+        // Use the shared toggle utility if available
+        if (window.togglePanelCollapse) {
+            isCollapsed = window.togglePanelCollapse(mapContainerElement, mapToggleElement, function(collapsed) {
+                // Handle expanded state
+                if (!collapsed) {
+                    handleMapExpansion();
+                }
                 
-                mapCanvasElement.width = width;
-                mapCanvasElement.height = height;
+                // Emit map toggle event
+                if (window.EventSystem) {
+                    EventSystem.emit('map.toggled', { collapsed: collapsed });
+                }
+            });
+        } else {
+            // Fallback to original code
+            isCollapsed = !isCollapsed;
+            
+            if (isCollapsed) {
+                mapContainerElement.classList.add('collapsed');
+                if (mapToggleElement) {
+                    mapToggleElement.textContent = '▲';
+                }
+            } else {
+                mapContainerElement.classList.remove('collapsed');
+                if (mapToggleElement) {
+                    mapToggleElement.textContent = '▼';
+                }
+                
+                handleMapExpansion();
+            }
+            
+            // Emit map toggle event
+            if (window.EventSystem) {
+                EventSystem.emit('map.toggled', { collapsed: isCollapsed });
             }
         }
+    }
+    
+    // Helper function to handle map expansion
+    function handleMapExpansion() {
+        // Make the map take up the full screen when expanded
+        if (!mapContainerElement.classList.contains('expanded')) {
+            mapContainerElement.classList.add('expanded');
+            mapContainerElement.style.width = '90vw';
+            mapContainerElement.style.height = '90vh';
+            mapContainerElement.style.left = '5vw';
+            mapContainerElement.style.top = '5vh';
+            mapContainerElement.style.zIndex = '1000';
+        } else {
+            mapContainerElement.classList.remove('expanded');
+            mapContainerElement.style.width = '';
+            mapContainerElement.style.height = '';
+            mapContainerElement.style.left = '';
+            mapContainerElement.style.top = '';
+            mapContainerElement.style.zIndex = '';
+        }
         
-        // Emit map toggle event
-        if (window.EventSystem) {
-            EventSystem.emit('map.toggled', { collapsed: isCollapsed });
+        // Resize canvas when expanded
+        if (mapCanvasElement) {
+            const width = mapCanvasElement.parentElement.clientWidth;
+            const height = mapCanvasElement.parentElement.clientHeight - 30;
+            
+            mapCanvasElement.width = width;
+            mapCanvasElement.height = height;
         }
     }
     

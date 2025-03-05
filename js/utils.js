@@ -170,6 +170,28 @@ const Utils = (function() {
         console.log("> UTILS MODULE READY");
     }
     
+    /**
+     * Utility to toggle panel collapse state
+     * @param {HTMLElement} panelElement - The panel element to toggle
+     * @param {HTMLElement} toggleElement - The toggle button element
+     * @param {Function} callback - Optional callback after toggle is complete
+     */
+    function togglePanelCollapse(panelElement, toggleElement, callback) {
+        if (!panelElement) return;
+        
+        const isCollapsed = panelElement.classList.toggle('collapsed');
+        
+        if (toggleElement) {
+            toggleElement.textContent = isCollapsed ? '▲' : '▼';
+        }
+        
+        if (typeof callback === 'function') {
+            callback(isCollapsed);
+        }
+        
+        return isCollapsed;
+    }
+    
     // Expose public API
     return {
         easing,
@@ -179,6 +201,10 @@ const Utils = (function() {
         hexToRgb,
         rgbToHex,
         isTouchDevice,
-        debug
+        debug,
+        togglePanelCollapse
     };
 })(); 
+
+// Expose the utility in the global scope
+window.togglePanelCollapse = Utils.togglePanelCollapse; 

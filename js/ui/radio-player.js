@@ -1,18 +1,5 @@
 // Radio Player System
 window.RadioPlayerSystem = (function() {
-    // Ensure the radio player is centered
-    function positionRadioPlayer() {
-        const player = document.getElementById('radioPlayer');
-        if (player) {
-            player.style.position = 'absolute';
-            player.style.top = '20px';
-            player.style.left = '50%';
-            player.style.transform = 'translateX(-50%)';
-            player.style.right = 'auto';
-            console.log("[RadioPlayer] Positioned in center");
-        }
-    }
-
     // Private vars
     let initialized = false;
     let currentTrack = null;
@@ -63,9 +50,6 @@ window.RadioPlayerSystem = (function() {
             
             initialized = true;
             console.log("[Radio] Player initialized successfully");
-
-            // Position the radio player in the center
-            positionRadioPlayer();
             
             // Load the initial track
             if (trackList.length > 0) {
@@ -74,19 +58,13 @@ window.RadioPlayerSystem = (function() {
                 }, 1000); // Slight delay to ensure everything is loaded
             }
             
-            // Re-position on window resize
-            window.addEventListener('resize', positionRadioPlayer);
-            
             // Key event listener for 'M' key to toggle radio
             window.addEventListener('keydown', (e) => {
                 if (e.key === 'm' || e.key === 'M') {
                     const radioPlayer = document.getElementById('radioPlayer');
-                    if (radioPlayer) {
-                        radioPlayer.classList.toggle('collapsed');
-                        const radioToggle = document.getElementById('radioToggle');
-                        if (radioToggle) {
-                            radioToggle.textContent = radioPlayer.classList.contains('collapsed') ? '▲' : '▼';
-                        }
+                    const radioToggle = document.getElementById('radioToggle');
+                    if (radioPlayer && window.togglePanelCollapse) {
+                        window.togglePanelCollapse(radioPlayer, radioToggle);
                     }
                 }
             });
@@ -188,8 +166,13 @@ window.RadioPlayerSystem = (function() {
         // Toggle button for expanding/collapsing
         if (radioToggle && player) {
             radioToggle.addEventListener('click', function() {
-                player.classList.toggle('collapsed');
-                radioToggle.textContent = player.classList.contains('collapsed') ? '▲' : '▼';
+                if (window.togglePanelCollapse) {
+                    window.togglePanelCollapse(player, radioToggle);
+                } else {
+                    // Fallback to original code if utility isn't available
+                    player.classList.toggle('collapsed');
+                    radioToggle.textContent = player.classList.contains('collapsed') ? '▲' : '▼';
+                }
             });
         }
     }
