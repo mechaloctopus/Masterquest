@@ -84,16 +84,16 @@ window.FoeSystem = (function() {
             material.emissiveColor = new BABYLON.Color3(1, 0, 0.3);
             foeMesh.material = material;
             
-            // Position in front of starting position
-            let position = { x: 5, y: 1, z: -10 };
+            // Position to the WEST (right) of the NPC
+            let position = { x: -5, y: 1, z: -10 };
             
             // Try to use grid if available
             if (window.CoordinateSystem) {
-                const gridPos = { x: 5, z: -5 };
+                const gridPos = { x: -5, z: -5 };  // Changed x from 5 to -5 to position it to the west
                 position = CoordinateSystem.gridToWorld(gridPos);
-                safeLog(`> FOE POSITIONED AT GRID (5, -5) - WORLD ${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}`);
+                safeLog(`> FOE POSITIONED AT GRID (-5, -5) - WORLD ${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}`);
             } else {
-                safeLog(`> FOE POSITIONED AT (5, 1, -10)`);
+                safeLog(`> FOE POSITIONED AT (-5, 1, -10)`);  // Changed x from 5 to -5
             }
             
             // Set the position
@@ -115,15 +115,15 @@ window.FoeSystem = (function() {
             const nameTagMaterial = new BABYLON.StandardMaterial("foeNameMaterial", scene);
             nameTagMaterial.diffuseTexture = dynamicTexture;
             nameTagMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-            nameTagMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
+            nameTagMaterial.emissiveColor = new BABYLON.Color3(0, 0, 0); // Changed to black
             nameTagMaterial.backFaceCulling = false;
             
             // Make it transparent and visible from both sides
             nameTagMaterial.useAlphaFromDiffuseTexture = true;
             nameTagPlane.material = nameTagMaterial;
             
-            // Draw text on the dynamic texture
-            dynamicTexture.drawText("FOE1", null, null, "30px Orbitron", "#FF00FF", "transparent", true);
+            // Draw text on the dynamic texture with plain black text
+            dynamicTexture.drawText("FOE1", null, null, "30px Arial", "#000000", "transparent", true);
             
             return foeMesh;
         } catch (error) {

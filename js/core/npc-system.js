@@ -145,15 +145,15 @@ window.NPCSystem = (function() {
             const nameTagMaterial = new BABYLON.StandardMaterial("npcNameMaterial", scene);
             nameTagMaterial.diffuseTexture = dynamicTexture;
             nameTagMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-            nameTagMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
+            nameTagMaterial.emissiveColor = new BABYLON.Color3(0, 0, 0); // Change to black
             nameTagMaterial.backFaceCulling = false;
             
             // Make it transparent and visible from both sides
             nameTagMaterial.useAlphaFromDiffuseTexture = true;
             nameTagPlane.material = nameTagMaterial;
             
-            // Draw text on the dynamic texture
-            dynamicTexture.drawText("NPC1", null, null, "30px Orbitron", "#00FFFF", "transparent", true);
+            // Draw text on the dynamic texture with plain black text
+            dynamicTexture.drawText("NPC1", null, null, "30px Arial", "#000000", "transparent", true);
             
             return npcMesh;
         } catch (error) {
