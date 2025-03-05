@@ -123,150 +123,42 @@ window.NPCSystem = (function() {
                 position = CoordinateSystem.gridToWorld(gridPos);
                 safeLog(`> NPC POSITIONED AT GRID (2, -5) - WORLD ${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}`);
             } else {
-                safeLog(`> NPC POSITIONED AT (0, 2, -10)`);
-                position.y = 1;
+                safeLog(`> NPC POSITIONED AT (0, 1, -10)`);
             }
             
             // Set the position
             npcMesh.position = new BABYLON.Vector3(position.x, position.y, position.z);
             
-            // Create a plane for the name tag
-            const nameTag = BABYLON.MeshBuilder.CreatePlane("npcNameTag", { width: 1, height: 0.3 }, scene);
+            // Create a simple name tag using a dynamic texture
+            const nameTagPlane = BABYLON.MeshBuilder.CreatePlane("npcNameTag", { width: 2, height: 0.5 }, scene);
+            nameTagPlane.position = new BABYLON.Vector3(0, 1.5, 0);
+            nameTagPlane.parent = npcMesh;
+            nameTagPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
             
-            // Position the name tag above the NPC
-            nameTag.position = new BABYLON.Vector3(0, 1.5, 0);
-            nameTag.parent = npcMesh;
+            // Create dynamic texture for the name
+            const textureWidth = 512;
+            const textureHeight = 128;
+            const dynamicTexture = new BABYLON.DynamicTexture("npcNameTexture", {width: textureWidth, height: textureHeight}, scene, true);
+            dynamicTexture.hasAlpha = true;
             
-            // Make it always face the camera
-            nameTag.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
-            
-            // Create an advanced dynamic texture for the name tag
-            const nameTagTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(nameTag);
-            
-            // Create a text block for the name with synthwave style
-            const textBlock = new BABYLON.GUI.TextBlock();
-            textBlock.text = "NPC1";
-            textBlock.color = "#00FFFF"; // Cyan
-            textBlock.fontSize = 24;
-            textBlock.fontFamily = "Orbitron";
-            textBlock.outlineWidth = 1;
-            textBlock.outlineColor = "#FF00FF"; // Magenta outline for contrast
-            
-            // Add the text to the texture
-            nameTagTexture.addControl(textBlock);
-            
-            // Make the plane's material transparent
+            // Create material with the dynamic texture
             const nameTagMaterial = new BABYLON.StandardMaterial("npcNameMaterial", scene);
-            nameTagMaterial.alpha = 0; // Fully transparent
-            nameTagMaterial.disableLighting = true;
-            nameTag.material = nameTagMaterial;
+            nameTagMaterial.diffuseTexture = dynamicTexture;
+            nameTagMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+            nameTagMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
+            nameTagMaterial.backFaceCulling = false;
             
-            console.log("NPC created at position:", npcMesh.position);
+            // Make it transparent and visible from both sides
+            nameTagMaterial.useAlphaFromDiffuseTexture = true;
+            nameTagPlane.material = nameTagMaterial;
             
-            // Store NPC in the array
-            const npc = {
-                id: "visible_npc",
-                mesh: npcMesh,
-                nameTag: nameTag,
-                position: npcMesh.position,
-                gridPosition: window.CoordinateSystem ? CoordinateSystem.worldToGrid(npcMesh.position) : null,
-                isNearby: false,
-                isInteracting: false,
-                template: {
-                    HOVER_HEIGHT: 0.5,
-                    HOVER_SPEED: 0.3
-                },
-                hoverParams: {
-                    originalY: npcMesh.position.y,
-                    phase: Math.random() * Math.PI * 2 // Random starting phase
-                },
-                dialogueData: {
-                    greetings: [
-                        "I am an NPC."
-                    ],
-                    conversations: [
-                        {
-                            id: "intro",
-                            text: "I am an NPC.",
-                            responses: [
-                                {
-                                    id: "close",
-                                    text: "Close"
-                                }
-                            ]
-                        },
-                        {
-                            id: "close",
-                            text: "Goodbye!",
-                            responses: []
-                        }
-                    ]
-                }
-            };
+            // Draw text on the dynamic texture
+            dynamicTexture.drawText("NPC1", null, null, "30px Orbitron", "#00FFFF", "transparent", true);
             
-            npcs.push(npc);
-            
-            // Setup hover animation
-            setupHoverAnimation(npc);
-            
-            // Make the NPC mesh interactive/clickable
-            if (npc && npc.mesh) {
-                npc.mesh.isPickable = true;
-                
-                // Create action manager if it doesn't exist
-                if (!npc.mesh.actionManager) {
-                    npc.mesh.actionManager = new BABYLON.ActionManager(scene);
-                }
-                
-                // Add click action with direct writing to log
-                npc.mesh.actionManager.registerAction(
-                    new BABYLON.ExecuteCodeAction(
-                        BABYLON.ActionManager.OnPickTrigger,
-                        function() {
-                            // Log message globally
-                            const message = "> NPC CLICKED: I am an NPC";
-                            
-                            // Browser console
-                            console.log(message);
-                            
-                            // Try multiple approaches for log
-                            // 1. Direct add to Logger if available
-                            if (window.Logger && window.Logger.log) {
-                                window.Logger.log(message);
-                            }
-                            
-                            // 2. Direct DOM manipulation with typewriter effect
-                            const logElement = document.getElementById('logContent');
-                            if (logElement) {
-                                const entry = document.createElement('div');
-                                entry.className = 'log-message';
-                                logElement.appendChild(entry);
-                                
-                                // Type the text with animation
-                                typeText(entry, message, 0, 20);
-                                
-                                // Ensure the log scrolls to the bottom
-                                logElement.scrollTop = logElement.scrollHeight;
-                            }
-                            
-                            // 4. Update the global log
-                            document.querySelectorAll('#log, #logContent').forEach(el => {
-                                el.style.display = 'block';
-                                el.classList.remove('collapsed');
-                            });
-                            
-                            if (window.EventSystem) {
-                                EventSystem.emit('npc.interact', { npcId: npc.id });
-                            }
-                        }
-                    )
-                );
-            }
-            
-            return npc;
-        } catch (e) {
-            safeLog(`Failed to create visible NPC: ${e.message}`);
-            console.error("Error creating NPC:", e);
+            return npcMesh;
+        } catch (error) {
+            safeLog(`Error creating visible NPC: ${error.message}`, true);
+            return null;
         }
     }
     
