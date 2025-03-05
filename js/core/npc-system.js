@@ -130,52 +130,36 @@ window.NPCSystem = (function() {
             // Set the position
             npcMesh.position = new BABYLON.Vector3(position.x, position.y, position.z);
             
-            // Create a plane for the name tag with appropriate size
-            const nameTag = BABYLON.MeshBuilder.CreatePlane("npcNameTag", {width: 2, height: 0.5}, scene);
+            // Create a plane for the name tag
+            const nameTag = BABYLON.MeshBuilder.CreatePlane("npcNameTag", { width: 1, height: 0.3 }, scene);
             
-            // Create a dynamic texture with higher resolution for clear text
-            const textureResolution = {width: 512, height: 128};
-            const dynamicTexture = new BABYLON.DynamicTexture("npcNameTexture", textureResolution, scene, true);
-            dynamicTexture.hasAlpha = true;
-            
-            // Create a material for the name tag
-            const nameTagMaterial = new BABYLON.StandardMaterial("npcNameMaterial", scene);
-            nameTagMaterial.diffuseTexture = dynamicTexture;
-            nameTagMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-            nameTagMaterial.emissiveColor = new BABYLON.Color3(0, 1, 1); // Cyan glow
-            nameTagMaterial.backFaceCulling = false;
-            
-            // Make the material unaffected by lighting to ensure visibility
-            nameTagMaterial.disableLighting = true;
-            
-            // Apply material to the name tag
-            nameTag.material = nameTagMaterial;
-            
-            // Clear the texture with a semi-transparent background
-            const textureContext = dynamicTexture.getContext();
-            textureContext.clearRect(0, 0, textureResolution.width, textureResolution.height);
-            
-            // Create a gradient background for better contrast
-            const gradient = textureContext.createLinearGradient(0, 0, 0, textureResolution.height);
-            gradient.addColorStop(0, "rgba(0, 0, 0, 0.8)");
-            gradient.addColorStop(1, "rgba(0, 15, 30, 0.8)");
-            textureContext.fillStyle = gradient;
-            textureContext.fillRect(0, 0, textureResolution.width, textureResolution.height);
-            
-            // Add a subtle border
-            textureContext.strokeStyle = "#00FFFF";
-            textureContext.lineWidth = 4;
-            textureContext.strokeRect(4, 4, textureResolution.width-8, textureResolution.height-8);
-            
-            // Draw text with improved settings - bright cyan for NPC
-            dynamicTexture.drawText("NPC1", null, 80, "bold 72px Arial", "#00FFFF", null, true, true);
-            
-            // Position the name tag above the NPC and make it larger
+            // Position the name tag above the NPC
             nameTag.position = new BABYLON.Vector3(0, 1.5, 0);
             nameTag.parent = npcMesh;
             
             // Make it always face the camera
             nameTag.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+            
+            // Create an advanced dynamic texture for the name tag
+            const nameTagTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(nameTag);
+            
+            // Create a text block for the name with synthwave style
+            const textBlock = new BABYLON.GUI.TextBlock();
+            textBlock.text = "NPC1";
+            textBlock.color = "#00FFFF"; // Cyan
+            textBlock.fontSize = 24;
+            textBlock.fontFamily = "Orbitron";
+            textBlock.outlineWidth = 1;
+            textBlock.outlineColor = "#FF00FF"; // Magenta outline for contrast
+            
+            // Add the text to the texture
+            nameTagTexture.addControl(textBlock);
+            
+            // Make the plane's material transparent
+            const nameTagMaterial = new BABYLON.StandardMaterial("npcNameMaterial", scene);
+            nameTagMaterial.alpha = 0; // Fully transparent
+            nameTagMaterial.disableLighting = true;
+            nameTag.material = nameTagMaterial;
             
             console.log("NPC created at position:", npcMesh.position);
             

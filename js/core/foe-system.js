@@ -72,82 +72,65 @@ window.FoeSystem = (function() {
     // Create a single highly visible foe
     function createVisibleFoe() {
         try {
-            // Create a simple red sphere that will definitely be visible
+            // Create a red sphere for the foe
             const foeMesh = BABYLON.MeshBuilder.CreateSphere("visible_foe", {
-                diameter: 1.0,
+                diameter: 1.2,
                 segments: 16
             }, scene);
             
-            // Create bright red material
+            // Bright red material
             const material = new BABYLON.StandardMaterial("foe_material", scene);
-            material.diffuseColor = BABYLON.Color3.Red();
-            material.emissiveColor = BABYLON.Color3.Red();
-            material.specularColor = BABYLON.Color3.White();
+            material.diffuseColor = new BABYLON.Color3(1, 0, 0.3);
+            material.emissiveColor = new BABYLON.Color3(1, 0, 0.3);
             foeMesh.material = material;
             
-            // Position using grid coordinates if available, otherwise use fixed position
-            let position;
+            // Position in front of starting position
+            let position = { x: 5, y: 1, z: -10 };
+            
+            // Try to use grid if available
             if (window.CoordinateSystem) {
-                // Place at grid position (-2, -5) - 2 units left, 5 units forward
-                position = CoordinateSystem.gridToWorld({x: -2, z: -5});
-                safeLog(`> FOE POSITIONED AT GRID (-2, -5) - WORLD ${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}`);
+                const gridPos = { x: 5, z: -5 };
+                position = CoordinateSystem.gridToWorld(gridPos);
+                safeLog(`> FOE POSITIONED AT GRID (5, -5) - WORLD ${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}`);
             } else {
-                position = new BABYLON.Vector3(3, 2, -10);
-                safeLog(`> FOE POSITIONED AT (3, 2, -10)`);
+                safeLog(`> FOE POSITIONED AT (5, 1, -10)`);
             }
             
-            // Ensure Y position is at eye level
-            position.y = 2;
+            // Set the position
             foeMesh.position = new BABYLON.Vector3(position.x, position.y, position.z);
             
-            // Create a plane for the name tag with appropriate size
-            const nameTag = BABYLON.MeshBuilder.CreatePlane("foeNameTag", {width: 2, height: 0.5}, scene);
+            // Create a plane for the name tag
+            const nameTag = BABYLON.MeshBuilder.CreatePlane("foeNameTag", { width: 1, height: 0.3 }, scene);
             
-            // Create a dynamic texture with higher resolution for clear text
-            const textureResolution = {width: 512, height: 128};
-            const dynamicTexture = new BABYLON.DynamicTexture("foeNameTexture", textureResolution, scene, true);
-            dynamicTexture.hasAlpha = true;
-            
-            // Create a material for the name tag
-            const nameTagMaterial = new BABYLON.StandardMaterial("foeNameMaterial", scene);
-            nameTagMaterial.diffuseTexture = dynamicTexture;
-            nameTagMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-            nameTagMaterial.emissiveColor = new BABYLON.Color3(1, 0, 1); // Magenta glow
-            nameTagMaterial.backFaceCulling = false;
-            
-            // Make the material unaffected by lighting to ensure visibility
-            nameTagMaterial.disableLighting = true;
-            
-            // Apply material to the name tag
-            nameTag.material = nameTagMaterial;
-            
-            // Clear the texture with a semi-transparent background
-            const textureContext = dynamicTexture.getContext();
-            textureContext.clearRect(0, 0, textureResolution.width, textureResolution.height);
-            
-            // Create a gradient background for better contrast
-            const gradient = textureContext.createLinearGradient(0, 0, 0, textureResolution.height);
-            gradient.addColorStop(0, "rgba(0, 0, 0, 0.8)");
-            gradient.addColorStop(1, "rgba(20, 0, 20, 0.8)");
-            textureContext.fillStyle = gradient;
-            textureContext.fillRect(0, 0, textureResolution.width, textureResolution.height);
-            
-            // Add a subtle border
-            textureContext.strokeStyle = "#FF00FF";
-            textureContext.lineWidth = 4;
-            textureContext.strokeRect(4, 4, textureResolution.width-8, textureResolution.height-8);
-            
-            // Draw text with improved settings - neon pink for FOE
-            dynamicTexture.drawText("FOE1", null, 80, "bold 72px Arial", "#FF00FF", null, true, true);
-            
-            // Position the name tag above the FOE and make it larger
+            // Position the name tag above the foe
             nameTag.position = new BABYLON.Vector3(0, 1.5, 0);
             nameTag.parent = foeMesh;
             
             // Make it always face the camera
             nameTag.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
             
-            console.log("Foe created at position:", foeMesh.position);
+            // Create an advanced dynamic texture for the name tag
+            const nameTagTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(nameTag);
+            
+            // Create a text block for the name with synthwave style
+            const textBlock = new BABYLON.GUI.TextBlock();
+            textBlock.text = "FOE1";
+            textBlock.color = "#FF00FF"; // Magenta
+            textBlock.fontSize = 24;
+            textBlock.fontFamily = "Orbitron";
+            textBlock.outlineWidth = 1;
+            textBlock.outlineColor = "#FF0000"; // Red outline for contrast
+            
+            // Add the text to the texture
+            nameTagTexture.addControl(textBlock);
+            
+            // Make the plane's material transparent
+            const nameTagMaterial = new BABYLON.StandardMaterial("foeNameMaterial", scene);
+            nameTagMaterial.alpha = 0; // Fully transparent
+            nameTagMaterial.disableLighting = true;
+            nameTag.material = nameTagMaterial;
+            
+            console.log("FOE created at position:", foeMesh.position);
             
             // Store foe in the array
             const foe = {
