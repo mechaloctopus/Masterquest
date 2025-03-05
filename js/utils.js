@@ -375,6 +375,160 @@ const Utils = (function() {
         }
     }
     
+    /**
+     * Safely log messages to console and Logger if available
+     * @param {string} message - The message to log
+     * @param {boolean} isError - Whether this is an error message
+     * @param {Object} options - Additional options
+     * @param {string} options.prefix - Optional prefix for the message
+     * @param {string} options.system - Optional system name for the log
+     */
+    function safeLog(message, isError = false, options = {}) {
+        // Apply prefix if provided
+        let formattedMessage = message;
+        if (options.prefix && !message.startsWith(options.prefix)) {
+            formattedMessage = `${options.prefix} ${message}`;
+        }
+        
+        // Add system name if provided
+        if (options.system) {
+            const systemTag = options.system.toUpperCase();
+            formattedMessage = `[${systemTag}] ${formattedMessage}`;
+        }
+        
+        // Always log to console
+        if (isError) {
+            console.error(formattedMessage);
+        } else {
+            console.log(formattedMessage);
+        }
+        
+        // Also log to Logger if available
+        if (window.Logger) {
+            if (isError) {
+                Logger.error(formattedMessage);
+            } else {
+                Logger.log(formattedMessage);
+            }
+        }
+    }
+    
+    /**
+     * Check if player is in proximity to an entity
+     * @param {Object} playerPosition - The player's position {x, y, z}
+     * @param {Object} entityPosition - The entity's position {x, y, z}
+     * @param {number} threshold - The distance threshold for proximity
+     * @param {boolean} ignoreY - Whether to ignore Y axis in distance calculation
+     * @returns {boolean} - Whether entity is within proximity threshold
+     */
+    function isInProximity(playerPosition, entityPosition, threshold, ignoreY = true) {
+        if (!playerPosition || !entityPosition) return false;
+        
+        // Convert to BABYLON Vector3 if they aren't already
+        const playerPos = playerPosition.x !== undefined ? 
+            new BABYLON.Vector3(
+                playerPosition.x,
+                ignoreY ? 0 : playerPosition.y, 
+                playerPosition.z
+            ) : playerPosition;
+        
+        const entityPos = entityPosition.x !== undefined ? 
+            new BABYLON.Vector3(
+                entityPosition.x,
+                ignoreY ? 0 : entityPosition.y,
+                entityPosition.z
+            ) : entityPosition;
+        
+        // Calculate distance
+        const distance = BABYLON.Vector3.Distance(playerPos, entityPos);
+        
+        // Return whether within threshold
+        return distance < threshold;
+    }
+    
+    /**
+     * Setup a highlight effect for a 3D object
+     * @param {Object} object - The object to highlight (must have mesh property)
+     * @param {boolean} highlight - Whether to highlight or remove highlight
+     * @param {Object} options - Highlight options
+     * @param {BABYLON.Color3} options.highlightColor - The color to use for highlighting
+     * @param {BABYLON.Vector3} options.highlightScale - The scale to use for highlighting
+     * @param {BABYLON.Vector3} options.normalScale - The normal scale to restore
+     * @param {Object} options.scene - The Babylon scene
+     * @param {boolean} options.addPulse - Whether to add a pulse animation
+     */
+    function setupHighlight(object, highlight, options = {}) {
+        if (!object || !object.mesh || !object.mesh.material) return;
+        
+        const highlightColor = options.highlightColor || new BABYLON.Color3(0, 1, 1); // Cyan default
+        const highlightScale = options.highlightScale || new BABYLON.Vector3(1.3, 1.3, 1.3);
+        const normalScale = options.normalScale || new BABYLON.Vector3(1, 1, 1);
+        const scene = options.scene;
+        const addPulse = options.addPulse || false;
+        
+        if (highlight) {
+            // Store original emission color
+            if (!object.originalEmissive) {
+                object.originalEmissive = object.mesh.material.emissiveColor ? 
+                    object.mesh.material.emissiveColor.clone() : 
+                    new BABYLON.Color3(0, 0, 0);
+            }
+            
+            // Increase emission for highlight
+            object.mesh.material.emissiveColor = highlightColor;
+            
+            // Add glow layer if requested and not exists
+            if (scene && options.addGlow && !scene.effectLayers) {
+                const glowLayer = new BABYLON.GlowLayer("highlightGlowLayer", scene);
+                glowLayer.intensity = 1.0;
+            }
+            
+            // Scale up slightly
+            object.mesh.scaling = highlightScale;
+            
+            // Create a pulsing animation if requested
+            if (addPulse && scene && !object.pulseAnimation) {
+                const pulseAnimation = new BABYLON.Animation(
+                    "pulseAnimation",
+                    "scaling",
+                    30,
+                    BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+                    BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE
+                );
+                
+                const pulseMax = new BABYLON.Vector3(
+                    highlightScale.x * 1.15,
+                    highlightScale.y * 1.15,
+                    highlightScale.z * 1.15
+                );
+                
+                const keys = [
+                    { frame: 0, value: highlightScale.clone() },
+                    { frame: 15, value: pulseMax },
+                    { frame: 30, value: highlightScale.clone() }
+                ];
+                
+                pulseAnimation.setKeys(keys);
+                object.mesh.animations = [pulseAnimation];
+                object.pulseAnimation = scene.beginAnimation(object.mesh, 0, 30, true);
+            }
+        } else {
+            // Restore original emission
+            if (object.originalEmissive) {
+                object.mesh.material.emissiveColor = object.originalEmissive;
+            }
+            
+            // Stop pulse animation if it exists
+            if (object.pulseAnimation) {
+                object.pulseAnimation.stop();
+                object.pulseAnimation = null;
+            }
+            
+            // Restore original scale
+            object.mesh.scaling = normalScale;
+        }
+    }
+    
     // Expose public API
     return {
         easing,
@@ -389,7 +543,10 @@ const Utils = (function() {
         typeText,
         forceScrollToBottom,
         setupHoverAnimation,
-        initializeComponent
+        initializeComponent,
+        safeLog,
+        isInProximity,
+        setupHighlight
     };
 })();
 
@@ -399,6 +556,7 @@ window.typeText = Utils.typeText;
 window.forceScrollToBottom = Utils.forceScrollToBottom;
 window.setupHoverAnimation = Utils.setupHoverAnimation;
 window.initializeComponent = Utils.initializeComponent;
+window.safeLog = Utils.safeLog;
 
 // Make utilities available globally
 window.Utils = Utils; 

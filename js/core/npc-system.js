@@ -26,43 +26,71 @@ window.NPCSystem = (function() {
     
     // Helper function to safely log messages
     function safeLog(message, isError = false) {
-        console.log(message);
-        if (window.Logger) {
-            if (isError) {
-                Logger.error(message);
-            } else {
-                Logger.log(message);
+        if (window.Utils && window.Utils.safeLog) {
+            Utils.safeLog(message, isError, { system: 'NPC' });
+        } else {
+            console.log(message);
+            if (window.Logger) {
+                if (isError) {
+                    Logger.error(message);
+                } else {
+                    Logger.log(message);
+                }
             }
         }
     }
     
     // Initialize the NPC system
     function init(sceneInstance) {
-        if (initialized) {
-            safeLog("NPC System already initialized", true);
-            return true;
-        }
-        
-        try {
-            console.log("NPC System init called with scene:", sceneInstance);
+        if (window.Utils && window.Utils.initializeComponent) {
+            return Utils.initializeComponent(
+                NPCSystem, 
+                "NPC SYSTEM", 
+                () => {
+                    console.log("NPC System init called with scene:", sceneInstance);
+                    
+                    scene = sceneInstance;
+                    
+                    // Create talk button
+                    createTalkButton();
+                    
+                    // Setup event listeners
+                    setupEvents();
+                    
+                    return true;
+                },
+                {
+                    checkGlobalLogger: true
+                }
+            );
+        } else {
+            // Fallback to original implementation
+            if (initialized) {
+                safeLog("NPC System already initialized", true);
+                return true;
+            }
             
-            scene = sceneInstance;
-            
-            // Create talk button
-            createTalkButton();
-            
-            // Setup event listeners
-            setupEvents();
-            
-            initialized = true;
-            console.log("NPC System initialized successfully");
-            safeLog("> NPC SYSTEM INITIALIZED");
-            
-            return true;
-        } catch (e) {
-            console.error("NPC System init error:", e);
-            safeLog(`NPC System initialization failed: ${e.message}`, true);
-            return false;
+            try {
+                console.log("NPC System init called with scene:", sceneInstance);
+                
+                scene = sceneInstance;
+                
+                // Create talk button
+                createTalkButton();
+                
+                // Setup event listeners
+                setupEvents();
+                
+                initialized = true;
+                console.log("NPC System initialized successfully");
+                safeLog("> NPC SYSTEM INITIALIZED");
+                
+                return true;
+            } catch (e) {
+                console.error("NPC System init error:", e);
+                safeLog(`NPC System initialization failed: ${e.message}`, true);
+                return false;
+            }
         }
     }
     
@@ -375,12 +403,6 @@ window.NPCSystem = (function() {
     function checkNPCProximity(playerData) {
         if (!playerData || !playerData.position) return;
         
-        const playerPos = new BABYLON.Vector3(
-            playerData.position.x,
-            0, // Use ground Y for distance check
-            playerData.position.z
-        );
-        
         // Reset nearby NPC if we're too far from all NPCs
         let foundNearbyNPC = false;
         
@@ -388,15 +410,29 @@ window.NPCSystem = (function() {
         npcs.forEach(npc => {
             if (!npc.mesh) return;
             
-            // Calculate distance
-            const npcPos = npc.mesh.position;
-            const distance = BABYLON.Vector3.Distance(
-                playerPos,
-                new BABYLON.Vector3(npcPos.x, 0, npcPos.z) // Ignore Y for distance
-            );
+            // Check proximity using shared utility if available
+            let isNearby = false;
+            if (window.Utils && window.Utils.isInProximity) {
+                isNearby = Utils.isInProximity(playerData.position, npc.mesh.position, 3);
+            } else {
+                // Calculate distance
+                const playerPos = new BABYLON.Vector3(
+                    playerData.position.x,
+                    0, // Use ground Y for distance check
+                    playerData.position.z
+                );
+                
+                const npcPos = npc.mesh.position;
+                const distance = BABYLON.Vector3.Distance(
+                    playerPos,
+                    new BABYLON.Vector3(npcPos.x, 0, npcPos.z) // Ignore Y for distance
+                );
+                
+                isNearby = distance < 3;
+            }
             
             // Close enough to interact (3 units)
-            if (distance < 3) {
+            if (isNearby) {
                 foundNearbyNPC = true;
                 
                 if (!npc.isNearby) {
@@ -413,7 +449,7 @@ window.NPCSystem = (function() {
                     if (window.EventSystem) {
                         EventSystem.emit('npc.playerNearby', {
                             npcId: npc.id,
-                            distance: distance
+                            distance: 3 // Just use threshold value
                         });
                     }
                     
@@ -482,62 +518,75 @@ window.NPCSystem = (function() {
     
     // Highlight or unhighlight an NPC
     function highlightNPC(npc, highlight) {
-        if (!npc || !npc.mesh || !npc.mesh.material) return;
-        
-        if (highlight) {
-            // Store original emission color
-            if (!npc.originalEmissive) {
-                npc.originalEmissive = npc.mesh.material.emissiveColor ? 
-                    npc.mesh.material.emissiveColor.clone() : 
-                    new BABYLON.Color3(0, 0, 0);
-            }
-            
-            // Increase emission for highlight
-            npc.mesh.material.emissiveColor = new BABYLON.Color3(0, 1, 1); // Cyan glow
-            
-            // Add glow layer if not exists
-            if (!scene.effectLayers || !scene._glowLayer) {
-                const glowLayer = new BABYLON.GlowLayer("npcGlowLayer", scene);
-                glowLayer.intensity = 1.0;
-            }
-            
-            // Scale up slightly
-            npc.mesh.scaling = new BABYLON.Vector3(1.3, 1.3, 1.3);
-            
-            // Create a pulsing animation if it doesn't exist
-            if (!npc.pulseAnimation) {
-                const pulseAnimation = new BABYLON.Animation(
-                    "pulseAnimation",
-                    "scaling",
-                    30,
-                    BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
-                    BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE
-                );
-                
-                const keys = [
-                    { frame: 0, value: new BABYLON.Vector3(1.3, 1.3, 1.3) },
-                    { frame: 15, value: new BABYLON.Vector3(1.5, 1.5, 1.5) },
-                    { frame: 30, value: new BABYLON.Vector3(1.3, 1.3, 1.3) }
-                ];
-                
-                pulseAnimation.setKeys(keys);
-                npc.mesh.animations = [pulseAnimation];
-                npc.pulseAnimation = scene.beginAnimation(npc.mesh, 0, 30, true);
-            }
+        if (window.Utils && window.Utils.setupHighlight) {
+            // Use shared highlight utility
+            Utils.setupHighlight(npc, highlight, {
+                highlightColor: new BABYLON.Color3(0, 1, 1), // Cyan glow
+                highlightScale: new BABYLON.Vector3(1.3, 1.3, 1.3),
+                normalScale: new BABYLON.Vector3(1, 1, 1),
+                scene: scene,
+                addGlow: true,
+                addPulse: true
+            });
         } else {
-            // Restore original emission
-            if (npc.originalEmissive) {
-                npc.mesh.material.emissiveColor = npc.originalEmissive;
-            }
+            // Fallback to original implementation
+            if (!npc || !npc.mesh || !npc.mesh.material) return;
             
-            // Stop pulse animation if it exists
-            if (npc.pulseAnimation) {
-                npc.pulseAnimation.stop();
-                npc.pulseAnimation = null;
+            if (highlight) {
+                // Store original emission color
+                if (!npc.originalEmissive) {
+                    npc.originalEmissive = npc.mesh.material.emissiveColor ? 
+                        npc.mesh.material.emissiveColor.clone() : 
+                        new BABYLON.Color3(0, 0, 0);
+                }
+                
+                // Increase emission for highlight
+                npc.mesh.material.emissiveColor = new BABYLON.Color3(0, 1, 1); // Cyan glow
+                
+                // Add glow layer if not exists
+                if (!scene.effectLayers || !scene._glowLayer) {
+                    const glowLayer = new BABYLON.GlowLayer("npcGlowLayer", scene);
+                    glowLayer.intensity = 1.0;
+                }
+                
+                // Scale up slightly
+                npc.mesh.scaling = new BABYLON.Vector3(1.3, 1.3, 1.3);
+                
+                // Create a pulsing animation if it doesn't exist
+                if (!npc.pulseAnimation) {
+                    const pulseAnimation = new BABYLON.Animation(
+                        "pulseAnimation",
+                        "scaling",
+                        30,
+                        BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+                        BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE
+                    );
+                    
+                    const keys = [
+                        { frame: 0, value: new BABYLON.Vector3(1.3, 1.3, 1.3) },
+                        { frame: 15, value: new BABYLON.Vector3(1.5, 1.5, 1.5) },
+                        { frame: 30, value: new BABYLON.Vector3(1.3, 1.3, 1.3) }
+                    ];
+                    
+                    pulseAnimation.setKeys(keys);
+                    npc.mesh.animations = [pulseAnimation];
+                    npc.pulseAnimation = scene.beginAnimation(npc.mesh, 0, 30, true);
+                }
+            } else {
+                // Restore original emission
+                if (npc.originalEmissive) {
+                    npc.mesh.material.emissiveColor = npc.originalEmissive;
+                }
+                
+                // Stop pulse animation if it exists
+                if (npc.pulseAnimation) {
+                    npc.pulseAnimation.stop();
+                    npc.pulseAnimation = null;
+                }
+                
+                // Restore original scale
+                npc.mesh.scaling = new BABYLON.Vector3(1, 1, 1);
             }
-            
-            // Restore original scale
-            npc.mesh.scaling = new BABYLON.Vector3(1, 1, 1);
         }
     }
     

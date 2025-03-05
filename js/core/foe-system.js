@@ -7,49 +7,82 @@ window.FoeSystem = (function() {
     
     // Helper function to safely log messages
     function safeLog(message, isError = false) {
-        console.log(message);
-        if (window.Logger) {
-            if (isError) {
-                Logger.error(message);
-            } else {
-                Logger.log(message);
+        if (window.Utils && window.Utils.safeLog) {
+            Utils.safeLog(message, isError, { system: 'FOE' });
+        } else {
+            console.log(message);
+            if (window.Logger) {
+                if (isError) {
+                    Logger.error(message);
+                } else {
+                    Logger.log(message);
+                }
             }
         }
     }
     
     // Initialize the Foe system
     function init(sceneInstance) {
-        if (initialized) {
-            safeLog("Foe System already initialized", true);
-            return;
-        }
-        
-        try {
-            console.log("Foe System init called with scene:", sceneInstance);
-            scene = sceneInstance;
-            initialized = true;
-            
-            // Log successful initialization
-            console.log("Foe System initialized successfully");
-            safeLog("> FOE SYSTEM INITIALIZED");
-            
-            // Initialize event handlers
-            if (window.EventSystem) {
-                // Listen for player proximity
-                EventSystem.on('player.position', checkFoeProximity);
-                
-                // Listen for realm changes
-                EventSystem.on('realm.change', handleRealmChange);
-                
-                // Listen for quiz answers
-                EventSystem.on('quiz.answer', handleQuizAnswer);
+        if (window.Utils && window.Utils.initializeComponent) {
+            return Utils.initializeComponent(
+                FoeSystem, 
+                "FOE SYSTEM", 
+                () => {
+                    console.log("Foe System init called with scene:", sceneInstance);
+                    scene = sceneInstance;
+                    
+                    // Initialize event handlers
+                    if (window.EventSystem) {
+                        // Listen for player proximity
+                        EventSystem.on('player.position', checkFoeProximity);
+                        
+                        // Listen for realm changes
+                        EventSystem.on('realm.change', handleRealmChange);
+                        
+                        // Listen for quiz answers
+                        EventSystem.on('quiz.answer', handleQuizAnswer);
+                    }
+                    
+                    return true;
+                },
+                {
+                    checkGlobalLogger: true
+                }
+            );
+        } else {
+            // Fallback to original implementation
+            if (initialized) {
+                safeLog("Foe System already initialized", true);
+                return;
             }
             
-            return true;
-        } catch (e) {
-            console.error("Foe System init error:", e);
-            safeLog(`Foe System initialization failed: ${e.message}`, true);
-            return false;
+            try {
+                console.log("Foe System init called with scene:", sceneInstance);
+                scene = sceneInstance;
+                initialized = true;
+                
+                // Log successful initialization
+                console.log("Foe System initialized successfully");
+                safeLog("> FOE SYSTEM INITIALIZED");
+                
+                // Initialize event handlers
+                if (window.EventSystem) {
+                    // Listen for player proximity
+                    EventSystem.on('player.position', checkFoeProximity);
+                    
+                    // Listen for realm changes
+                    EventSystem.on('realm.change', handleRealmChange);
+                    
+                    // Listen for quiz answers
+                    EventSystem.on('quiz.answer', handleQuizAnswer);
+                }
+                
+                return true;
+            } catch (e) {
+                console.error("Foe System init error:", e);
+                safeLog(`Foe System initialization failed: ${e.message}`, true);
+                return false;
+            }
         }
     }
     
@@ -432,12 +465,6 @@ window.FoeSystem = (function() {
     function checkFoeProximity(playerData) {
         if (!playerData || !playerData.position) return;
         
-        const playerPos = new BABYLON.Vector3(
-            playerData.position.x,
-            0, // Use ground Y for distance check
-            playerData.position.z
-        );
-        
         // Check each foe
         foes.forEach(foe => {
             if (!foe.mesh) return;
@@ -445,15 +472,32 @@ window.FoeSystem = (function() {
             // Skip defeated foes
             if (foe.state === 'defeated') return;
             
-            // Calculate distance
-            const foePos = foe.mesh.position;
-            const distance = BABYLON.Vector3.Distance(
-                playerPos,
-                new BABYLON.Vector3(foePos.x, 0, foePos.z) // Ignore Y for distance
-            );
+            let distanceClose = false;
+            let distanceVeryClose = false;
+            
+            if (window.Utils && window.Utils.isInProximity) {
+                distanceClose = Utils.isInProximity(playerData.position, foe.mesh.position, 5);
+                distanceVeryClose = Utils.isInProximity(playerData.position, foe.mesh.position, 3);
+            } else {
+                // Calculate distance
+                const playerPos = new BABYLON.Vector3(
+                    playerData.position.x,
+                    0, // Use ground Y for distance check
+                    playerData.position.z
+                );
+                
+                const foePos = foe.mesh.position;
+                const distance = BABYLON.Vector3.Distance(
+                    playerPos,
+                    new BABYLON.Vector3(foePos.x, 0, foePos.z) // Ignore Y for distance
+                );
+                
+                distanceClose = distance < 5;
+                distanceVeryClose = distance < 3;
+            }
             
             // Close enough to interact (5 units)
-            if (distance < 5) {
+            if (distanceClose) {
                 if (foe.state === 'idle') {
                     // Foe becomes aware of player
                     foe.state = 'engaging';
@@ -465,13 +509,13 @@ window.FoeSystem = (function() {
                     if (window.EventSystem) {
                         EventSystem.emit('foe.engaging', {
                             foeId: foe.id,
-                            distance: distance
+                            distance: 5 // Just use threshold value
                         });
                     }
                 }
                 
                 // Very close - initiate battle (3 units)
-                if (distance < 3 && foe.state === 'engaging' && !foe.isInteracting) {
+                if (distanceVeryClose && foe.state === 'engaging' && !foe.isInteracting) {
                     // Start battle
                     startBattle(foe.id);
                 }
@@ -498,29 +542,41 @@ window.FoeSystem = (function() {
     
     // Highlight or unhighlight a foe
     function highlightFoe(foe, highlight) {
-        if (!foe || !foe.mesh || !foe.mesh.material) return;
-        
-        if (highlight) {
-            // Store original emission color
-            if (!foe.originalEmissive) {
-                foe.originalEmissive = foe.mesh.material.emissiveColor ? 
-                    foe.mesh.material.emissiveColor.clone() : 
-                    new BABYLON.Color3(0, 0, 0);
-            }
-            
-            // Increase emission for highlight
-            foe.mesh.material.emissiveColor = new BABYLON.Color3(1, 0.5, 1);
-            
-            // Scale up slightly
-            foe.mesh.scaling = new BABYLON.Vector3(1.3, 1.3, 1.3);
+        if (window.Utils && window.Utils.setupHighlight) {
+            // Use shared highlight utility
+            Utils.setupHighlight(foe, highlight, {
+                highlightColor: new BABYLON.Color3(1, 0.5, 1), // Purple glow
+                highlightScale: new BABYLON.Vector3(1.3, 1.3, 1.3),
+                normalScale: new BABYLON.Vector3(1, 1, 1),
+                scene: scene,
+                addPulse: false
+            });
         } else {
-            // Restore original emission
-            if (foe.originalEmissive) {
-                foe.mesh.material.emissiveColor = foe.originalEmissive;
-            }
+            // Fallback to original implementation
+            if (!foe || !foe.mesh || !foe.mesh.material) return;
             
-            // Restore original scale
-            foe.mesh.scaling = new BABYLON.Vector3(1, 1, 1);
+            if (highlight) {
+                // Store original emission color
+                if (!foe.originalEmissive) {
+                    foe.originalEmissive = foe.mesh.material.emissiveColor ? 
+                        foe.mesh.material.emissiveColor.clone() : 
+                        new BABYLON.Color3(0, 0, 0);
+                }
+                
+                // Increase emission for highlight
+                foe.mesh.material.emissiveColor = new BABYLON.Color3(1, 0.5, 1);
+                
+                // Scale up slightly
+                foe.mesh.scaling = new BABYLON.Vector3(1.3, 1.3, 1.3);
+            } else {
+                // Restore original emission
+                if (foe.originalEmissive) {
+                    foe.mesh.material.emissiveColor = foe.originalEmissive;
+                }
+                
+                // Restore original scale
+                foe.mesh.scaling = new BABYLON.Vector3(1, 1, 1);
+            }
         }
     }
     
