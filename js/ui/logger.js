@@ -92,18 +92,47 @@ const Logger = (function() {
                 break;
         }
         
-        messageElement.textContent = prefix + message;
+        // Create a span for the text that will be animated
+        const textSpan = document.createElement('span');
+        textSpan.className = 'log-text';
+        messageElement.appendChild(textSpan);
         
-        // Add to DOM
+        // Add to DOM first so it appears immediately
         logContentElement.appendChild(messageElement);
         
-        // Auto-scroll to bottom
-        logContentElement.scrollTop = logContentElement.scrollHeight;
+        // Auto-scroll to bottom even before text is typed
+        scrollToBottom();
+        
+        // Use typewriter effect for displaying text
+        typeText(textSpan, prefix + message, 0, 3);
         
         // Emit event if event system is available
         if (window.EventSystem) {
             EventSystem.emit('logAdded', { type, message });
         }
+    }
+    
+    // Function to type text character by character
+    function typeText(element, text, index, speed) {
+        if (index < text.length) {
+            // Add one character
+            element.textContent = text.substring(0, index + 1);
+            
+            // Continue with next character
+            setTimeout(function() {
+                typeText(element, text, index + 1, speed);
+                // Ensure we continue to scroll while typing
+                scrollToBottom();
+            }, speed);
+        }
+    }
+    
+    // Helper function to scroll to the bottom of the log
+    function scrollToBottom() {
+        // Use requestAnimationFrame to ensure this happens after DOM updates
+        requestAnimationFrame(() => {
+            logContentElement.scrollTop = logContentElement.scrollHeight;
+        });
     }
     
     // Log a standard message
