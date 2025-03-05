@@ -101,7 +101,7 @@ window.NPCSystem = (function() {
     
     // Create a single highly visible NPC
     function createVisibleNPC() {
-        console.log("Creating NPC with ULTRA SIMPLE approach");
+        console.log("Creating NPC with SIMPLE VISIBLE name tag");
         
         try {
             // Create a sphere
@@ -165,11 +165,11 @@ window.NPCSystem = (function() {
                 }
             });
             
-            // CREATE EXTRA LARGE NAME TAG WITH TRANSPARENT BACKGROUND
+            // CREATE SIMPLE VISIBLE NAME TAG
             // Create a plane for the name
             const nameTagPlane = BABYLON.MeshBuilder.CreatePlane("npcNameTag", {
-                width: 3,  // Make it wider for larger text
-                height: 1  // Make it taller for larger text
+                width: 2,
+                height: 0.5
             }, scene);
             
             // Position above the NPC
@@ -179,27 +179,31 @@ window.NPCSystem = (function() {
             // Always face the camera
             nameTagPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
             
-            // Create a transparent material for the name tag
+            // Create a material for the name tag with semi-transparent background
             const nameMaterial = new BABYLON.StandardMaterial("npcNameMaterial", scene);
             nameMaterial.diffuseColor = new BABYLON.Color3(1, 1, 1);
             nameMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
             nameMaterial.backFaceCulling = false;
-            nameMaterial.alpha = 0; // Make fully transparent
+            // Semi-transparent white background
+            nameMaterial.alpha = 0.5;
             
             // Apply material to name tag
             nameTagPlane.material = nameMaterial;
             
-            // Use a dynamic texture with transparency for the text
-            const nameTexture = new BABYLON.DynamicTexture("nameTexture", 1024, scene, true);
-            nameTexture.hasAlpha = true;
+            // Create a dynamic texture for the text
+            const nameTexture = new BABYLON.DynamicTexture("nameTexture", 512, scene);
             nameMaterial.diffuseTexture = nameTexture;
-            nameMaterial.useAlphaFromDiffuseTexture = true;
             
-            // Clear the texture and draw the text (much larger)
-            nameTexture.drawText("NPC1", null, 200, "bold 240px Arial", "black", "transparent");
+            // Clear the texture with white background and draw black text
+            const textureContext = nameTexture.getContext();
+            textureContext.fillStyle = "white";
+            textureContext.fillRect(0, 0, 512, 512);
+            
+            // Draw the text (larger and centered)
+            nameTexture.drawText("NPC1", 150, 280, "bold 120px Arial", "black");
             
             console.log("NPC created at:", npcMesh.position.toString());
-            console.log("Name tag created:", nameTagPlane.position.toString());
+            console.log("NPC name tag created:", nameTagPlane.position.toString());
             
             // Store minimal NPC data
             const npc = {
