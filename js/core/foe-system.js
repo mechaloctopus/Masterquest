@@ -72,6 +72,8 @@ window.FoeSystem = (function() {
     // Create a single highly visible foe
     function createVisibleFoe() {
         try {
+            console.log("Creating visible FOE...");
+            
             // Create a red sphere for the foe
             const foeMesh = BABYLON.MeshBuilder.CreateSphere("visible_foe", {
                 diameter: 1.2,
@@ -99,35 +101,146 @@ window.FoeSystem = (function() {
             // Set the position
             foeMesh.position = new BABYLON.Vector3(position.x, position.y, position.z);
             
-            // Create a simple name tag using a dynamic texture
+            // SIMPLER NAME TAG APPROACH - Using a TextBlock with AdvancedDynamicTexture
             const nameTagPlane = BABYLON.MeshBuilder.CreatePlane("foeNameTag", { width: 2, height: 0.5 }, scene);
             nameTagPlane.position = new BABYLON.Vector3(0, 1.5, 0);
             nameTagPlane.parent = foeMesh;
             nameTagPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
             
-            // Create dynamic texture for the name
-            const textureWidth = 512;
-            const textureHeight = 128; 
-            const dynamicTexture = new BABYLON.DynamicTexture("foeNameTexture", {width: textureWidth, height: textureHeight}, scene, true);
-            dynamicTexture.hasAlpha = true;
+            // Create advanced dynamic texture
+            const nameTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(nameTagPlane);
+            nameTexture.background = "transparent";
             
-            // Create material with the dynamic texture
-            const nameTagMaterial = new BABYLON.StandardMaterial("foeNameMaterial", scene);
-            nameTagMaterial.diffuseTexture = dynamicTexture;
-            nameTagMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-            nameTagMaterial.emissiveColor = new BABYLON.Color3(0, 0, 0); // Changed to black
-            nameTagMaterial.backFaceCulling = false;
+            // Create text block
+            const textBlock = new BABYLON.GUI.TextBlock();
+            textBlock.text = "FOE1";
+            textBlock.color = "black";
+            textBlock.fontSize = 32;
+            textBlock.fontFamily = "Arial";
+            textBlock.textWrapping = true;
+            textBlock.width = 1;
+            textBlock.height = 0.4;
+            textBlock.outlineWidth = 0;
+            textBlock.resizeToFit = true;
             
-            // Make it transparent and visible from both sides
-            nameTagMaterial.useAlphaFromDiffuseTexture = true;
-            nameTagPlane.material = nameTagMaterial;
+            // Add the text to the texture
+            nameTexture.addControl(textBlock);
             
-            // Draw text on the dynamic texture with plain black text
-            dynamicTexture.drawText("FOE1", null, null, "30px Arial", "#000000", "transparent", true);
+            // Ensure Clickable
+            foeMesh.isPickable = true;
             
-            return foeMesh;
+            // Make sure the name tag doesn't block clicks
+            nameTagPlane.isPickable = false;
+            
+            // Add Action Manager
+            foeMesh.actionManager = new BABYLON.ActionManager(scene);
+            
+            // Add mouse over cursor change
+            foeMesh.actionManager.registerAction(
+                new BABYLON.ExecuteCodeAction(
+                    BABYLON.ActionManager.OnPointerOverTrigger,
+                    function() {
+                        document.body.style.cursor = "pointer";
+                    }
+                )
+            );
+            
+            // Add mouse out cursor restore
+            foeMesh.actionManager.registerAction(
+                new BABYLON.ExecuteCodeAction(
+                    BABYLON.ActionManager.OnPointerOutTrigger,
+                    function() {
+                        document.body.style.cursor = "default";
+                    }
+                )
+            );
+            
+            // Add click action
+            foeMesh.actionManager.registerAction(
+                new BABYLON.ExecuteCodeAction(
+                    BABYLON.ActionManager.OnPickTrigger,
+                    function() {
+                        const message = "> FOE CLICKED: I am a FOE";
+                        
+                        // Browser console
+                        console.log(message);
+                        
+                        // Try multiple approaches for log
+                        if (window.Logger && window.Logger.log) {
+                            window.Logger.log(message);
+                        }
+                        
+                        // DOM manipulation with typewriter effect
+                        const logElement = document.getElementById('logContent');
+                        if (logElement) {
+                            const entry = document.createElement('div');
+                            entry.className = 'log-message';
+                            logElement.appendChild(entry);
+                            
+                            // Type the text with animation
+                            typeText(entry, message, 0, 20);
+                            
+                            // Ensure the log scrolls to the bottom
+                            logElement.scrollTop = logElement.scrollHeight;
+                        }
+                        
+                        // Update the global log
+                        document.querySelectorAll('#log, #logContent').forEach(el => {
+                            el.style.display = 'block';
+                            el.classList.remove('collapsed');
+                        });
+                        
+                        // Only interact if foe is not already defeated
+                        if (window.EventSystem) {
+                            EventSystem.emit('foe.interact', { foeId: "visible_foe" });
+                        }
+                    }
+                )
+            );
+            
+            // Store foe in the array with all necessary properties
+            const foe = {
+                id: "visible_foe",
+                mesh: foeMesh,
+                nameTag: nameTagPlane,
+                position: foeMesh.position,
+                gridPosition: window.CoordinateSystem ? CoordinateSystem.worldToGrid(foeMesh.position) : null,
+                state: 'idle', // idle, engaging, battle, defeated
+                isInteracting: false,
+                hoverParams: {
+                    originalY: foeMesh.position.y,
+                    phase: Math.random() * Math.PI * 2 // Random starting phase
+                },
+                template: {
+                    HOVER_HEIGHT: 0.7,
+                    HOVER_SPEED: 0.5
+                },
+                // Add sample quiz data for testing
+                quizData: {
+                    completed: false,
+                    currentQuestion: 0,
+                    score: 0,
+                    maxScore: 1,
+                    questions: [
+                        {
+                            question: "I am a FOE",
+                            options: ["Close"],
+                            correctAnswer: 0
+                        }
+                    ]
+                }
+            };
+            
+            foes.push(foe);
+            
+            // Setup hover animation
+            setupHoverAnimation(foe);
+            
+            console.log("FOE created successfully with name tag");
+            return foe;
         } catch (error) {
             safeLog(`Error creating visible FOE: ${error.message}`, true);
+            console.error("FOE creation error:", error);
             return null;
         }
     }
