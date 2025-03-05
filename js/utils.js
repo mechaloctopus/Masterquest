@@ -529,6 +529,495 @@ const Utils = (function() {
         }
     }
     
+    /**
+     * Safely access configuration values with default fallbacks
+     * @param {string} path - Dot notation path to configuration value (e.g. "UI.LOGGER.MAX_ENTRIES")
+     * @param {any} defaultValue - Default value if path doesn't exist
+     * @return {any} - The configuration value or default
+     */
+    function getConfig(path, defaultValue) {
+        try {
+            if (!window.CONFIG) {
+                return defaultValue;
+            }
+            
+            const parts = path.split('.');
+            let current = window.CONFIG;
+            
+            for (const part of parts) {
+                if (current[part] === undefined) {
+                    return defaultValue;
+                }
+                current = current[part];
+            }
+            
+            return current;
+        } catch (e) {
+            console.error(`Error accessing config path: ${path}`, e);
+            return defaultValue;
+        }
+    }
+    
+    /**
+     * Standardized error handling with system tagging and optional reporting
+     * @param {string} system - System identifier (e.g., "LOADER", "NPC")
+     * @param {string} message - Error message
+     * @param {Error|null} error - Optional error object
+     * @param {boolean} isFatal - Whether the error is fatal to the application
+     * @return {void}
+     */
+    function handleError(system, message, error = null, isFatal = false) {
+        try {
+            const timestamp = new Date().toISOString();
+            const prefix = `[${timestamp}][${system}]${isFatal ? '[FATAL]' : ''}`;
+            const formattedMessage = `${prefix} ${message}`;
+            
+            // Log to console with appropriate method
+            if (isFatal) {
+                console.error(formattedMessage);
+            } else {
+                console.warn(formattedMessage);
+            }
+            
+            // Log stack trace if error object is provided
+            if (error && error.stack) {
+                console.error(`${prefix} Stack trace:`, error.stack);
+            }
+            
+            // If Logger system exists, log there too
+            if (window.Logger && window.Logger.error) {
+                window.Logger.error(formattedMessage);
+            }
+            
+            // Emit event for error tracking
+            if (window.EventSystem) {
+                window.EventSystem.emit('system.error', {
+                    system,
+                    message,
+                    error,
+                    isFatal,
+                    timestamp
+                });
+            }
+            
+            // For fatal errors, we might want to stop execution or show an error screen
+            if (isFatal && window.LoadingScreen) {
+                window.LoadingScreen.showError(message);
+            }
+        } catch (e) {
+            // Fallback if our error handler itself fails
+            console.error('Error in error handler:', e);
+            console.error('Original error:', message, error);
+        }
+    }
+    
+    /**
+     * Event utility functions to standardize event handling across components
+     * @param {string} eventName - Name of the event to listen for or emit
+     * @param {function|object} handlerOrData - Event handler function or data to emit
+     * @param {object} options - Additional options for event handling
+     * @return {function|void} - Unsubscribe function for listeners
+     */
+    function createEventUtils() {
+        return {
+            /**
+             * Subscribe to an event with standardized error handling
+             * @param {string} eventName - Name of the event to listen for
+             * @param {function} handler - Event handler function
+             * @param {object} options - Additional options
+             * @return {function} - Unsubscribe function
+             */
+            listen: function(eventName, handler, options = {}) {
+                const { once = false, system = 'UNKNOWN' } = options;
+                
+                if (!window.EventSystem) {
+                    handleError(system, `Cannot subscribe to event '${eventName}': EventSystem not available`);
+                    return () => {}; // No-op unsubscribe
+                }
+                
+                // Create a wrapper that adds error handling
+                const safeHandler = function(data) {
+                    try {
+                        handler(data);
+                    } catch (error) {
+                        handleError(
+                            system, 
+                            `Error in event handler for '${eventName}'`, 
+                            error
+                        );
+                    }
+                    
+                    // If once is true, automatically unsubscribe after first invocation
+                    if (once) {
+                        EventSystem.off(eventName, safeHandler);
+                    }
+                };
+                
+                // Subscribe to the event
+                EventSystem.on(eventName, safeHandler);
+                
+                // Return unsubscribe function
+                return function unsubscribe() {
+                    EventSystem.off(eventName, safeHandler);
+                };
+            },
+            
+            /**
+             * Emit an event with standardized error handling
+             * @param {string} eventName - Name of the event to emit
+             * @param {object} data - Data to emit with the event
+             * @param {object} options - Additional options
+             */
+            emit: function(eventName, data = {}, options = {}) {
+                const { system = 'UNKNOWN' } = options;
+                
+                if (!window.EventSystem) {
+                    handleError(system, `Cannot emit event '${eventName}': EventSystem not available`);
+                    return;
+                }
+                
+                try {
+                    // Add metadata to event data
+                    const eventData = {
+                        ...data,
+                        _meta: {
+                            timestamp: Date.now(),
+                            system
+                        }
+                    };
+                    
+                    // Emit the event
+                    EventSystem.emit(eventName, eventData);
+                } catch (error) {
+                    handleError(
+                        system,
+                        `Error emitting event '${eventName}'`,
+                        error
+                    );
+                }
+            },
+            
+            /**
+             * Listen for an event once then automatically unsubscribe
+             * @param {string} eventName - Name of the event to listen for
+             * @param {function} handler - Event handler function
+             * @param {object} options - Additional options
+             * @return {function} - Unsubscribe function
+             */
+            once: function(eventName, handler, options = {}) {
+                return this.listen(eventName, handler, { ...options, once: true });
+            }
+        };
+    }
+    
+    const eventUtils = createEventUtils();
+    
+    /**
+     * DOM utility functions to standardize DOM operations across components
+     */
+    function createDOMUtils() {
+        return {
+            /**
+             * Safely get a DOM element by ID with error handling
+             * @param {string} id - Element ID
+             * @param {object} options - Additional options
+             * @return {HTMLElement|null} - The DOM element or null if not found
+             */
+            getElement: function(id, options = {}) {
+                const { 
+                    system = 'DOM', 
+                    required = false,
+                    errorMessage = `Element #${id} not found` 
+                } = options;
+                
+                const element = document.getElementById(id);
+                
+                if (!element && required) {
+                    handleError(system, errorMessage);
+                }
+                
+                return element;
+            },
+            
+            /**
+             * Safely query selector with error handling
+             * @param {string} selector - CSS selector
+             * @param {object} options - Additional options
+             * @return {HTMLElement|null} - The DOM element or null if not found
+             */
+            querySelector: function(selector, options = {}) {
+                const { 
+                    system = 'DOM', 
+                    required = false,
+                    parent = document,
+                    errorMessage = `Element matching '${selector}' not found`
+                } = options;
+                
+                try {
+                    const element = parent.querySelector(selector);
+                    
+                    if (!element && required) {
+                        handleError(system, errorMessage);
+                    }
+                    
+                    return element;
+                } catch (error) {
+                    handleError(system, `Error querying selector '${selector}'`, error);
+                    return null;
+                }
+            },
+            
+            /**
+             * Safely query multiple elements with error handling
+             * @param {string} selector - CSS selector
+             * @param {object} options - Additional options
+             * @return {Array<HTMLElement>} - Array of DOM elements
+             */
+            querySelectorAll: function(selector, options = {}) {
+                const { 
+                    system = 'DOM',
+                    parent = document
+                } = options;
+                
+                try {
+                    return Array.from(parent.querySelectorAll(selector));
+                } catch (error) {
+                    handleError(system, `Error querying all '${selector}'`, error);
+                    return [];
+                }
+            },
+            
+            /**
+             * Toggle a class on an element with additional functionality
+             * @param {HTMLElement} element - The DOM element
+             * @param {string} className - CSS class to toggle
+             * @param {boolean} force - Force add or remove (optional)
+             * @return {boolean} - Whether the class is present after toggling
+             */
+            toggleClass: function(element, className, force) {
+                if (!element) return false;
+                
+                try {
+                    if (force === undefined) {
+                        return element.classList.toggle(className);
+                    } else {
+                        if (force) {
+                            element.classList.add(className);
+                        } else {
+                            element.classList.remove(className);
+                        }
+                        return force;
+                    }
+                } catch (error) {
+                    handleError('DOM', `Error toggling class '${className}'`, error);
+                    return element.classList.contains(className);
+                }
+            },
+            
+            /**
+             * Add an event listener with error handling
+             * @param {HTMLElement} element - The DOM element
+             * @param {string} eventType - Type of event (e.g., 'click')
+             * @param {function} handler - Event handler
+             * @param {object} options - Additional options
+             * @return {function} - Function to remove the event listener
+             */
+            addEvent: function(element, eventType, handler, options = {}) {
+                const { system = 'DOM', once = false } = options;
+                
+                if (!element) {
+                    handleError(system, `Cannot add event '${eventType}': Element not found`);
+                    return () => {};
+                }
+                
+                try {
+                    // Create a wrapper that adds error handling
+                    const safeHandler = function(event) {
+                        try {
+                            handler(event);
+                        } catch (error) {
+                            handleError(
+                                system, 
+                                `Error in event handler for '${eventType}'`, 
+                                error
+                            );
+                        }
+                    };
+                    
+                    // Add the event listener
+                    element.addEventListener(eventType, safeHandler, { once });
+                    
+                    // Return a function to remove the event listener
+                    return function() {
+                        element.removeEventListener(eventType, safeHandler);
+                    };
+                } catch (error) {
+                    handleError(system, `Error adding event '${eventType}'`, error);
+                    return () => {};
+                }
+            }
+        };
+    }
+    
+    const domUtils = createDOMUtils();
+    
+    /**
+     * Asset management utilities to standardize asset handling
+     */
+    function createAssetUtils() {
+        // Cache for preloaded assets
+        const assetCache = {
+            images: {},
+            audio: {},
+            data: {}
+        };
+        
+        return {
+            /**
+             * Preload an image with error handling
+             * @param {string} src - Image source URL
+             * @param {string} id - Unique identifier for the image
+             * @param {object} options - Additional options
+             * @return {Promise} - Promise resolving to the loaded image
+             */
+            preloadImage: function(src, id, options = {}) {
+                const { system = 'ASSETS' } = options;
+                
+                return new Promise((resolve, reject) => {
+                    // Check if already cached
+                    if (assetCache.images[id]) {
+                        resolve(assetCache.images[id]);
+                        return;
+                    }
+                    
+                    const img = new Image();
+                    
+                    img.onload = function() {
+                        assetCache.images[id] = img;
+                        resolve(img);
+                    };
+                    
+                    img.onerror = function(error) {
+                        const errorMsg = `Failed to load image: ${src}`;
+                        handleError(system, errorMsg, error);
+                        reject(new Error(errorMsg));
+                    };
+                    
+                    img.src = src;
+                });
+            },
+            
+            /**
+             * Preload an audio file with error handling
+             * @param {string} src - Audio source URL
+             * @param {string} id - Unique identifier for the audio
+             * @param {object} options - Additional options
+             * @return {Promise} - Promise resolving to the loaded audio
+             */
+            preloadAudio: function(src, id, options = {}) {
+                const { 
+                    system = 'ASSETS',
+                    volume = 1.0,
+                    loop = false,
+                    autoplay = false
+                } = options;
+                
+                return new Promise((resolve, reject) => {
+                    // Check if already cached
+                    if (assetCache.audio[id]) {
+                        resolve(assetCache.audio[id]);
+                        return;
+                    }
+                    
+                    const audio = new Audio();
+                    
+                    audio.oncanplaythrough = function() {
+                        assetCache.audio[id] = audio;
+                        resolve(audio);
+                    };
+                    
+                    audio.onerror = function(error) {
+                        const errorMsg = `Failed to load audio: ${src}`;
+                        handleError(system, errorMsg, error);
+                        reject(new Error(errorMsg));
+                    };
+                    
+                    audio.volume = volume;
+                    audio.loop = loop;
+                    audio.src = src;
+                    
+                    if (autoplay) {
+                        audio.play().catch(e => {
+                            handleError(system, "Auto-play prevented by browser", e);
+                        });
+                    }
+                });
+            },
+            
+            /**
+             * Preload JSON data with error handling
+             * @param {string} src - JSON source URL
+             * @param {string} id - Unique identifier for the data
+             * @param {object} options - Additional options
+             * @return {Promise} - Promise resolving to the loaded data
+             */
+            preloadJSON: function(src, id, options = {}) {
+                const { system = 'ASSETS' } = options;
+                
+                return new Promise((resolve, reject) => {
+                    // Check if already cached
+                    if (assetCache.data[id]) {
+                        resolve(assetCache.data[id]);
+                        return;
+                    }
+                    
+                    fetch(src)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`HTTP error ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            assetCache.data[id] = data;
+                            resolve(data);
+                        })
+                        .catch(error => {
+                            const errorMsg = `Failed to load JSON: ${src}`;
+                            handleError(system, errorMsg, error);
+                            reject(new Error(errorMsg));
+                        });
+                });
+            },
+            
+            /**
+             * Get a preloaded asset from cache
+             * @param {string} id - Asset identifier
+             * @param {string} type - Asset type ('images', 'audio', 'data')
+             * @return {any} - The cached asset or null if not found
+             */
+            getAsset: function(id, type = 'images') {
+                if (!assetCache[type] || !assetCache[type][id]) {
+                    return null;
+                }
+                
+                return assetCache[type][id];
+            },
+            
+            /**
+             * Check if an asset is loaded
+             * @param {string} id - Asset identifier
+             * @param {string} type - Asset type ('images', 'audio', 'data')
+             * @return {boolean} - Whether the asset is loaded
+             */
+            isAssetLoaded: function(id, type = 'images') {
+                return !!(assetCache[type] && assetCache[type][id]);
+            }
+        };
+    }
+    
+    const assetUtils = createAssetUtils();
+    
     // Expose public API
     return {
         easing,
@@ -546,7 +1035,12 @@ const Utils = (function() {
         initializeComponent,
         safeLog,
         isInProximity,
-        setupHighlight
+        setupHighlight,
+        getConfig,
+        handleError,
+        events: eventUtils,
+        dom: domUtils,
+        assets: assetUtils
     };
 })();
 
@@ -559,4 +1053,9 @@ window.initializeComponent = Utils.initializeComponent;
 window.safeLog = Utils.safeLog;
 
 // Make utilities available globally
-window.Utils = Utils; 
+window.Utils = Utils;
+window.Utils.getConfig = Utils.getConfig;
+window.Utils.handleError = Utils.handleError;
+window.Utils.events = Utils.events;
+window.Utils.dom = Utils.dom;
+window.Utils.assets = Utils.assets; 

@@ -3,6 +3,7 @@ const Logger = (function() {
     // Private variables
     let logContentElement = null;
     let initialized = false;
+    const SYSTEM_NAME = 'LOGGER';
     
     // Message types
     const MESSAGE_TYPES = {
@@ -16,14 +17,25 @@ const Logger = (function() {
     function init() {
         if (initialized) return true;
         
-        logContentElement = document.getElementById('logContent');
-        if (!logContentElement) {
-            console.error("Log content element not found!");
-            return false;
+        // Use Utils.dom if available, fallback to direct DOM access
+        if (window.Utils && window.Utils.dom) {
+            logContentElement = Utils.dom.getElement('logContent', {
+                system: SYSTEM_NAME,
+                required: true,
+                errorMessage: "Log content element not found! Logger will not function."
+            });
+        } else {
+            logContentElement = document.getElementById('logContent');
+            if (!logContentElement) {
+                console.error("Log content element not found!");
+                return false;
+            }
         }
         
-        // Subscribe to log events from other modules
-        if (window.EventSystem) {
+        // Subscribe to log events using Utils.events if available
+        if (window.Utils && window.Utils.events) {
+            Utils.events.listen('log', handleLogEvent, { system: SYSTEM_NAME });
+        } else if (window.EventSystem) {
             EventSystem.on('log', handleLogEvent);
         }
         
@@ -53,7 +65,12 @@ const Logger = (function() {
     // Generic logging function that handles all message types
     function logMessage(message, type = MESSAGE_TYPES.INFO) {
         if (!initialized && !init()) {
-            // Fallback to console
+            // Fallback to console or use Utils.handleError if available
+            if (type === MESSAGE_TYPES.ERROR && window.Utils && window.Utils.handleError) {
+                Utils.handleError(SYSTEM_NAME, message);
+                return;
+            }
+            
             switch (type) {
                 case MESSAGE_TYPES.ERROR:
                     console.error(message);
@@ -69,70 +86,43 @@ const Logger = (function() {
             }
             return;
         }
+
+        // Create log entry with timestamp
+        const timestamp = new Date().toISOString().slice(11, 19); // HH:MM:SS
+        const logEntry = document.createElement('div');
+        logEntry.className = `log-entry ${type}`;
         
-        // Create UI element
-        const messageElement = document.createElement('div');
-        messageElement.className = 'log-message';
-        
-        // Add type-specific classes and prefixes
-        let prefix = '';
-        
-        switch (type) {
-            case MESSAGE_TYPES.ERROR:
-                messageElement.classList.add('log-error');
-                prefix = 'ERROR: ';
-                break;
-            case MESSAGE_TYPES.WARNING:
-                messageElement.classList.add('log-warning');
-                prefix = 'WARNING: ';
-                break;
-            case MESSAGE_TYPES.DEBUG:
-                messageElement.classList.add('log-debug');
-                prefix = 'DEBUG: ';
-                break;
-        }
-        
-        // Create a span for the text that will be animated
-        const textSpan = document.createElement('span');
-        textSpan.className = 'log-text';
-        messageElement.appendChild(textSpan);
-        
-        // Add to DOM first so it appears immediately
-        logContentElement.appendChild(messageElement);
-        
-        // Immediately scroll to bottom when a new message is added
-        if (window.Utils && window.Utils.forceScrollToBottom) {
-            window.Utils.forceScrollToBottom(logContentElement);
+        // Use appropriate entry format based on type
+        if (type === MESSAGE_TYPES.ERROR) {
+            logEntry.innerHTML = `<span class="log-time">[${timestamp}]</span> <span class="log-error">ERROR:</span> ${message}`;
+        } else if (type === MESSAGE_TYPES.WARNING) {
+            logEntry.innerHTML = `<span class="log-time">[${timestamp}]</span> <span class="log-warning">WARNING:</span> ${message}`;
+        } else if (type === MESSAGE_TYPES.DEBUG) {
+            logEntry.innerHTML = `<span class="log-time">[${timestamp}]</span> <span class="log-debug">DEBUG:</span> ${message}`;
         } else {
-            // Fallback if utility not available
-            logContentElement.scrollTop = logContentElement.scrollHeight;
+            logEntry.innerHTML = `<span class="log-time">[${timestamp}]</span> ${message}`;
         }
         
-        // Use typewriter effect for displaying text
-        if (window.Utils && window.Utils.typeText) {
-            // Use shared utility if available
-            window.Utils.typeText({
-                element: textSpan,
-                text: prefix + message,
-                speed: 3,
-                scrollElement: logContentElement
-            });
-        } else {
-            // Fallback to direct text setting if utility not available
-            textSpan.textContent = prefix + message;
-            if (window.Utils && window.Utils.forceScrollToBottom) {
-                window.Utils.forceScrollToBottom(logContentElement);
-            } else {
-                logContentElement.scrollTop = logContentElement.scrollHeight;
-            }
+        // Add the entry to the log
+        logContentElement.appendChild(logEntry);
+        
+        // Limit number of log entries to prevent performance issues
+        const maxEntries = window.Utils && window.Utils.getConfig 
+            ? Utils.getConfig('UI.LOGGER.MAX_ENTRIES', 100)
+            : (window.CONFIG && window.CONFIG.UI && window.CONFIG.UI.LOGGER && window.CONFIG.UI.LOGGER.MAX_ENTRIES || 100);
+            
+        while (logContentElement.children.length > maxEntries) {
+            logContentElement.removeChild(logContentElement.children[0]);
         }
         
-        // Ensure we don't exceed max entries
-        pruneOldEntries();
+        // Scroll to bottom
+        forceScrollToBottom();
         
-        // Emit event if event system is available
-        if (window.EventSystem) {
-            EventSystem.emit('logAdded', { type, message });
+        // Emit event if needed
+        if (window.Utils && window.Utils.events) {
+            Utils.events.emit('logger.message', { type, message }, { system: SYSTEM_NAME });
+        } else if (window.EventSystem) {
+            EventSystem.emit('logger.message', { type, message });
         }
     }
     
@@ -151,28 +141,25 @@ const Logger = (function() {
     function forceScrollToBottom() {
         if (!logContentElement) return;
         
-        if (window.Utils && window.Utils.forceScrollToBottom) {
-            window.Utils.forceScrollToBottom(logContentElement);
-        } else {
-            // Fallback implementation
+        try {
+            // First attempt: direct scrollTop setting
             logContentElement.scrollTop = logContentElement.scrollHeight;
             
+            // Second attempt: use requestAnimationFrame for next paint cycle
             requestAnimationFrame(() => {
                 logContentElement.scrollTop = logContentElement.scrollHeight;
                 
+                // Third attempt: small delay to ensure DOM updates are complete
                 setTimeout(() => {
                     logContentElement.scrollTop = logContentElement.scrollHeight;
                 }, 10);
             });
-        }
-    }
-    
-    // Remove old entries if we exceed the maximum
-    function pruneOldEntries() {
-        const maxEntries = window.CONFIG && window.CONFIG.UI && window.CONFIG.UI.LOGGER && window.CONFIG.UI.LOGGER.MAX_ENTRIES || 100;
-        
-        while (logContentElement.children.length > maxEntries) {
-            logContentElement.removeChild(logContentElement.firstChild);
+        } catch (e) {
+            if (window.Utils && window.Utils.handleError) {
+                Utils.handleError(SYSTEM_NAME, "Error forcing scroll to bottom", e);
+            } else {
+                console.error("Error forcing scroll to bottom:", e);
+            }
         }
     }
     
