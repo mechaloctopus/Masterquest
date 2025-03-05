@@ -192,6 +192,70 @@ const Utils = (function() {
         return isCollapsed;
     }
     
+    /**
+     * Creates a typewriter effect by gradually revealing text
+     * @param {HTMLElement} element - The element to add text to
+     * @param {string} text - The full text to display
+     * @param {number} index - The current character index
+     * @param {number} speed - Milliseconds between characters
+     * @param {Function} onComplete - Optional callback when typing is complete
+     * @param {HTMLElement} scrollElement - Optional element to scroll to bottom while typing
+     * @param {boolean} append - Whether to append (true) or replace (false) text
+     */
+    function typeText(element, text, index, speed, onComplete, scrollElement, append = false) {
+        if (!element || typeof text !== 'string') return;
+        
+        // Default speed if not specified
+        speed = typeof speed === 'number' ? speed : 30;
+        
+        if (index === 0 && !append) {
+            element.textContent = '';
+        }
+        
+        if (index < text.length) {
+            if (append) {
+                element.textContent += text.charAt(index);
+            } else {
+                element.textContent = text.substring(0, index + 1);
+            }
+            
+            // Continue with next character
+            setTimeout(function() {
+                typeText(element, text, index + 1, speed, onComplete, scrollElement, append);
+                
+                // Scroll if element provided
+                if (scrollElement) {
+                    scrollElement.scrollTop = scrollElement.scrollHeight;
+                }
+            }, speed);
+        } else if (typeof onComplete === 'function') {
+            // Call completion callback if provided
+            onComplete();
+        }
+    }
+    
+    /**
+     * Force an element to scroll to the bottom
+     * Uses multiple approaches to ensure reliable scrolling
+     * @param {HTMLElement} element - The element to scroll
+     */
+    function forceScrollToBottom(element) {
+        if (!element) return;
+        
+        // Immediate scroll attempt
+        element.scrollTop = element.scrollHeight;
+        
+        // Backup with requestAnimationFrame for reliable scrolling
+        requestAnimationFrame(() => {
+            element.scrollTop = element.scrollHeight;
+            
+            // Additional backup with timeout
+            setTimeout(() => {
+                element.scrollTop = element.scrollHeight;
+            }, 10);
+        });
+    }
+    
     // Expose public API
     return {
         easing,
@@ -202,9 +266,13 @@ const Utils = (function() {
         rgbToHex,
         isTouchDevice,
         debug,
-        togglePanelCollapse
+        togglePanelCollapse,
+        typeText,
+        forceScrollToBottom
     };
-})(); 
+})();
 
-// Expose the utility in the global scope
-window.togglePanelCollapse = Utils.togglePanelCollapse; 
+// Expose utilities in the global scope
+window.togglePanelCollapse = Utils.togglePanelCollapse;
+window.typeText = Utils.typeText;
+window.forceScrollToBottom = Utils.forceScrollToBottom; 

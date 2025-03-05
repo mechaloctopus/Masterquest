@@ -114,8 +114,18 @@ window.FoeSystem = (function() {
                             entry.className = 'log-message';
                             logElement.appendChild(entry);
                             
-                            // Type the text with animation
-                            typeText(entry, message, 0, 20);
+                            // Use typewriter effect
+                            if (window.Utils && window.Utils.typeText) {
+                                window.Utils.typeText({
+                                    element: entry,
+                                    text: message,
+                                    speed: 20,
+                                    append: false
+                                });
+                            } else {
+                                // Fallback if utility not available
+                                entry.textContent = message;
+                            }
                             
                             // Ensure the log scrolls to the bottom
                             logElement.scrollTop = logElement.scrollHeight;
@@ -533,8 +543,18 @@ window.FoeSystem = (function() {
             entry.className = 'log-message';
             logElement.appendChild(entry);
             
-            // Type the text with animation
-            typeText(entry, message, 0, 20);
+            // Use typewriter effect
+            if (window.Utils && window.Utils.typeText) {
+                window.Utils.typeText({
+                    element: entry,
+                    text: message,
+                    speed: 20,
+                    append: false
+                });
+            } else {
+                // Fallback if utility not available
+                entry.textContent = message;
+            }
             
             // Ensure the log scrolls to the bottom
             logElement.scrollTop = logElement.scrollHeight;
@@ -584,8 +604,18 @@ window.FoeSystem = (function() {
                 entry.className = 'log-message';
                 logElement.appendChild(entry);
                 
-                // Type the text with animation
-                typeText(entry, message, 0, 20);
+                // Use typewriter effect
+                if (window.Utils && window.Utils.typeText) {
+                    window.Utils.typeText({
+                        element: entry,
+                        text: message,
+                        speed: 20,
+                        append: false
+                    });
+                } else {
+                    // Fallback if utility not available
+                    entry.textContent = message;
+                }
                 
                 // Ensure the log scrolls to the bottom
                 logElement.scrollTop = logElement.scrollHeight;
@@ -627,8 +657,18 @@ window.FoeSystem = (function() {
                 entry.className = 'log-message';
                 logElement.appendChild(entry);
                 
-                // Type the text with animation
-                typeText(entry, message, 0, 20);
+                // Use typewriter effect
+                if (window.Utils && window.Utils.typeText) {
+                    window.Utils.typeText({
+                        element: entry,
+                        text: message,
+                        speed: 20,
+                        append: false
+                    });
+                } else {
+                    // Fallback if utility not available
+                    entry.textContent = message;
+                }
                 
                 // Ensure the log scrolls to the bottom
                 logElement.scrollTop = logElement.scrollHeight;
@@ -719,23 +759,6 @@ window.FoeSystem = (function() {
     // Get all foes
     function getAllFoes() {
         return [...foes];
-    }
-    
-    // Function to create typewriter effect
-    function typeText(element, text, index, speed) {
-        if (index < text.length) {
-            element.textContent += text.charAt(index);
-            index++;
-            setTimeout(function() {
-                typeText(element, text, index, speed);
-            }, speed);
-        }
-        
-        // Make sure log stays scrolled to the bottom during typing
-        const logContent = document.getElementById('logContent');
-        if (logContent) {
-            logContent.scrollTop = logContent.scrollHeight;
-        }
     }
     
     // Public API

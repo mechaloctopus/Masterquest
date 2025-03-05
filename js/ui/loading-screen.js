@@ -307,29 +307,25 @@ const LoadingScreenSystem = (function() {
         // Auto-scroll to bottom
         loadingConsoleElement.scrollTop = loadingConsoleElement.scrollHeight;
         
-        // Add the text with typewriter effect
-        typeText(messageElement, message, 0, 20);
+        // Use the shared typeText utility
+        if (window.typeText) {
+            window.typeText(
+                messageElement,
+                message,
+                0,
+                20,
+                () => setTimeout(processMessageQueue, 300),
+                loadingConsoleElement
+            );
+        } else {
+            // Fallback to direct text if utility is not available
+            messageElement.textContent = message;
+            setTimeout(processMessageQueue, 300);
+        }
         
         // Limit number of messages for performance
         while (loadingConsoleElement.children.length > 18) {
             loadingConsoleElement.removeChild(loadingConsoleElement.firstChild);
-        }
-    }
-    
-    // Function to type text character by character
-    function typeText(element, text, index, speed) {
-        if (index < text.length) {
-            element.textContent = text.substring(0, index + 1);
-            
-            // Continue with next character
-            setTimeout(function() {
-                typeText(element, text, index + 1, speed);
-                // Ensure we continue to scroll while typing
-                loadingConsoleElement.scrollTop = loadingConsoleElement.scrollHeight;
-            }, speed);
-        } else {
-            // When done typing this message, process the next one after a delay
-            setTimeout(processMessageQueue, 300);
         }
     }
     

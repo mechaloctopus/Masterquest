@@ -101,10 +101,31 @@ const Logger = (function() {
         logContentElement.appendChild(messageElement);
         
         // Immediately scroll to bottom when a new message is added
-        forceScrollToBottom();
+        if (window.Utils && window.Utils.forceScrollToBottom) {
+            window.Utils.forceScrollToBottom(logContentElement);
+        } else {
+            // Fallback if utility not available
+            logContentElement.scrollTop = logContentElement.scrollHeight;
+        }
         
         // Use typewriter effect for displaying text
-        typeText(textSpan, prefix + message, 0, 3);
+        if (window.Utils && window.Utils.typeText) {
+            // Use shared utility if available
+            window.Utils.typeText({
+                element: textSpan,
+                text: prefix + message,
+                speed: 3,
+                scrollElement: logContentElement
+            });
+        } else {
+            // Fallback to direct text setting if utility not available
+            textSpan.textContent = prefix + message;
+            if (window.Utils && window.Utils.forceScrollToBottom) {
+                window.Utils.forceScrollToBottom(logContentElement);
+            } else {
+                logContentElement.scrollTop = logContentElement.scrollHeight;
+            }
+        }
         
         // Ensure we don't exceed max entries
         pruneOldEntries();
@@ -112,21 +133,6 @@ const Logger = (function() {
         // Emit event if event system is available
         if (window.EventSystem) {
             EventSystem.emit('logAdded', { type, message });
-        }
-    }
-    
-    // Function to type text character by character
-    function typeText(element, text, index, speed) {
-        if (index < text.length) {
-            // Add one character
-            element.textContent = text.substring(0, index + 1);
-            
-            // Continue with next character
-            setTimeout(function() {
-                typeText(element, text, index + 1, speed);
-                // Ensure we continue to scroll while typing
-                forceScrollToBottom();
-            }, speed);
         }
     }
     
@@ -145,18 +151,20 @@ const Logger = (function() {
     function forceScrollToBottom() {
         if (!logContentElement) return;
         
-        // Immediate scroll attempt
-        logContentElement.scrollTop = logContentElement.scrollHeight;
-        
-        // Backup with requestAnimationFrame for reliable scrolling
-        requestAnimationFrame(() => {
+        if (window.Utils && window.Utils.forceScrollToBottom) {
+            window.Utils.forceScrollToBottom(logContentElement);
+        } else {
+            // Fallback implementation
             logContentElement.scrollTop = logContentElement.scrollHeight;
             
-            // Additional backup with timeout
-            setTimeout(() => {
+            requestAnimationFrame(() => {
                 logContentElement.scrollTop = logContentElement.scrollHeight;
-            }, 10);
-        });
+                
+                setTimeout(() => {
+                    logContentElement.scrollTop = logContentElement.scrollHeight;
+                }, 10);
+            });
+        }
     }
     
     // Remove old entries if we exceed the maximum

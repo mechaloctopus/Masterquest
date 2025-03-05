@@ -145,7 +145,16 @@ window.NPCSystem = (function() {
                             logElement.appendChild(entry);
                             
                             // Type the text with animation
-                            typeText(entry, message, 0, 20);
+                            if (window.Utils && window.Utils.typeText) {
+                                window.Utils.typeText({
+                                    element: entry,
+                                    text: message,
+                                    speed: 20,
+                                    append: false
+                                });
+                            } else {
+                                entry.textContent = message;
+                            }
                             
                             // Ensure the log scrolls to the bottom
                             logElement.scrollTop = logElement.scrollHeight;
@@ -549,7 +558,16 @@ window.NPCSystem = (function() {
             logElement.appendChild(entry);
             
             // Type the text with animation
-            typeText(entry, message, 0, 20);
+            if (window.Utils && window.Utils.typeText) {
+                window.Utils.typeText({
+                    element: entry,
+                    text: message,
+                    speed: 20,
+                    append: false
+                });
+            } else {
+                entry.textContent = message;
+            }
             
             // Ensure the log scrolls to the bottom
             logElement.scrollTop = logElement.scrollHeight;
@@ -604,7 +622,16 @@ window.NPCSystem = (function() {
                 logElement.appendChild(entry);
                 
                 // Type the text with animation
-                typeText(entry, message, 0, 20);
+                if (window.Utils && window.Utils.typeText) {
+                    window.Utils.typeText({
+                        element: entry,
+                        text: message,
+                        speed: 20,
+                        append: false
+                    });
+                } else {
+                    entry.textContent = message;
+                }
                 
                 // Ensure the log scrolls to the bottom
                 logElement.scrollTop = logElement.scrollHeight;
@@ -633,23 +660,6 @@ window.NPCSystem = (function() {
     // Get all NPCs
     function getAllNPCs() {
         return [...npcs];
-    }
-    
-    // Function to create typewriter effect
-    function typeText(element, text, index, speed) {
-        if (index < text.length) {
-            element.textContent += text.charAt(index);
-            index++;
-            setTimeout(function() {
-                typeText(element, text, index, speed);
-            }, speed);
-        }
-        
-        // Make sure log stays scrolled to the bottom during typing
-        const logContent = document.getElementById('logContent');
-        if (logContent) {
-            logContent.scrollTop = logContent.scrollHeight;
-        }
     }
     
     // Public API
