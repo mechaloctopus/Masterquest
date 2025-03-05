@@ -71,129 +71,80 @@ window.FoeSystem = (function() {
     
     // Create a single highly visible foe
     function createVisibleFoe() {
+        console.log("Creating FOE with ULTRA SIMPLE approach");
+        
         try {
-            console.log("Creating visible FOE with BASIC APPROACH");
-            
-            // Create a red sphere for the foe
+            // Create a sphere
             const foeMesh = BABYLON.MeshBuilder.CreateSphere("visible_foe", {
                 diameter: 1.2,
                 segments: 16
             }, scene);
             
-            // Create a bright red material
-            const foeMaterial = new BABYLON.StandardMaterial("foe_material", scene);
-            foeMaterial.diffuseColor = new BABYLON.Color3(1, 0, 0.3);
-            foeMaterial.emissiveColor = new BABYLON.Color3(1, 0, 0.3);
-            foeMesh.material = foeMaterial;
+            // Apply red material
+            const redMaterial = new BABYLON.StandardMaterial("red_material", scene);
+            redMaterial.diffuseColor = new BABYLON.Color3(1, 0, 0);
+            redMaterial.emissiveColor = new BABYLON.Color3(1, 0, 0);
+            foeMesh.material = redMaterial;
             
-            // Position to the right of the NPC
+            // Position to the right of NPC
             foeMesh.position = new BABYLON.Vector3(-5, 1, -10);
             
-            console.log("FOE created at position:", foeMesh.position.toString());
-            
-            // Make the FOE mesh interactive/clickable
+            // ADD DIRECT ONCLICK HANDLER
             foeMesh.isPickable = true;
-            foeMesh.actionManager = new BABYLON.ActionManager(scene);
             
-            // Change cursor on hover
-            foeMesh.actionManager.registerAction(
-                new BABYLON.ExecuteCodeAction(
-                    BABYLON.ActionManager.OnPointerOverTrigger,
-                    function() {
-                        document.body.style.cursor = "pointer";
+            // This is the most direct way to handle clicks
+            scene.onPointerObservable.add((pointerInfo) => {
+                if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERPICK) {
+                    if (pointerInfo.pickInfo.pickedMesh === foeMesh) {
+                        console.log("FOE CLICKED - DIRECT EVENT");
+                        alert("FOE clicked!");
                     }
-                )
-            );
+                }
+            });
             
-            // Restore cursor
-            foeMesh.actionManager.registerAction(
-                new BABYLON.ExecuteCodeAction(
-                    BABYLON.ActionManager.OnPointerOutTrigger,
-                    function() {
-                        document.body.style.cursor = "default";
-                    }
-                )
-            );
+            // CREATE EXTRA LARGE NAME TAG FOR VISIBILITY
+            // Create a plane for the name
+            const nameTagPlane = BABYLON.MeshBuilder.CreatePlane("foeNameTag", {
+                width: 2,
+                height: 0.5
+            }, scene);
             
-            // Add click action
-            foeMesh.actionManager.registerAction(
-                new BABYLON.ExecuteCodeAction(
-                    BABYLON.ActionManager.OnPickTrigger,
-                    function() {
-                        console.log("FOE CLICKED!");
-                        if (window.EventSystem) {
-                            EventSystem.emit('foe.interact', { foeId: "visible_foe" });
-                        }
-                    }
-                )
-            );
-            
-            // Create a very simple name tag (just a plane with text)
-            const nameTagMaterial = new BABYLON.StandardMaterial("foeNameTagMaterial", scene);
-            nameTagMaterial.diffuseColor = new BABYLON.Color3(1, 1, 1); // White
-            nameTagMaterial.specularColor = new BABYLON.Color3(0, 0, 0); // No specular
-            nameTagMaterial.backFaceCulling = false; // Visible from both sides
-            
-            // Create a plane for the name tag
-            const nameTagPlane = BABYLON.MeshBuilder.CreatePlane("foeNameTag", { width: 1, height: 0.3 }, scene);
+            // Position above the FOE
             nameTagPlane.position = new BABYLON.Vector3(0, 1.5, 0);
-            nameTagPlane.parent = foeMesh; // Attach to FOE
-            nameTagPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL; // Always face camera
-            nameTagPlane.material = nameTagMaterial;
-            nameTagPlane.isPickable = false; // Don't block clicks
+            nameTagPlane.parent = foeMesh;
             
-            // Create a dynamic texture for the name tag
-            const nameTextTexture = new BABYLON.DynamicTexture("foeNameTextTexture", 256, scene, true);
-            nameTextTexture.hasAlpha = true;
-            nameTagMaterial.diffuseTexture = nameTextTexture;
-            nameTagMaterial.useAlphaFromDiffuseTexture = true;
+            // Always face the camera
+            nameTagPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
             
-            // Clear the texture and draw text
-            nameTextTexture.drawText("FOE1", null, 32, "bold 40px Arial", "black", "transparent");
+            // Create a bright material for visibility
+            const nameMaterial = new BABYLON.StandardMaterial("foeNameMaterial", scene);
+            nameMaterial.diffuseColor = new BABYLON.Color3(1, 0.5, 0); // Orange background
+            nameMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+            nameMaterial.backFaceCulling = false;
             
-            // Store the FOE in our array
+            // Apply material to name tag
+            nameTagPlane.material = nameMaterial;
+            
+            // Use a basic dynamic texture for the text
+            const nameTexture = new BABYLON.DynamicTexture("foeNameTexture", 512, scene, false);
+            nameTexture.drawText("FOE1", null, 80, "bold 120px Arial", "black", "#FF8000");
+            nameMaterial.diffuseTexture = nameTexture;
+            
+            console.log("FOE created at:", foeMesh.position.toString());
+            console.log("FOE name tag created:", nameTagPlane.position.toString());
+            
+            // Store minimal FOE data
             const foe = {
                 id: "visible_foe",
                 mesh: foeMesh,
-                nameTag: nameTagPlane,
-                position: foeMesh.position,
-                state: 'idle', // idle, engaging, battle, defeated
-                isInteracting: false,
-                hoverParams: {
-                    originalY: foeMesh.position.y,
-                    phase: Math.random() * Math.PI * 2
-                },
-                template: {
-                    HOVER_HEIGHT: 0.7,
-                    HOVER_SPEED: 0.5
-                },
-                // Add sample quiz data for testing
-                quizData: {
-                    completed: false,
-                    currentQuestion: 0,
-                    score: 0,
-                    maxScore: 1,
-                    questions: [
-                        {
-                            question: "I am a FOE",
-                            options: ["Close"],
-                            correctAnswer: 0
-                        }
-                    ]
-                }
+                nameTag: nameTagPlane
             };
             
-            // Add the foe to our array
             foes.push(foe);
-            
-            // Setup hover animation
-            setupHoverAnimation(foe);
-            
-            console.log("FOE creation complete with name tag");
             return foe;
+            
         } catch (error) {
-            console.error("Failed to create FOE:", error);
-            safeLog(`Error creating visible FOE: ${error.message}`, true);
+            console.error("CRITICAL ERROR CREATING FOE:", error);
             return null;
         }
     }

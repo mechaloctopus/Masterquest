@@ -101,130 +101,80 @@ window.NPCSystem = (function() {
     
     // Create a single highly visible NPC
     function createVisibleNPC() {
+        console.log("Creating NPC with ULTRA SIMPLE approach");
+        
         try {
-            console.log("Creating visible NPC with BASIC APPROACH");
-            
-            // Create a sphere for the NPC using MeshBuilder
+            // Create a sphere
             const npcMesh = BABYLON.MeshBuilder.CreateSphere("visible_npc", {
                 diameter: 1,
                 segments: 16
             }, scene);
             
-            // Create a bright blue material
-            const npcMaterial = new BABYLON.StandardMaterial("npc_material", scene);
-            npcMaterial.diffuseColor = new BABYLON.Color3(0, 0.5, 1);
-            npcMaterial.emissiveColor = new BABYLON.Color3(0, 0.5, 1);
-            npcMesh.material = npcMaterial;
+            // Apply blue material
+            const blueMaterial = new BABYLON.StandardMaterial("blue_material", scene);
+            blueMaterial.diffuseColor = new BABYLON.Color3(0, 0.5, 1);
+            blueMaterial.emissiveColor = new BABYLON.Color3(0, 0.5, 1);
+            npcMesh.material = blueMaterial;
             
-            // Position it in front of player
+            // Position in front of camera
             npcMesh.position = new BABYLON.Vector3(0, 1, -10);
             
-            console.log("NPC created at position:", npcMesh.position.toString());
-            
-            // Make the NPC mesh interactive/clickable
+            // ADD DIRECT ONCLICK HANDLER
             npcMesh.isPickable = true;
-            npcMesh.actionManager = new BABYLON.ActionManager(scene);
             
-            // Change cursor on hover
-            npcMesh.actionManager.registerAction(
-                new BABYLON.ExecuteCodeAction(
-                    BABYLON.ActionManager.OnPointerOverTrigger,
-                    function() {
-                        document.body.style.cursor = "pointer";
+            // This is the most direct way to handle clicks
+            scene.onPointerObservable.add((pointerInfo) => {
+                if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERPICK) {
+                    if (pointerInfo.pickInfo.pickedMesh === npcMesh) {
+                        console.log("NPC CLICKED - DIRECT EVENT");
+                        alert("NPC clicked!");
                     }
-                )
-            );
+                }
+            });
             
-            // Restore cursor
-            npcMesh.actionManager.registerAction(
-                new BABYLON.ExecuteCodeAction(
-                    BABYLON.ActionManager.OnPointerOutTrigger,
-                    function() {
-                        document.body.style.cursor = "default";
-                    }
-                )
-            );
+            // CREATE EXTRA LARGE NAME TAG FOR VISIBILITY
+            // Create a plane for the name
+            const nameTagPlane = BABYLON.MeshBuilder.CreatePlane("npcNameTag", {
+                width: 2,
+                height: 0.5
+            }, scene);
             
-            // Add click action
-            npcMesh.actionManager.registerAction(
-                new BABYLON.ExecuteCodeAction(
-                    BABYLON.ActionManager.OnPickTrigger,
-                    function() {
-                        console.log("NPC CLICKED!");
-                        if (window.EventSystem) {
-                            EventSystem.emit('npc.interact', { npcId: "visible_npc" });
-                        }
-                    }
-                )
-            );
-            
-            // Create a very simple name tag (just a plane with text)
-            const nameTagMaterial = new BABYLON.StandardMaterial("nameTagMaterial", scene);
-            nameTagMaterial.diffuseColor = new BABYLON.Color3(1, 1, 1); // White
-            nameTagMaterial.specularColor = new BABYLON.Color3(0, 0, 0); // No specular
-            nameTagMaterial.backFaceCulling = false; // Visible from both sides
-            
-            // Create a plane for the name tag
-            const nameTagPlane = BABYLON.MeshBuilder.CreatePlane("npcNameTag", { width: 1, height: 0.3 }, scene);
+            // Position above the NPC
             nameTagPlane.position = new BABYLON.Vector3(0, 1.5, 0);
-            nameTagPlane.parent = npcMesh; // Attach to NPC
-            nameTagPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL; // Always face camera
-            nameTagPlane.material = nameTagMaterial;
-            nameTagPlane.isPickable = false; // Don't block clicks
+            nameTagPlane.parent = npcMesh;
             
-            // Create a dynamic texture for the name tag
-            const nameTextTexture = new BABYLON.DynamicTexture("nameTextTexture", 256, scene, true);
-            nameTextTexture.hasAlpha = true;
-            nameTagMaterial.diffuseTexture = nameTextTexture;
-            nameTagMaterial.useAlphaFromDiffuseTexture = true;
+            // Always face the camera
+            nameTagPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
             
-            // Clear the texture and draw text
-            nameTextTexture.drawText("NPC1", null, 32, "bold 40px Arial", "black", "transparent");
+            // Create a bright material for visibility
+            const nameMaterial = new BABYLON.StandardMaterial("npcNameMaterial", scene);
+            nameMaterial.diffuseColor = new BABYLON.Color3(1, 1, 0); // Yellow background
+            nameMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+            nameMaterial.backFaceCulling = false;
             
-            // Store the NPC in our array
+            // Apply material to name tag
+            nameTagPlane.material = nameMaterial;
+            
+            // Use a basic dynamic texture for the text
+            const nameTexture = new BABYLON.DynamicTexture("nameTexture", 512, scene, false);
+            nameTexture.drawText("NPC1", null, 80, "bold 120px Arial", "black", "#FFFF00");
+            nameMaterial.diffuseTexture = nameTexture;
+            
+            console.log("NPC created at:", npcMesh.position.toString());
+            console.log("Name tag created:", nameTagPlane.position.toString());
+            
+            // Store minimal NPC data
             const npc = {
                 id: "visible_npc",
                 mesh: npcMesh,
-                nameTag: nameTagPlane,
-                position: npcMesh.position,
-                isNearby: false,
-                isInteracting: false,
-                template: {
-                    HOVER_HEIGHT: 0.5,
-                    HOVER_SPEED: 0.3
-                },
-                hoverParams: {
-                    originalY: npcMesh.position.y,
-                    phase: Math.random() * Math.PI * 2
-                },
-                dialogueData: {
-                    greetings: ["I am an NPC."],
-                    conversations: [
-                        {
-                            id: "intro",
-                            text: "I am an NPC.",
-                            responses: [{ id: "close", text: "Close" }]
-                        },
-                        {
-                            id: "close",
-                            text: "Goodbye!",
-                            responses: []
-                        }
-                    ]
-                }
+                nameTag: nameTagPlane
             };
             
-            // Add the NPC to our array
             npcs.push(npc);
-            
-            // Setup hover animation
-            setupHoverAnimation(npc);
-            
-            console.log("NPC creation complete with name tag");
             return npc;
+            
         } catch (error) {
-            console.error("Failed to create NPC:", error);
-            safeLog(`Error creating visible NPC: ${error.message}`, true);
+            console.error("CRITICAL ERROR CREATING NPC:", error);
             return null;
         }
     }
