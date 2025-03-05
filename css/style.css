@@ -7,23 +7,23 @@ canvas { width: 100%; height: 100%; }
     position: fixed !important; 
     top: 20px; 
     left: 20px; 
-    width: 400px; 
-    max-height: 300px; 
-    overflow-y: auto; 
+    width: 500px; 
+    max-height: 350px; 
+    overflow: hidden; 
     margin: 0; 
     padding: 15px;
     border-radius: 5px;
-    color: #FFA500;
-    font-family: 'Courier New', monospace; 
-    font-size: 16px; 
-    background: rgba(0, 0, 0, 0.8);
+    color: #00FFFF;
+    font-family: 'Orbitron', monospace; 
+    font-size: 14px; 
+    background: rgba(0, 0, 0, 0.85);
     line-height: 1.5;
-    border: 2px solid #00ff00;
-    text-shadow: 0 0 10px #00ff0080;
+    border: 2px solid #FF00FF;
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
     transition: all 0.3s ease;
     z-index: 9999 !important;
     box-sizing: border-box;
-    box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+    box-shadow: 0 0 30px rgba(255, 0, 255, 0.6), inset 0 0 10px rgba(0, 255, 255, 0.3);
     max-width: 600px;
     pointer-events: auto;
     display: block !important;
@@ -31,13 +31,43 @@ canvas { width: 100%; height: 100%; }
     visibility: visible !important;
 }
 
+#log::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 25px;
+    background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+    pointer-events: none;
+    z-index: 10;
+}
+
 #logContent {
-    max-height: 250px;
+    max-height: 320px;
     overflow-y: auto;
     padding: 5px;
+    padding-right: 15px;
     display: block !important;
     opacity: 1 !important;
     visibility: visible !important;
+    scrollbar-width: thin;
+    scrollbar-color: #FF00FF rgba(255, 0, 255, 0.2);
+}
+
+#logContent::-webkit-scrollbar {
+    width: 8px;
+}
+
+#logContent::-webkit-scrollbar-track {
+    background: rgba(255, 0, 255, 0.2);
+    border-radius: 4px;
+}
+
+#logContent::-webkit-scrollbar-thumb {
+    background: #FF00FF;
+    border-radius: 4px;
+    box-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
 }
 
 /* Override any collapsed state */
@@ -46,14 +76,37 @@ canvas { width: 100%; height: 100%; }
     opacity: 1 !important;
     visibility: visible !important;
     height: auto !important;
-    width: 400px !important;
+    width: 500px !important;
 }
 
 .log-message {
-    margin-bottom: 8px;
-    padding: 5px;
-    border-left: 3px solid #00ff00;
-    background-color: rgba(0, 255, 0, 0.1);
+    margin-bottom: 10px;
+    padding: 5px 8px;
+    border-left: 3px solid #FF00FF;
+    background-color: rgba(255, 0, 255, 0.1);
+    position: relative;
+    animation: logFadeIn 0.3s ease-out;
+}
+
+@keyframes logFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#logToggle {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    border: none;
+    color: #FF00FF;
+    font-size: 16px;
+    cursor: pointer;
+    outline: none;
+    z-index: 11;
+    text-shadow: 0 0 5px rgba(255, 0, 255, 0.7);
 }
 
 /* Loading Screen */

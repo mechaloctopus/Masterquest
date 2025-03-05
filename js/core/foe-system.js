@@ -100,27 +100,38 @@ window.FoeSystem = (function() {
             position.y = 2;
             foeMesh.position = new BABYLON.Vector3(position.x, position.y, position.z);
             
-            // Create a simple white plane with a texture for the name tag
+            // Create the name tag using a plane with a properly configured dynamic texture
+            const nameTag = BABYLON.MeshBuilder.CreatePlane("foeNameTag", {width: 1, height: 0.3}, scene);
+            
+            // Create a better dynamic texture with proper resolution and font size
+            const textureResolution = {width: 512, height: 128};
+            const dynamicTexture = new BABYLON.DynamicTexture("foeNameTexture", textureResolution, scene, true);
+            dynamicTexture.hasAlpha = true;
+            
+            // Create a material for the name tag
             const nameTagMaterial = new BABYLON.StandardMaterial("foeNameMaterial", scene);
-            nameTagMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+            nameTagMaterial.diffuseTexture = dynamicTexture;
+            nameTagMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
             nameTagMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
             nameTagMaterial.backFaceCulling = false;
             
-            // Create the plane for the name tag
-            const nameTag = BABYLON.MeshBuilder.CreatePlane("foeNameTag", {width: 1, height: 0.3}, scene);
+            // Apply material to the name tag
             nameTag.material = nameTagMaterial;
+            
+            // Clear the texture with a semi-transparent background
+            const textureContext = dynamicTexture.getContext();
+            textureContext.clearRect(0, 0, textureResolution.width, textureResolution.height);
+            textureContext.fillStyle = "rgba(0, 0, 0, 0.7)";
+            textureContext.fillRect(0, 0, textureResolution.width, textureResolution.height);
+            
+            // Draw text with better settings - neon pink for FOE
+            dynamicTexture.drawText("FOE1", null, 80, "bold 72px Arial", "#FF00FF", "#000000", true, true);
+            
+            // Position the name tag above the FOE
             nameTag.position = new BABYLON.Vector3(0, 1.2, 0);
-            nameTag.parent = foeMesh; // IMPORTANT: parent to foe mesh
+            nameTag.parent = foeMesh;
             
-            // Create dynamic texture with text
-            const texture = new BABYLON.DynamicTexture("foeNameTexture", {width: 256, height: 64}, scene);
-            const ctx = texture.getContext();
-            ctx.fillStyle = "#000000";
-            ctx.fillRect(0, 0, 256, 64);
-            texture.drawText("FOE1", null, null, "24px Arial", "#ffffff", "#000000", true);
-            nameTagMaterial.diffuseTexture = texture;
-            
-            // Make it face the camera at all times
+            // Make it always face the camera
             nameTag.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
             
             console.log("Foe created at position:", foeMesh.position);
@@ -189,23 +200,18 @@ window.FoeSystem = (function() {
                                 window.Logger.log(message);
                             }
                             
-                            // 2. Direct DOM manipulation
+                            // 2. Direct DOM manipulation with typewriter effect
                             const logElement = document.getElementById('logContent');
                             if (logElement) {
                                 const entry = document.createElement('div');
                                 entry.className = 'log-message';
-                                entry.textContent = message;
                                 logElement.appendChild(entry);
+                                
+                                // Type the text with animation
+                                typeText(entry, message, 0, 20);
+                                
+                                // Ensure the log scrolls to the bottom
                                 logElement.scrollTop = logElement.scrollHeight;
-                                console.log("Added message to log DOM");
-                            } else {
-                                console.warn("Log element not found");
-                            }
-                            
-                            // 3. Alternative approach: direct innerHTML
-                            if (logElement) {
-                                // Add directly with innerHTML as a backup
-                                logElement.innerHTML += `<div class="log-message">${message}</div>`;
                             }
                             
                             // 4. Update the global log
@@ -566,23 +572,18 @@ window.FoeSystem = (function() {
             window.Logger.log(message);
         }
         
-        // 2. Direct DOM manipulation
+        // 2. Direct DOM manipulation with typewriter effect
         const logElement = document.getElementById('logContent');
         if (logElement) {
             const entry = document.createElement('div');
             entry.className = 'log-message';
-            entry.textContent = message;
             logElement.appendChild(entry);
+            
+            // Type the text with animation
+            typeText(entry, message, 0, 20);
+            
+            // Ensure the log scrolls to the bottom
             logElement.scrollTop = logElement.scrollHeight;
-            console.log("Added message to log DOM for foe encounter");
-        } else {
-            console.warn("Log element not found for foe encounter");
-        }
-        
-        // 3. Alternative approach: direct innerHTML
-        if (logElement) {
-            // Add directly with innerHTML as a backup
-            logElement.innerHTML += `<div class="log-message">${message}</div>`;
         }
         
         // 4. Update the global log
@@ -622,20 +623,18 @@ window.FoeSystem = (function() {
                 window.Logger.log(message);
             }
             
-            // 2. Direct DOM manipulation
+            // 2. Direct DOM manipulation with typewriter effect
             const logElement = document.getElementById('logContent');
             if (logElement) {
                 const entry = document.createElement('div');
                 entry.className = 'log-message';
-                entry.textContent = message;
                 logElement.appendChild(entry);
+                
+                // Type the text with animation
+                typeText(entry, message, 0, 20);
+                
+                // Ensure the log scrolls to the bottom
                 logElement.scrollTop = logElement.scrollHeight;
-            }
-            
-            // 3. Alternative approach: direct innerHTML
-            if (logElement) {
-                // Add directly with innerHTML as a backup
-                logElement.innerHTML += `<div class="log-message">${message}</div>`;
             }
             
             // 4. Update the global log
@@ -667,20 +666,18 @@ window.FoeSystem = (function() {
                 window.Logger.log(message);
             }
             
-            // 2. Direct DOM manipulation
+            // 2. Direct DOM manipulation with typewriter effect
             const logElement = document.getElementById('logContent');
             if (logElement) {
                 const entry = document.createElement('div');
                 entry.className = 'log-message';
-                entry.textContent = message;
                 logElement.appendChild(entry);
+                
+                // Type the text with animation
+                typeText(entry, message, 0, 20);
+                
+                // Ensure the log scrolls to the bottom
                 logElement.scrollTop = logElement.scrollHeight;
-            }
-            
-            // 3. Alternative approach: direct innerHTML
-            if (logElement) {
-                // Add directly with innerHTML as a backup
-                logElement.innerHTML += `<div class="log-message">${message}</div>`;
             }
             
             // 4. Update the global log
@@ -768,6 +765,23 @@ window.FoeSystem = (function() {
     // Get all foes
     function getAllFoes() {
         return [...foes];
+    }
+    
+    // Function to create typewriter effect
+    function typeText(element, text, index, speed) {
+        if (index < text.length) {
+            element.textContent += text.charAt(index);
+            index++;
+            setTimeout(function() {
+                typeText(element, text, index, speed);
+            }, speed);
+        }
+        
+        // Make sure log stays scrolled to the bottom during typing
+        const logContent = document.getElementById('logContent');
+        if (logContent) {
+            logContent.scrollTop = logContent.scrollHeight;
+        }
     }
     
     // Public API
