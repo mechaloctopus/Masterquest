@@ -100,11 +100,14 @@ const Logger = (function() {
         // Add to DOM first so it appears immediately
         logContentElement.appendChild(messageElement);
         
-        // Auto-scroll to bottom even before text is typed
-        scrollToBottom();
+        // Immediately scroll to bottom when a new message is added
+        forceScrollToBottom();
         
         // Use typewriter effect for displaying text
         typeText(textSpan, prefix + message, 0, 3);
+        
+        // Ensure we don't exceed max entries
+        pruneOldEntries();
         
         // Emit event if event system is available
         if (window.EventSystem) {
@@ -122,17 +125,47 @@ const Logger = (function() {
             setTimeout(function() {
                 typeText(element, text, index + 1, speed);
                 // Ensure we continue to scroll while typing
-                scrollToBottom();
+                forceScrollToBottom();
             }, speed);
         }
     }
     
     // Helper function to scroll to the bottom of the log
+    // Using a more robust approach to ensure scrolling works
     function scrollToBottom() {
+        if (!logContentElement) return;
+        
         // Use requestAnimationFrame to ensure this happens after DOM updates
         requestAnimationFrame(() => {
             logContentElement.scrollTop = logContentElement.scrollHeight;
         });
+    }
+    
+    // Force scrolling with multiple approaches to ensure it works
+    function forceScrollToBottom() {
+        if (!logContentElement) return;
+        
+        // Immediate scroll attempt
+        logContentElement.scrollTop = logContentElement.scrollHeight;
+        
+        // Backup with requestAnimationFrame for reliable scrolling
+        requestAnimationFrame(() => {
+            logContentElement.scrollTop = logContentElement.scrollHeight;
+            
+            // Additional backup with timeout
+            setTimeout(() => {
+                logContentElement.scrollTop = logContentElement.scrollHeight;
+            }, 10);
+        });
+    }
+    
+    // Remove old entries if we exceed the maximum
+    function pruneOldEntries() {
+        const maxEntries = window.CONFIG && window.CONFIG.UI && window.CONFIG.UI.LOGGER && window.CONFIG.UI.LOGGER.MAX_ENTRIES || 100;
+        
+        while (logContentElement.children.length > maxEntries) {
+            logContentElement.removeChild(logContentElement.firstChild);
+        }
     }
     
     // Log a standard message
@@ -182,6 +215,14 @@ const Logger = (function() {
         warning,
         debug,
         clear,
+        forceScrollToBottom,
         types: MESSAGE_TYPES
     };
-})(); 
+})();
+
+// Initialize Logger if loaded directly
+if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('DOMContentLoaded', function() {
+        if (window.Logger) window.Logger.init();
+    });
+} 

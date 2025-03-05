@@ -8,15 +8,16 @@ canvas { width: 100%; height: 100%; }
     top: 20px; 
     left: 20px; 
     width: 500px; 
-    max-height: 500px;
-    overflow: hidden; 
+    height: 500px;
+    display: flex !important;
+    flex-direction: column !important;
     margin: 0; 
-    padding: 15px;
-    border-radius: 5px;
+    padding: 10px;
+    border-radius: 8px;
     color: #00FFFF;
     font-family: 'Orbitron', monospace; 
     font-size: 14px; 
-    background: rgba(0, 0, 0, 0.85);
+    background: rgba(0, 0, 0, 0.9);
     line-height: 1.5;
     border: 2px solid #FF00FF;
     text-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
@@ -24,11 +25,10 @@ canvas { width: 100%; height: 100%; }
     z-index: 9999 !important;
     box-sizing: border-box;
     box-shadow: 0 0 30px rgba(255, 0, 255, 0.6), inset 0 0 10px rgba(0, 255, 255, 0.3);
-    max-width: 600px;
     pointer-events: auto;
-    display: block !important;
     opacity: 1 !important;
     visibility: visible !important;
+    overflow: hidden;
 }
 
 #log::after {
@@ -38,22 +38,46 @@ canvas { width: 100%; height: 100%; }
     right: 0;
     bottom: 0;
     height: 40px;
-    background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 80%);
+    background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 100%);
     pointer-events: none;
     z-index: 10;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+#logToggle {
+    align-self: flex-end;
+    background: rgba(0, 0, 0, 0.5);
+    color: #FF00FF;
+    border: 1px solid #FF00FF;
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.3);
+    z-index: 11;
+}
+
+#logToggle:hover {
+    background: rgba(255, 0, 255, 0.2);
+    box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
 }
 
 #logContent {
-    height: 450px;
+    flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
+    margin: 0;
     padding: 5px;
-    padding-right: 15px;
-    display: block !important;
-    opacity: 1 !important;
-    visibility: visible !important;
     scrollbar-width: thin;
     scrollbar-color: #FF00FF rgba(255, 0, 255, 0.2);
+    display: block;
+    opacity: 1 !important;
+    position: relative;
+    z-index: 5;
 }
 
 #logContent::-webkit-scrollbar {
@@ -73,45 +97,84 @@ canvas { width: 100%; height: 100%; }
 
 /* Override any collapsed state */
 #log.collapsed {
-    display: block !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    height: auto !important;
-    width: 500px !important;
+    height: 40px !important;
+    overflow: hidden;
+}
+
+#log.collapsed #logContent {
+    display: none;
 }
 
 .log-message {
-    margin-bottom: 10px;
-    padding: 5px 8px;
-    border-left: 3px solid #FF00FF;
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    border-left: 2px solid #FF00FF;
     background-color: rgba(255, 0, 255, 0.1);
     position: relative;
     animation: logFadeIn 0.3s ease-out;
+    word-wrap: break-word;
+    max-width: 100%;
+    font-family: 'Orbitron', monospace;
+    letter-spacing: 0.5px;
+}
+
+/* Add a prefix to all log messages */
+.log-message::before {
+    content: ">";
+    color: #FF00FF;
+    margin-right: 8px;
+    font-weight: bold;
+    text-shadow: 0 0 5px rgba(255, 0, 255, 0.8);
+}
+
+/* Style specific message types */
+.log-message.log-error {
+    border-left-color: #FF3366;
+    background-color: rgba(255, 51, 102, 0.15);
+}
+
+.log-message.log-error::before {
+    content: "!";
+    color: #FF3366;
+}
+
+.log-message.log-warning {
+    border-left-color: #FFCC00;
+    background-color: rgba(255, 204, 0, 0.15);
+}
+
+.log-message.log-warning::before {
+    content: "⚠";
+    color: #FFCC00;
+}
+
+.log-message.log-debug {
+    border-left-color: #66FFCC;
+    background-color: rgba(102, 255, 204, 0.15);
 }
 
 .log-text {
     display: inline-block;
+    position: relative;
+}
+
+/* Add cursor effect to the latest message */
+.log-message:last-child .log-text::after {
+    content: "█";
+    display: inline-block;
+    color: #00FFFF;
+    animation: cursor-blink 1s step-end infinite;
+    margin-left: 2px;
+}
+
+@keyframes cursor-blink {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
 }
 
 @keyframes logFadeIn {
     0% { opacity: 0; transform: translateY(10px); }
     100% { opacity: 1; transform: translateY(0); }
-}
-
-#logToggle {
-    position: absolute;
-    top: 5px;
-    right: 10px;
-    width: 30px;
-    height: 30px;
-    background: transparent;
-    border: none;
-    color: #FF00FF;
-    font-size: 16px;
-    cursor: pointer;
-    outline: none;
-    z-index: 11;
-    text-shadow: 0 0 5px rgba(255, 0, 255, 0.7);
 }
 
 /* Loading Screen */
