@@ -194,17 +194,23 @@ const MapSystem = (function() {
         mapContext.lineWidth = 0.5;
         mapContext.globalAlpha = 0.3;
         
-        // Calculate center offset - static grid, centered
+        // Calculate center offset
         const centerX = mapCanvasElement.width / 2;
         const centerZ = mapCanvasElement.height / 2;
         
         // When expanded, the grid is fixed and the player moves
-        // When collapsed, we center on the player (keeping the grid fixed)
+        // When collapsed, the grid moves relative to the player position
+        
+        // Calculate player position offset for grid (only in collapsed mode)
+        const playerOffsetX = expanded ? 0 : playerPosition.x;
+        const playerOffsetZ = expanded ? 0 : playerPosition.z;
         
         // Draw vertical lines
         for (let x = -mapData.width / 2; x <= mapData.width / 2; x += mapData.gridSpacing) {
-            // Calculate grid line position (fixed grid)
-            const mapX = centerX + (x * gridScale * mapCanvasElement.width);
+            // Calculate grid line position
+            // In collapsed mode, shift grid by player position
+            const offsetX = x - (playerOffsetX % mapData.gridSpacing);
+            const mapX = centerX + (offsetX * gridScale * mapCanvasElement.width);
             
             mapContext.beginPath();
             mapContext.moveTo(mapX, 0);
@@ -212,17 +218,20 @@ const MapSystem = (function() {
             mapContext.stroke();
             
             // Draw grid coordinate labels for major grid lines
-            if (x % 10 === 0) {
+            if (Math.round(x + playerOffsetX) % 10 === 0) {
                 mapContext.fillStyle = "#00ffcc";
                 mapContext.font = "8px Orbitron";
-                mapContext.fillText(x.toString(), mapX - 5, mapCanvasElement.height - 42);
+                const labelX = Math.round(x + playerOffsetX);
+                mapContext.fillText(labelX.toString(), mapX - 5, mapCanvasElement.height - 42);
             }
         }
         
         // Draw horizontal lines
         for (let z = -mapData.height / 2; z <= mapData.height / 2; z += mapData.gridSpacing) {
-            // Calculate grid line position (fixed grid)
-            const mapZ = centerZ + (z * gridScale * mapCanvasElement.height);
+            // Calculate grid line position
+            // In collapsed mode, shift grid by player position
+            const offsetZ = z - (playerOffsetZ % mapData.gridSpacing);
+            const mapZ = centerZ + (offsetZ * gridScale * mapCanvasElement.height);
             
             mapContext.beginPath();
             mapContext.moveTo(0, mapZ);
@@ -230,10 +239,11 @@ const MapSystem = (function() {
             mapContext.stroke();
             
             // Draw grid coordinate labels for major grid lines
-            if (z % 10 === 0) {
+            if (Math.round(z + playerOffsetZ) % 10 === 0) {
                 mapContext.fillStyle = "#00ffcc";
                 mapContext.font = "8px Orbitron";
-                mapContext.fillText(z.toString(), 5, mapZ + 8);
+                const labelZ = Math.round(z + playerOffsetZ);
+                mapContext.fillText(labelZ.toString(), 5, mapZ + 8);
             }
         }
         
