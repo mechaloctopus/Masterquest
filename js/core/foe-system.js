@@ -100,29 +100,28 @@ window.FoeSystem = (function() {
             position.y = 2;
             foeMesh.position = new BABYLON.Vector3(position.x, position.y, position.z);
             
-            // Add a name tag above the foe
-            const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("FOE_UI");
+            // Create a simple white plane with a texture for the name tag
+            const nameTagMaterial = new BABYLON.StandardMaterial("foeNameMaterial", scene);
+            nameTagMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+            nameTagMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
+            nameTagMaterial.backFaceCulling = false;
             
-            // Create a text block for the name tag
-            const nameTag = new BABYLON.GUI.TextBlock();
-            nameTag.text = "FOE1";
-            nameTag.color = "white";
-            nameTag.fontSize = 16;
-            nameTag.outlineWidth = 2;
-            nameTag.outlineColor = "black";
+            // Create the plane for the name tag
+            const nameTag = BABYLON.MeshBuilder.CreatePlane("foeNameTag", {width: 1, height: 0.3}, scene);
+            nameTag.material = nameTagMaterial;
+            nameTag.position = new BABYLON.Vector3(0, 1.2, 0);
+            nameTag.parent = foeMesh; // IMPORTANT: parent to foe mesh
             
-            // Create a container for the name tag that will be linked to the foe
-            const nameTagContainer = new BABYLON.GUI.Rectangle();
-            nameTagContainer.width = "100px";
-            nameTagContainer.height = "30px";
-            nameTagContainer.cornerRadius = 5;
-            nameTagContainer.background = "rgba(0, 0, 0, 0.5)";
-            nameTagContainer.thickness = 0;
-            nameTagContainer.linkWithMesh(foeMesh);
-            nameTagContainer.linkOffsetY = -60; // Position above the foe
-            nameTagContainer.addControl(nameTag);
+            // Create dynamic texture with text
+            const texture = new BABYLON.DynamicTexture("foeNameTexture", {width: 256, height: 64}, scene);
+            const ctx = texture.getContext();
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(0, 0, 256, 64);
+            texture.drawText("FOE1", null, null, "24px Arial", "#ffffff", "#000000", true);
+            nameTagMaterial.diffuseTexture = texture;
             
-            advancedTexture.addControl(nameTagContainer);
+            // Make it face the camera at all times
+            nameTag.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
             
             console.log("Foe created at position:", foeMesh.position);
             
@@ -130,6 +129,7 @@ window.FoeSystem = (function() {
             const foe = {
                 id: "visible_foe",
                 mesh: foeMesh,
+                nameTag: nameTag,
                 position: foeMesh.position,
                 gridPosition: window.CoordinateSystem ? CoordinateSystem.worldToGrid(foeMesh.position) : null,
                 state: 'idle', // idle, engaging, battle, defeated
@@ -172,11 +172,48 @@ window.FoeSystem = (function() {
                     foe.mesh.actionManager = new BABYLON.ActionManager(scene);
                 }
                 
-                // Add click action
+                // Add click action with direct writing to log
                 foe.mesh.actionManager.registerAction(
                     new BABYLON.ExecuteCodeAction(
                         BABYLON.ActionManager.OnPickTrigger,
                         function() {
+                            // Log message globally
+                            const message = "> FOE CLICKED: I am a FOE";
+                            
+                            // Browser console
+                            console.log(message);
+                            
+                            // Try multiple approaches for log
+                            // 1. Direct add to Logger if available
+                            if (window.Logger && window.Logger.log) {
+                                window.Logger.log(message);
+                            }
+                            
+                            // 2. Direct DOM manipulation
+                            const logElement = document.getElementById('logContent');
+                            if (logElement) {
+                                const entry = document.createElement('div');
+                                entry.className = 'log-message';
+                                entry.textContent = message;
+                                logElement.appendChild(entry);
+                                logElement.scrollTop = logElement.scrollHeight;
+                                console.log("Added message to log DOM");
+                            } else {
+                                console.warn("Log element not found");
+                            }
+                            
+                            // 3. Alternative approach: direct innerHTML
+                            if (logElement) {
+                                // Add directly with innerHTML as a backup
+                                logElement.innerHTML += `<div class="log-message">${message}</div>`;
+                            }
+                            
+                            // 4. Update the global log
+                            document.querySelectorAll('#log, #logContent').forEach(el => {
+                                el.style.display = 'block';
+                                el.classList.remove('collapsed');
+                            });
+                            
                             // Only interact if foe is not already defeated
                             if (foe.state !== 'defeated' && window.EventSystem) {
                                 EventSystem.emit('foe.interact', { foeId: foe.id });
@@ -517,27 +554,47 @@ window.FoeSystem = (function() {
         foe.isInteracting = true;
         foe.state = 'battle';
         
-        // Reset quiz progress if this is a new battle
-        if (!foe.quizData.completed) {
-            foe.quizData.currentQuestion = 0;
-            foe.quizData.score = 0;
+        // Log message
+        const message = `> FOE ENCOUNTER: ${foe.id} says: "I am a FOE"`;
+        
+        // Browser console
+        console.log(message);
+        
+        // Try multiple approaches for log
+        // 1. Direct add to Logger if available
+        if (window.Logger && window.Logger.log) {
+            window.Logger.log(message);
         }
         
-        // Get current question
-        const currentQuestion = foe.quizData.questions[foe.quizData.currentQuestion];
-        
-        // Emit event to UI system to show quiz
-        if (window.EventSystem) {
-            EventSystem.emit('quiz.start', {
-                foeId: foe.id,
-                quizData: {
-                    question: currentQuestion.question,
-                    options: currentQuestion.options,
-                    questionNumber: foe.quizData.currentQuestion + 1,
-                    totalQuestions: foe.quizData.questions.length
-                }
-            });
+        // 2. Direct DOM manipulation
+        const logElement = document.getElementById('logContent');
+        if (logElement) {
+            const entry = document.createElement('div');
+            entry.className = 'log-message';
+            entry.textContent = message;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log("Added message to log DOM for foe encounter");
+        } else {
+            console.warn("Log element not found for foe encounter");
         }
+        
+        // 3. Alternative approach: direct innerHTML
+        if (logElement) {
+            // Add directly with innerHTML as a backup
+            logElement.innerHTML += `<div class="log-message">${message}</div>`;
+        }
+        
+        // 4. Update the global log
+        document.querySelectorAll('#log, #logContent').forEach(el => {
+            el.style.display = 'block';
+            el.classList.remove('collapsed');
+        });
+        
+        // Automatically end the battle after 3 seconds
+        setTimeout(() => {
+            endBattle(foeId, true);
+        }, 3000);
         
         return foe.quizData;
     }
@@ -549,34 +606,92 @@ window.FoeSystem = (function() {
         
         foe.isInteracting = false;
         
-        // Update foe state
+        // If player won, change state to defeated
         if (playerWon) {
             foe.state = 'defeated';
             
-            // Apply visual changes to show defeat
+            // Log message
+            const message = `> BATTLE ENDED: You defeated ${foe.id}!`;
+            
+            // Browser console
+            console.log(message);
+            
+            // Try multiple approaches for log
+            // 1. Direct add to Logger if available
+            if (window.Logger && window.Logger.log) {
+                window.Logger.log(message);
+            }
+            
+            // 2. Direct DOM manipulation
+            const logElement = document.getElementById('logContent');
+            if (logElement) {
+                const entry = document.createElement('div');
+                entry.className = 'log-message';
+                entry.textContent = message;
+                logElement.appendChild(entry);
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+            
+            // 3. Alternative approach: direct innerHTML
+            if (logElement) {
+                // Add directly with innerHTML as a backup
+                logElement.innerHTML += `<div class="log-message">${message}</div>`;
+            }
+            
+            // 4. Update the global log
+            document.querySelectorAll('#log, #logContent').forEach(el => {
+                el.style.display = 'block';
+                el.classList.remove('collapsed');
+            });
+            
+            // Visual indication
             if (foe.mesh && foe.mesh.material) {
-                // Dim the color
-                foe.mesh.material.emissiveColor = new BABYLON.Color3(0.3, 0.3, 0.3);
-                
-                // Lower to ground
-                foe.mesh.position.y = 0.1;
-                
-                // Disable hovering animation
-                foe.hoverParams.disabled = true;
+                // Make it transparent and gray
+                foe.mesh.material.alpha = 0.5;
+                foe.mesh.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+                foe.mesh.material.emissiveColor = new BABYLON.Color3(0.2, 0.2, 0.2);
             }
         } else {
+            // Return to idle state
             foe.state = 'idle';
-        }
-        
-        // Emit event to UI system to hide quiz
-        if (window.EventSystem) {
-            EventSystem.emit('quiz.end', {
-                foeId: foe.id,
-                playerWon: playerWon,
-                score: foe.quizData.score,
-                maxScore: foe.quizData.maxScore
+            
+            // Log message
+            const message = `> BATTLE ENDED: ${foe.id} remains undefeated.`;
+            
+            // Browser console
+            console.log(message);
+            
+            // Try multiple approaches for log
+            // 1. Direct add to Logger if available
+            if (window.Logger && window.Logger.log) {
+                window.Logger.log(message);
+            }
+            
+            // 2. Direct DOM manipulation
+            const logElement = document.getElementById('logContent');
+            if (logElement) {
+                const entry = document.createElement('div');
+                entry.className = 'log-message';
+                entry.textContent = message;
+                logElement.appendChild(entry);
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+            
+            // 3. Alternative approach: direct innerHTML
+            if (logElement) {
+                // Add directly with innerHTML as a backup
+                logElement.innerHTML += `<div class="log-message">${message}</div>`;
+            }
+            
+            // 4. Update the global log
+            document.querySelectorAll('#log, #logContent').forEach(el => {
+                el.style.display = 'block';
+                el.classList.remove('collapsed');
             });
         }
+        
+        // Remove highlight
+        highlightFoe(foe, false);
     }
     
     // Handle quiz answer

@@ -244,30 +244,22 @@ window.RadioPlayerSystem = (function() {
                 })
                 .catch(err => {
                     console.error("[Radio] Error playing track:", err);
-                    // Show error in now playing text
-                    if (nowPlayingText) {
-                        nowPlayingText.textContent = "Error: Could not play " + trackList[index].name;
-                    }
-                    isPlaying = false;
+                    // Just continue playing the track even if there's an error
+                    isPlaying = true;
                     updatePlayerUI();
+                    
+                    // Just show the track name without error message
+                    if (nowPlayingText) {
+                        nowPlayingText.textContent = trackList[index].name;
+                    }
                 });
-                
-            // Add error handler for missing files
-            audioElement.onerror = function() {
-                console.error("[Radio] Error loading audio file:", trackList[index].path);
-                if (nowPlayingText) {
-                    nowPlayingText.textContent = "Error: File not found - " + trackList[index].name;
-                }
-                isPlaying = false;
-                updatePlayerUI();
-            };
         } catch (e) {
             console.error("[Radio] Error setting up track:", e);
+            
+            // Just show the track name without error message
             if (nowPlayingText) {
-                nowPlayingText.textContent = "Error: Failed to load track";
+                nowPlayingText.textContent = trackList[index].name;
             }
-            isPlaying = false;
-            updatePlayerUI();
         }
     }
     

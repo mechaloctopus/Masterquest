@@ -130,29 +130,28 @@ window.NPCSystem = (function() {
             // Set the position
             npcMesh.position = new BABYLON.Vector3(position.x, position.y, position.z);
             
-            // Add a name tag above the NPC
-            const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("NPC_UI");
+            // Create a simple white plane with a texture for the name tag
+            const nameTagMaterial = new BABYLON.StandardMaterial("npcNameMaterial", scene);
+            nameTagMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+            nameTagMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
+            nameTagMaterial.backFaceCulling = false;
             
-            // Create a text block for the name tag
-            const nameTag = new BABYLON.GUI.TextBlock();
-            nameTag.text = "NPC1";
-            nameTag.color = "white";
-            nameTag.fontSize = 16;
-            nameTag.outlineWidth = 2;
-            nameTag.outlineColor = "black";
+            // Create the plane for the name tag
+            const nameTag = BABYLON.MeshBuilder.CreatePlane("npcNameTag", {width: 1, height: 0.3}, scene);
+            nameTag.material = nameTagMaterial;
+            nameTag.position = new BABYLON.Vector3(0, 1.2, 0);
+            nameTag.parent = npcMesh; // IMPORTANT: parent to NPC mesh
             
-            // Create a container for the name tag that will be linked to the NPC
-            const nameTagContainer = new BABYLON.GUI.Rectangle();
-            nameTagContainer.width = "100px";
-            nameTagContainer.height = "30px";
-            nameTagContainer.cornerRadius = 5;
-            nameTagContainer.background = "rgba(0, 0, 0, 0.5)";
-            nameTagContainer.thickness = 0;
-            nameTagContainer.linkWithMesh(npcMesh);
-            nameTagContainer.linkOffsetY = -60; // Position above the NPC
-            nameTagContainer.addControl(nameTag);
+            // Create dynamic texture with text
+            const texture = new BABYLON.DynamicTexture("npcNameTexture", {width: 256, height: 64}, scene);
+            const ctx = texture.getContext();
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(0, 0, 256, 64);
+            texture.drawText("NPC1", null, null, "24px Arial", "#ffffff", "#000000", true);
+            nameTagMaterial.diffuseTexture = texture;
             
-            advancedTexture.addControl(nameTagContainer);
+            // Make it face the camera at all times
+            nameTag.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
             
             console.log("NPC created at position:", npcMesh.position);
             
@@ -160,6 +159,7 @@ window.NPCSystem = (function() {
             const npc = {
                 id: "visible_npc",
                 mesh: npcMesh,
+                nameTag: nameTag,
                 position: npcMesh.position,
                 gridPosition: window.CoordinateSystem ? CoordinateSystem.worldToGrid(npcMesh.position) : null,
                 isNearby: false,
@@ -210,11 +210,42 @@ window.NPCSystem = (function() {
                     npc.mesh.actionManager = new BABYLON.ActionManager(scene);
                 }
                 
-                // Add click action
+                // Add click action with direct writing to log
                 npc.mesh.actionManager.registerAction(
                     new BABYLON.ExecuteCodeAction(
                         BABYLON.ActionManager.OnPickTrigger,
                         function() {
+                            // Log message globally
+                            const message = "> NPC CLICKED: I am an NPC";
+                            
+                            // Browser console
+                            console.log(message);
+                            
+                            // Try multiple approaches for log
+                            // 1. Direct add to Logger if available
+                            if (window.Logger && window.Logger.log) {
+                                window.Logger.log(message);
+                            }
+                            
+                            // 2. Direct DOM manipulation
+                            const logElement = document.getElementById('logContent');
+                            if (logElement) {
+                                const entry = document.createElement('div');
+                                entry.className = 'log-message';
+                                entry.textContent = message;
+                                logElement.appendChild(entry);
+                                logElement.scrollTop = logElement.scrollHeight;
+                                console.log("Added message to log DOM");
+                            } else {
+                                console.warn("Log element not found");
+                            }
+                            
+                            // 3. Update the global log
+                            document.querySelectorAll('#log, #logContent').forEach(el => {
+                                el.style.display = 'block';
+                                el.classList.remove('collapsed');
+                            });
+                            
                             if (window.EventSystem) {
                                 EventSystem.emit('npc.interact', { npcId: npc.id });
                             }
@@ -538,13 +569,47 @@ window.NPCSystem = (function() {
         
         npc.isInteracting = true;
         
-        // Emit event to UI system to show dialogue
-        if (window.EventSystem) {
-            EventSystem.emit('dialogue.start', {
-                npcId: npc.id,
-                dialogueData: npc.dialogueData
-            });
+        // Log message
+        const message = `> NPC INTERACTION: ${npc.id} says: "I am an NPC."`;
+        
+        // Browser console
+        console.log(message);
+        
+        // Try multiple approaches for log
+        // 1. Direct add to Logger if available
+        if (window.Logger && window.Logger.log) {
+            window.Logger.log(message);
         }
+        
+        // 2. Direct DOM manipulation
+        const logElement = document.getElementById('logContent');
+        if (logElement) {
+            const entry = document.createElement('div');
+            entry.className = 'log-message';
+            entry.textContent = message;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log("Added message to log DOM for interaction");
+        } else {
+            console.warn("Log element not found for interaction");
+        }
+        
+        // 3. Alternative approach: direct innerHTML
+        if (logElement) {
+            // Add directly with innerHTML as a backup
+            logElement.innerHTML += `<div class="log-message">${message}</div>`;
+        }
+        
+        // 4. Update the global log
+        document.querySelectorAll('#log, #logContent').forEach(el => {
+            el.style.display = 'block';
+            el.classList.remove('collapsed');
+        });
+        
+        // Automatically end the interaction after 3 seconds
+        setTimeout(() => {
+            endInteraction(npcId);
+        }, 3000);
         
         return npc.dialogueData;
     }
@@ -556,12 +621,39 @@ window.NPCSystem = (function() {
         
         npc.isInteracting = false;
         
-        // Emit event to UI system to hide dialogue
-        if (window.EventSystem) {
-            EventSystem.emit('dialogue.end', {
-                npcId: npc.id
-            });
+        // Log message
+        const message = `> NPC DIALOGUE ENDED with ${npc.id}`;
+        
+        // Browser console
+        console.log(message);
+        
+        // Try multiple approaches for log
+        // 1. Direct add to Logger if available
+        if (window.Logger && window.Logger.log) {
+            window.Logger.log(message);
         }
+        
+        // 2. Direct DOM manipulation
+        const logElement = document.getElementById('logContent');
+        if (logElement) {
+            const entry = document.createElement('div');
+            entry.className = 'log-message';
+            entry.textContent = message;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        // 3. Alternative approach: direct innerHTML
+        if (logElement) {
+            // Add directly with innerHTML as a backup
+            logElement.innerHTML += `<div class="log-message">${message}</div>`;
+        }
+        
+        // 4. Update the global log
+        document.querySelectorAll('#log, #logContent').forEach(el => {
+            el.style.display = 'block';
+            el.classList.remove('collapsed');
+        });
         
         // Show talk button again if player is still nearby
         if (npc.isNearby) {
