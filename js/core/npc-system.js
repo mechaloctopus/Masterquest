@@ -102,70 +102,30 @@ window.NPCSystem = (function() {
     // Create a single highly visible NPC
     function createVisibleNPC() {
         try {
-            console.log("Creating visible NPC...");
+            console.log("Creating visible NPC with BASIC APPROACH");
             
-            // Create a sphere
+            // Create a sphere for the NPC using MeshBuilder
             const npcMesh = BABYLON.MeshBuilder.CreateSphere("visible_npc", {
                 diameter: 1,
                 segments: 16
             }, scene);
             
-            // Bright blue material
-            const material = new BABYLON.StandardMaterial("npc_material", scene);
-            material.diffuseColor = new BABYLON.Color3(0, 0.5, 1);
-            material.emissiveColor = new BABYLON.Color3(0, 0.5, 1);
-            npcMesh.material = material;
+            // Create a bright blue material
+            const npcMaterial = new BABYLON.StandardMaterial("npc_material", scene);
+            npcMaterial.diffuseColor = new BABYLON.Color3(0, 0.5, 1);
+            npcMaterial.emissiveColor = new BABYLON.Color3(0, 0.5, 1);
+            npcMesh.material = npcMaterial;
             
-            // Position in front of starting position
-            let position = { x: 0, y: 1, z: -10 };
+            // Position it in front of player
+            npcMesh.position = new BABYLON.Vector3(0, 1, -10);
             
-            // Try to use grid if available
-            if (window.CoordinateSystem) {
-                const gridPos = { x: 2, z: -5 };
-                position = CoordinateSystem.gridToWorld(gridPos);
-                safeLog(`> NPC POSITIONED AT GRID (2, -5) - WORLD ${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}`);
-            } else {
-                safeLog(`> NPC POSITIONED AT (0, 1, -10)`);
-            }
+            console.log("NPC created at position:", npcMesh.position.toString());
             
-            // Set the position
-            npcMesh.position = new BABYLON.Vector3(position.x, position.y, position.z);
-            
-            // SIMPLER NAME TAG APPROACH - Using a TextBlock with AdvancedDynamicTexture
-            const nameTagPlane = BABYLON.MeshBuilder.CreatePlane("npcNameTag", { width: 2, height: 0.5 }, scene);
-            nameTagPlane.position = new BABYLON.Vector3(0, 1.5, 0);
-            nameTagPlane.parent = npcMesh;
-            nameTagPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
-            
-            // Create advanced dynamic texture
-            const nameTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(nameTagPlane);
-            nameTexture.background = "transparent";
-            
-            // Create text block
-            const textBlock = new BABYLON.GUI.TextBlock();
-            textBlock.text = "NPC1";
-            textBlock.color = "black";
-            textBlock.fontSize = 32;
-            textBlock.fontFamily = "Arial";
-            textBlock.textWrapping = true;
-            textBlock.width = 1;
-            textBlock.height = 0.4;
-            textBlock.outlineWidth = 0;
-            textBlock.resizeToFit = true;
-            
-            // Add the text to the texture
-            nameTexture.addControl(textBlock);
-            
-            // Ensure Clickable
+            // Make the NPC mesh interactive/clickable
             npcMesh.isPickable = true;
-            
-            // Make sure the name tag doesn't block clicks
-            nameTagPlane.isPickable = false;
-            
-            // Add Action Manager
             npcMesh.actionManager = new BABYLON.ActionManager(scene);
             
-            // Add mouse over cursor change
+            // Change cursor on hover
             npcMesh.actionManager.registerAction(
                 new BABYLON.ExecuteCodeAction(
                     BABYLON.ActionManager.OnPointerOverTrigger,
@@ -175,7 +135,7 @@ window.NPCSystem = (function() {
                 )
             );
             
-            // Add mouse out cursor restore
+            // Restore cursor
             npcMesh.actionManager.registerAction(
                 new BABYLON.ExecuteCodeAction(
                     BABYLON.ActionManager.OnPointerOutTrigger,
@@ -190,36 +150,7 @@ window.NPCSystem = (function() {
                 new BABYLON.ExecuteCodeAction(
                     BABYLON.ActionManager.OnPickTrigger,
                     function() {
-                        const message = "> NPC CLICKED: I am an NPC";
-                        
-                        // Browser console
-                        console.log(message);
-                        
-                        // Try multiple approaches for log
-                        if (window.Logger && window.Logger.log) {
-                            window.Logger.log(message);
-                        }
-                        
-                        // DOM manipulation with typewriter effect
-                        const logElement = document.getElementById('logContent');
-                        if (logElement) {
-                            const entry = document.createElement('div');
-                            entry.className = 'log-message';
-                            logElement.appendChild(entry);
-                            
-                            // Type the text with animation
-                            typeText(entry, message, 0, 20);
-                            
-                            // Ensure the log scrolls to the bottom
-                            logElement.scrollTop = logElement.scrollHeight;
-                        }
-                        
-                        // Update the global log
-                        document.querySelectorAll('#log, #logContent').forEach(el => {
-                            el.style.display = 'block';
-                            el.classList.remove('collapsed');
-                        });
-                        
+                        console.log("NPC CLICKED!");
                         if (window.EventSystem) {
                             EventSystem.emit('npc.interact', { npcId: "visible_npc" });
                         }
@@ -227,13 +158,35 @@ window.NPCSystem = (function() {
                 )
             );
             
-            // Store NPC in the array with all necessary properties
+            // Create a very simple name tag (just a plane with text)
+            const nameTagMaterial = new BABYLON.StandardMaterial("nameTagMaterial", scene);
+            nameTagMaterial.diffuseColor = new BABYLON.Color3(1, 1, 1); // White
+            nameTagMaterial.specularColor = new BABYLON.Color3(0, 0, 0); // No specular
+            nameTagMaterial.backFaceCulling = false; // Visible from both sides
+            
+            // Create a plane for the name tag
+            const nameTagPlane = BABYLON.MeshBuilder.CreatePlane("npcNameTag", { width: 1, height: 0.3 }, scene);
+            nameTagPlane.position = new BABYLON.Vector3(0, 1.5, 0);
+            nameTagPlane.parent = npcMesh; // Attach to NPC
+            nameTagPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL; // Always face camera
+            nameTagPlane.material = nameTagMaterial;
+            nameTagPlane.isPickable = false; // Don't block clicks
+            
+            // Create a dynamic texture for the name tag
+            const nameTextTexture = new BABYLON.DynamicTexture("nameTextTexture", 256, scene, true);
+            nameTextTexture.hasAlpha = true;
+            nameTagMaterial.diffuseTexture = nameTextTexture;
+            nameTagMaterial.useAlphaFromDiffuseTexture = true;
+            
+            // Clear the texture and draw text
+            nameTextTexture.drawText("NPC1", null, 32, "bold 40px Arial", "black", "transparent");
+            
+            // Store the NPC in our array
             const npc = {
                 id: "visible_npc",
                 mesh: npcMesh,
                 nameTag: nameTagPlane,
                 position: npcMesh.position,
-                gridPosition: window.CoordinateSystem ? CoordinateSystem.worldToGrid(npcMesh.position) : null,
                 isNearby: false,
                 isInteracting: false,
                 template: {
@@ -242,22 +195,15 @@ window.NPCSystem = (function() {
                 },
                 hoverParams: {
                     originalY: npcMesh.position.y,
-                    phase: Math.random() * Math.PI * 2 // Random starting phase
+                    phase: Math.random() * Math.PI * 2
                 },
                 dialogueData: {
-                    greetings: [
-                        "I am an NPC."
-                    ],
+                    greetings: ["I am an NPC."],
                     conversations: [
                         {
                             id: "intro",
                             text: "I am an NPC.",
-                            responses: [
-                                {
-                                    id: "close",
-                                    text: "Close"
-                                }
-                            ]
+                            responses: [{ id: "close", text: "Close" }]
                         },
                         {
                             id: "close",
@@ -268,16 +214,17 @@ window.NPCSystem = (function() {
                 }
             };
             
+            // Add the NPC to our array
             npcs.push(npc);
             
             // Setup hover animation
             setupHoverAnimation(npc);
             
-            console.log("NPC created successfully with name tag");
+            console.log("NPC creation complete with name tag");
             return npc;
         } catch (error) {
+            console.error("Failed to create NPC:", error);
             safeLog(`Error creating visible NPC: ${error.message}`, true);
-            console.error("NPC creation error:", error);
             return null;
         }
     }
@@ -632,41 +579,97 @@ window.NPCSystem = (function() {
     
     // End interaction with an NPC
     function endInteraction(npcId) {
-        const npc = npcs.find(n => n.id === npcId);
-        if (!npc) return;
-        
-        npc.isInteracting = false;
-        
-        // Log message
-        const message = `> NPC INTERACTION: ${npc.id} says: "Goodbye!"`;
-        
-        // Browser console
-        console.log(message);
-        
-        // Try multiple approaches for log
-        // 1. Direct add to Logger if available
-        if (window.Logger && window.Logger.log) {
-            window.Logger.log(message);
-        }
-        
-        // 2. Direct DOM manipulation with typewriter effect
-        const logElement = document.getElementById('logContent');
-        if (logElement) {
-            const entry = document.createElement('div');
-            entry.className = 'log-message';
-            logElement.appendChild(entry);
+        try {
+            const npc = getNPC(npcId);
             
-            // Type the text with animation
-            typeText(entry, message, 0, 20);
+            if (!npc) {
+                safeLog(`Cannot end interaction with npc ${npcId}: Not found`);
+                return;
+            }
             
-            // Ensure the log scrolls to the bottom
-            logElement.scrollTop = logElement.scrollHeight;
+            safeLog(`> ENDING INTERACTION with ${npc.id}`);
+            
+            // Update state
+            npc.isInteracting = false;
+            
+            // Log message
+            const message = `> NPC DIALOGUE ENDED with ${npc.id}`;
+            
+            // Browser console
+            console.log(message);
+            
+            // Try multiple approaches for log
+            // 1. Direct add to Logger if available
+            if (window.Logger && window.Logger.log) {
+                window.Logger.log(message);
+            }
+            
+            // 2. Direct DOM manipulation with typewriter effect
+            const logElement = document.getElementById('logContent');
+            if (logElement) {
+                const entry = document.createElement('div');
+                entry.className = 'log-message';
+                logElement.appendChild(entry);
+                
+                // Type the text with animation
+                typeText(entry, message, 0, 20);
+                
+                // Ensure the log scrolls to the bottom
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+            
+            // 3. Update the global log
+            document.querySelectorAll('#log, #logContent').forEach(el => {
+                el.style.display = 'block';
+                el.classList.remove('collapsed');
+            });
+            
+            // Show talk button again if player is still nearby
+            if (npc.isNearby) {
+                showTalkButton();
+            }
+        } catch (error) {
+            safeLog(`Error ending interaction: ${error.message}`, true);
         }
-        
-        // 4. Update the global log
-        document.querySelectorAll('#log, #logContent').forEach(el => {
-            el.style.display = 'block';
-            el.classList.remove('collapsed');
-        });
     }
+    
+    // Get an NPC by ID
+    function getNPC(npcId) {
+        return npcs.find(n => n.id === npcId);
+    }
+    
+    // Get all NPCs
+    function getAllNPCs() {
+        return [...npcs];
+    }
+    
+    // Function to create typewriter effect
+    function typeText(element, text, index, speed) {
+        if (index < text.length) {
+            element.textContent += text.charAt(index);
+            index++;
+            setTimeout(function() {
+                typeText(element, text, index, speed);
+            }, speed);
+        }
+        
+        // Make sure log stays scrolled to the bottom during typing
+        const logContent = document.getElementById('logContent');
+        if (logContent) {
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+    }
+    
+    // Public API
+    return {
+        init: init,
+        loadNPCsForRealm: loadNPCsForRealm,
+        createNPC: createNPC,
+        createVisibleNPC: createVisibleNPC,
+        clearNPCs: clearNPCs,
+        startInteraction: startInteraction,
+        endInteraction: endInteraction,
+        getNPC: getNPC,
+        getAllNPCs: getAllNPCs
+    };
 })();
