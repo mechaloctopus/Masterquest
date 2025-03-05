@@ -1,577 +1,413 @@
-// Map System
+// Map System - Complete Rewrite
 const MapSystem = (function() {
-    // Private properties
-    let initialized = false;
-    let mapContainerElement = null;
-    let mapToggleElement = null;
-    let mapCanvasElement = null;
-    let mapContext = null;
-    let isCollapsed = true; // Default to collapsed
-    
-    // Debug flag - enable to see detailed logging
+    // Debug
     const DEBUG = true;
     
-    // Map data
-    let mapData = null;
-    let playerPosition = { x: 0, z: 0 };
-    let playerRotation = 0;
-    const mapScale = 0.1; // Scale factor for converting world to map coordinates
+    // DOM elements
+    let mapContainer = null;
+    let mapToggle = null;
+    let mapCanvas = null;
+    let ctx = null;
     
-    // Force a redraw flag
-    let needsRedraw = true;
+    // Map state
+    let initialized = false;
+    let isCollapsed = true;
+    let playerPos = { x: 0, z: 0 };
+    let playerRot = 0;
     
-    // Initialize the map
+    // Map points
+    let points = [];
+    
+    // Config
+    const config = {
+        backgroundColor: "#001a33",
+        gridColor: "#00cc99",
+        gridSpacing: 10,
+        playerColor: "#ff00cc",
+        originColor: "#ffcc00"
+    };
+    
+    // Initialize
     function init() {
-        if (initialized) return true;
+        console.log("[MAP] Initializing map system (new implementation)");
         
-        if (DEBUG) console.log("[MAP] Initializing map system");
+        // Get elements
+        mapContainer = document.getElementById('mapContainer');
+        mapToggle = document.getElementById('mapToggle');
+        mapCanvas = document.getElementById('mapCanvas');
         
-        // Get map elements
-        mapContainerElement = document.getElementById('mapContainer');
-        if (!mapContainerElement) {
-            console.error("[MAP] Map container element not found!");
+        if (!mapContainer || !mapToggle || !mapCanvas) {
+            console.error("[MAP] Failed to find map elements");
             return false;
         }
         
-        mapToggleElement = document.getElementById('mapToggle');
-        if (!mapToggleElement) {
-            console.error("[MAP] Map toggle element not found!");
+        // Setup canvas and context
+        ctx = mapCanvas.getContext('2d');
+        if (!ctx) {
+            console.error("[MAP] Failed to get canvas context");
             return false;
         }
         
-        mapCanvasElement = document.getElementById('mapCanvas');
-        if (!mapCanvasElement) {
-            console.error("[MAP] Map canvas element not found!");
-            return false;
-        }
-        
-        // Set up map canvas
+        // Initial resize
         resizeCanvas();
-        mapContext = mapCanvasElement.getContext('2d');
         
-        // Check initial collapse state
-        isCollapsed = !mapContainerElement.classList.contains('expanded');
-        if (DEBUG) console.log("[MAP] Initial collapse state:", isCollapsed);
+        // Setup event listeners
+        mapToggle.addEventListener('click', toggleMap);
+        window.addEventListener('resize', resizeCanvas);
         
-        // Set up toggle event
-        mapToggleElement.addEventListener('click', function(e) {
-            toggleMap();
-            e.preventDefault();
-        });
+        // Add test points
+        addPoint(0, 0, { label: "Origin", color: "#00FFFF" });
+        addPoint(10, 10, { label: "10,10", color: "#00FF00" });
+        addPoint(-10, -10, { label: "-10,-10", color: "#FF00FF" });
+        console.log("[MAP] Added test points");
         
-        // Create initial empty map data
-        createEmptyMap();
-        
-        // Add test points for debugging
-        if (DEBUG) {
-            addPoint(0, 0, { label: "Origin", color: "#00FFFF" });
-            addPoint(10, 10, { label: "10,10", color: "#00FF00" });
-            addPoint(-10, -10, { label: "-10,-10", color: "#FF00FF" });
-            if (DEBUG) console.log("[MAP] Added test points");
-        }
-        
-        // Start the render loop
-        requestAnimationFrame(render);
+        // Start render loop
+        requestAnimationFrame(renderLoop);
         
         initialized = true;
-        if (DEBUG) console.log("[MAP] Initialization complete:", initialized);
+        console.log("[MAP] Initialization complete");
         return true;
     }
     
-    // Resize canvas to fit container
-    function resizeCanvas() {
-        if (!mapCanvasElement || !mapCanvasElement.parentElement) return;
+    // Update player position
+    function updatePlayerPosition(position, rotation) {
+        // Log incoming position data
+        console.log(`[MAP] Updating player position: x=${position.x.toFixed(2)}, z=${position.z.toFixed(2)}, rot=${rotation.toFixed(2)}`);
         
-        mapCanvasElement.width = mapCanvasElement.parentElement.clientWidth;
-        mapCanvasElement.height = mapCanvasElement.parentElement.clientHeight - 30; // Subtract header
-        
-        if (DEBUG) console.log("[MAP] Canvas setup complete", mapCanvasElement.width, mapCanvasElement.height);
-        needsRedraw = true;
-    }
-    
-    // Create empty map data
-    function createEmptyMap() {
-        mapData = {
-            width: 100,
-            height: 100,
-            grid: true,
-            gridSpacing: 1,
-            gridColor: "#00cc99",
-            backgroundColor: "#001a33",
-            points: []
+        // Store position
+        playerPos = { 
+            x: parseFloat(position.x), 
+            z: parseFloat(position.z) 
         };
-        
-        if (DEBUG) console.log("[MAP] Empty map created");
-        return mapData;
+        playerRot = parseFloat(rotation);
     }
     
-    // Toggle map between expanded and collapsed
-    function toggleMap() {
-        if (DEBUG) console.log("[MAP] Toggle map called. Current state:", isCollapsed);
+    // Toggle map expanded/collapsed
+    function toggleMap(e) {
+        if (e) e.preventDefault();
         
-        if (!mapContainerElement) return;
-        
-        if (isCollapsed) {
-            // Expand
-            mapContainerElement.classList.add('expanded');
-        } else {
-            // Collapse
-            mapContainerElement.classList.remove('expanded');
-        }
-        
-        // Toggle state
         isCollapsed = !isCollapsed;
         
-        // Resize canvas after toggle
-        handleMapExpansion();
-        
-        if (DEBUG) console.log("[MAP] Map toggled using global function. New state:", isCollapsed);
-        
-        // Force redraw
-        needsRedraw = true;
-        
-        return isCollapsed;
-    }
-    
-    // Handle map expansion
-    function handleMapExpansion() {
-        if (!mapCanvasElement) return;
-        
-        // Resize canvas to fit new dimensions
-        resizeCanvas();
-        
-        if (DEBUG) console.log("[MAP] Expansion handled. Canvas resized to:", mapCanvasElement.width, mapCanvasElement.height);
-    }
-    
-    // Update player position on the map
-    function updatePlayerPosition(position, rotation) {
-        if (!position || position.x === undefined || position.z === undefined) {
-            console.error("[MAP] Invalid position provided:", position);
-            return;
+        if (isCollapsed) {
+            mapContainer.classList.remove('expanded');
+        } else {
+            mapContainer.classList.add('expanded');
         }
         
-        // Check if position actually changed
-        const posChanged = (playerPosition.x !== position.x || playerPosition.z !== position.z);
-        const rotChanged = (playerRotation !== rotation);
+        // Resize after toggling
+        setTimeout(resizeCanvas, 10);
         
-        if (posChanged || rotChanged) {
-            // Position changed, update values
-            playerPosition = {
-                x: position.x,
-                z: position.z
-            };
-            playerRotation = rotation;
-            
-            // Force redraw when position changes
-            needsRedraw = true;
-            
-            // Log position update occasionally
-            if (DEBUG && posChanged && Math.random() < 0.1) {
-                console.log("[MAP] Player position updated:", 
-                            playerPosition.x.toFixed(2), 
-                            playerPosition.z.toFixed(2),
-                            "Rotation:", playerRotation.toFixed(2));
-            }
-        }
+        console.log(`[MAP] Map toggled, collapsed: ${isCollapsed}`);
     }
     
-    // Main render function - called in animation loop
+    // Resize canvas
+    function resizeCanvas() {
+        if (!mapCanvas || !mapContainer) return;
+        
+        const width = mapContainer.clientWidth;
+        const height = mapContainer.clientHeight - 30; // Subtract header height
+        
+        mapCanvas.width = width;
+        mapCanvas.height = height;
+        
+        console.log(`[MAP] Canvas resized: ${width}x${height}`);
+    }
+    
+    // Main render loop
+    function renderLoop() {
+        requestAnimationFrame(renderLoop);
+        render();
+    }
+    
+    // Render the map
     function render() {
-        // Always request next frame first
-        requestAnimationFrame(render);
+        if (!ctx || !mapCanvas) return;
         
-        // Skip render if context is missing
-        if (!mapContext || !mapCanvasElement || !mapData) {
-            return;
-        }
+        // Skip if not visible
+        if (mapContainer.style.display === 'none') return;
         
-        // Skip render if map is hidden
-        if (mapContainerElement.style.display === 'none') {
-            return;
-        }
+        // Clear canvas
+        ctx.fillStyle = config.backgroundColor;
+        ctx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
         
-        // Skip if no redraw needed (optimization)
-        if (!needsRedraw) {
-            return;
-        }
+        // Draw grid
+        drawGrid();
         
-        try {
-            // Reset redraw flag
-            needsRedraw = false;
-            
-            // Clear canvas
-            mapContext.fillStyle = mapData.backgroundColor;
-            mapContext.fillRect(0, 0, mapCanvasElement.width, mapCanvasElement.height);
-            
-            // Draw grid
-            if (mapData.grid) {
-                drawGrid();
-            }
-            
-            // Draw points of interest
-            drawPoints();
-            
-            // Draw player marker
-            drawPlayer();
-            
-            // Debug output (occasionally)
-            if (DEBUG && Math.random() < 0.01) {
-                console.log("[MAP] Rendering map. Player at:", 
-                            playerPosition.x.toFixed(2), 
-                            playerPosition.z.toFixed(2));
-            }
-        } catch (e) {
-            console.error("[MAP] Error in render function:", e);
-        }
+        // Draw points
+        drawPoints();
+        
+        // Draw player
+        drawPlayer();
+        
+        // Draw debug info
+        drawDebugInfo();
     }
     
-    // Draw grid lines
+    // Draw grid
     function drawGrid() {
-        if (!mapContext) return;
+        if (!ctx || !mapCanvas) return;
         
-        try {
-            const expanded = mapContainerElement.classList.contains('expanded');
-            const cellSize = getCellSize(expanded);
-            
-            if (DEBUG && Math.random() < 0.01) {
-                console.log("[MAP] Drawing grid. Cell size:", cellSize.x.toFixed(2), cellSize.y.toFixed(2));
-            }
-            
-            mapContext.strokeStyle = mapData.gridColor;
-            mapContext.lineWidth = expanded ? 1 : 0.5;
-            mapContext.globalAlpha = 0.3;
-            
-            if (expanded) {
-                // EXPANDED MODE: Fixed grid with moving player
-                drawExpandedGrid(cellSize);
-            } else {
-                // COLLAPSED MODE: Moving grid with fixed player
-                drawCollapsedGrid(cellSize);
-            }
-            
-            mapContext.globalAlpha = 1.0; // Reset opacity
-        } catch (e) {
-            console.error("[MAP] Error drawing grid:", e);
+        const expanded = mapContainer.classList.contains('expanded');
+        const centerX = mapCanvas.width / 2;
+        const centerY = mapCanvas.height / 2;
+        
+        // Set up grid style
+        ctx.strokeStyle = config.gridColor;
+        ctx.lineWidth = 0.5;
+        ctx.globalAlpha = 0.3;
+        
+        if (expanded) {
+            // Expanded mode: fixed grid
+            drawExpandedGrid(centerX, centerY);
+        } else {
+            // Collapsed mode: moving grid
+            drawCollapsedGrid(centerX, centerY);
         }
-    }
-    
-    // Get cell size based on canvas dimensions and mode
-    function getCellSize(expanded) {
-        const gridScale = expanded ? 0.5 : mapScale;
-        return {
-            x: gridScale * mapCanvasElement.width * mapData.gridSpacing,
-            y: gridScale * mapCanvasElement.height * mapData.gridSpacing
-        };
-    }
-    
-    // Draw grid in expanded mode (fixed grid, moving player)
-    function drawExpandedGrid(cellSize) {
-        const centerX = mapCanvasElement.width / 2;
-        const centerZ = mapCanvasElement.height / 2;
         
-        // Draw vertical lines (X axis)
-        for (let x = -mapData.width / 2; x <= mapData.width / 2; x += mapData.gridSpacing) {
-            const mapX = centerX + (x * cellSize.x / mapData.gridSpacing);
+        // Reset alpha
+        ctx.globalAlpha = 1.0;
+    }
+    
+    // Draw grid in expanded mode
+    function drawExpandedGrid(centerX, centerY) {
+        const gridSize = 20; // Pixels between grid lines
+        const range = 50;    // How many grid lines to draw
+        
+        // Draw vertical lines
+        for (let i = -range; i <= range; i++) {
+            const x = centerX + i * gridSize;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, mapCanvas.height);
+            ctx.stroke();
             
-            mapContext.beginPath();
-            mapContext.moveTo(mapX, 0);
-            mapContext.lineTo(mapX, mapCanvasElement.height - 40);
-            mapContext.stroke();
-            
-            // Draw labels for major grid lines
-            if (x % 10 === 0) {
-                mapContext.fillStyle = "#00ffcc";
-                mapContext.font = "10px Orbitron";
-                mapContext.fillText(x.toString(), mapX - 5, mapCanvasElement.height - 25);
+            // Draw major grid line labels
+            if (i % 5 === 0) {
+                ctx.fillStyle = "#00ffcc";
+                ctx.font = "8px monospace";
+                ctx.fillText(i.toString(), x + 2, 10);
             }
         }
         
-        // Draw horizontal lines (Z axis)
-        for (let z = -mapData.height / 2; z <= mapData.height / 2; z += mapData.gridSpacing) {
-            const mapZ = centerZ + (z * cellSize.y / mapData.gridSpacing);
+        // Draw horizontal lines
+        for (let i = -range; i <= range; i++) {
+            const y = centerY + i * gridSize;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(mapCanvas.width, y);
+            ctx.stroke();
             
-            mapContext.beginPath();
-            mapContext.moveTo(0, mapZ);
-            mapContext.lineTo(mapCanvasElement.width, mapZ);
-            mapContext.stroke();
-            
-            // Draw labels for major grid lines
-            if (z % 10 === 0) {
-                mapContext.fillStyle = "#00ffcc";
-                mapContext.font = "10px Orbitron";
-                mapContext.fillText(z.toString(), 5, mapZ + 10);
+            // Draw major grid line labels
+            if (i % 5 === 0) {
+                ctx.fillStyle = "#00ffcc";
+                ctx.font = "8px monospace";
+                ctx.fillText(i.toString(), 2, y - 2);
             }
         }
     }
     
-    // Draw grid in collapsed mode (moving grid, fixed player)
-    function drawCollapsedGrid(cellSize) {
-        const centerX = mapCanvasElement.width / 2;
-        const centerZ = mapCanvasElement.height / 2;
+    // Draw grid in collapsed mode
+    function drawCollapsedGrid(centerX, centerY) {
+        const gridSize = 20; // Pixels between grid lines
         
-        // Calculate grid offsets based on player position
-        // NEGATIVE since grid moves opposite to player
-        const offsetX = -playerPosition.x;
-        const offsetZ = -playerPosition.z;
+        // Calculate offset based on player position
+        const offsetX = (playerPos.x % 1) * gridSize;
+        const offsetY = (playerPos.z % 1) * gridSize;
         
-        if (DEBUG && Math.random() < 0.01) {
-            console.log("[MAP] Grid offset:", 
-                        offsetX.toFixed(2), 
-                        offsetZ.toFixed(2),
-                        "Player:", 
-                        playerPosition.x.toFixed(2),
-                        playerPosition.z.toFixed(2));
+        // Start positions
+        const startX = centerX - Math.floor(mapCanvas.width / gridSize / 2) * gridSize - offsetX;
+        const startY = centerY - Math.floor(mapCanvas.height / gridSize / 2) * gridSize - offsetY;
+        
+        // Draw vertical lines
+        for (let x = startX; x < mapCanvas.width + gridSize; x += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, mapCanvas.height);
+            ctx.stroke();
         }
         
-        // Calculate pixel offsets for the grid lines
-        const pixelOffsetX = (offsetX % 1) * cellSize.x;
-        const pixelOffsetZ = (offsetZ % 1) * cellSize.y;
-        
-        // Calculate starting positions
-        let startX = pixelOffsetX;
-        if (startX < 0) startX += cellSize.x;
-        
-        let startZ = pixelOffsetZ;
-        if (startZ < 0) startZ += cellSize.y;
-        
-        // Draw vertical grid lines (X axis)
-        for (let x = startX; x < mapCanvasElement.width + cellSize.x; x += cellSize.x) {
-            mapContext.beginPath();
-            mapContext.moveTo(x, 0);
-            mapContext.lineTo(x, mapCanvasElement.height);
-            mapContext.stroke();
+        // Draw horizontal lines
+        for (let y = startY; y < mapCanvas.height + gridSize; y += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(mapCanvas.width, y);
+            ctx.stroke();
         }
         
-        // Draw horizontal grid lines (Z axis)
-        for (let z = startZ; z < mapCanvasElement.height + cellSize.y; z += cellSize.y) {
-            mapContext.beginPath();
-            mapContext.moveTo(0, z);
-            mapContext.lineTo(mapCanvasElement.width, z);
-            mapContext.stroke();
-        }
+        // Draw origin if in view
+        const originX = centerX - (playerPos.x * gridSize);
+        const originY = centerY - (playerPos.z * gridSize);
         
-        // Draw world origin indicator if in view
-        const originX = centerX + (offsetX * cellSize.x);
-        const originZ = centerZ + (offsetZ * cellSize.y);
-        
-        if (originX >= -20 && originX <= mapCanvasElement.width + 20 &&
-            originZ >= -20 && originZ <= mapCanvasElement.height + 20) {
+        if (originX > -50 && originX < mapCanvas.width + 50 &&
+            originY > -50 && originY < mapCanvas.height + 50) {
             
-            mapContext.globalAlpha = 1.0;
-            mapContext.strokeStyle = "#ffcc00";
-            mapContext.lineWidth = 1.5;
+            // Draw origin marker
+            ctx.globalAlpha = 1.0;
+            ctx.strokeStyle = config.originColor;
+            ctx.lineWidth = 1;
             
-            // Draw crosshair at origin
-            mapContext.beginPath();
-            mapContext.moveTo(originX - 8, originZ);
-            mapContext.lineTo(originX + 8, originZ);
-            mapContext.stroke();
+            // Cross
+            ctx.beginPath();
+            ctx.moveTo(originX - 5, originY);
+            ctx.lineTo(originX + 5, originY);
+            ctx.stroke();
             
-            mapContext.beginPath();
-            mapContext.moveTo(originX, originZ - 8);
-            mapContext.lineTo(originX, originZ + 8);
-            mapContext.stroke();
-            
-            // Label
-            mapContext.fillStyle = "#ffcc00";
-            mapContext.font = "8px Orbitron";
-            mapContext.fillText("ORIGIN", originX + 10, originZ);
+            ctx.beginPath();
+            ctx.moveTo(originX, originY - 5);
+            ctx.lineTo(originX, originY + 5);
+            ctx.stroke();
             
             // Reset
-            mapContext.strokeStyle = mapData.gridColor;
-            mapContext.lineWidth = 0.5;
-            mapContext.globalAlpha = 0.3;
+            ctx.strokeStyle = config.gridColor;
+            ctx.lineWidth = 0.5;
+            ctx.globalAlpha = 0.3;
         }
     }
     
     // Draw points of interest
     function drawPoints() {
-        if (!mapContext || !mapData || !mapData.points) return;
+        if (!ctx || !mapCanvas) return;
         
-        try {
-            if (DEBUG && Math.random() < 0.01) {
-                console.log("[MAP] Drawing", mapData.points.length, "points. Player at:", 
-                            playerPosition.x.toFixed(2), 
-                            playerPosition.z.toFixed(2));
+        const expanded = mapContainer.classList.contains('expanded');
+        const centerX = mapCanvas.width / 2;
+        const centerY = mapCanvas.height / 2;
+        const gridSize = 20;
+        
+        points.forEach(point => {
+            let x, y;
+            
+            if (expanded) {
+                // In expanded mode, points move relative to fixed grid
+                x = centerX + point.x * gridSize;
+                y = centerY + point.z * gridSize;
+            } else {
+                // In collapsed mode, calculate position relative to player
+                x = centerX + (point.x - playerPos.x) * gridSize;
+                y = centerY + (point.z - playerPos.z) * gridSize;
             }
             
-            const expanded = mapContainerElement.classList.contains('expanded');
-            const gridScale = expanded ? 0.5 : mapScale;
-            const centerX = mapCanvasElement.width / 2;
-            const centerZ = mapCanvasElement.height / 2;
-            
-            mapData.points.forEach(point => {
-                if (point.x === undefined || point.z === undefined) return;
+            // Only draw if within view
+            if (x > -20 && x < mapCanvas.width + 20 &&
+                y > -20 && y < mapCanvas.height + 20) {
                 
-                let pointX, pointZ;
+                // Draw point
+                ctx.fillStyle = point.color || "#ffffff";
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
                 
-                if (expanded) {
-                    // Expanded mode: points relative to fixed grid
-                    pointX = centerX + (point.x * gridScale * mapCanvasElement.width);
-                    pointZ = centerZ + (point.z * gridScale * mapCanvasElement.height);
-                } else {
-                    // Collapsed mode: points relative to player position
-                    const relativeX = point.x - playerPosition.x;
-                    const relativeZ = point.z - playerPosition.z;
-                    
-                    pointX = centerX + (relativeX * gridScale * mapCanvasElement.width);
-                    pointZ = centerZ + (relativeZ * gridScale * mapCanvasElement.height);
+                // Draw label
+                if (point.label) {
+                    ctx.fillStyle = "#ffffff";
+                    ctx.font = "9px monospace";
+                    ctx.fillText(point.label, x + 5, y + 3);
                 }
-                
-                // Only draw points within or near the map bounds
-                const padding = 20;
-                if (pointX >= -padding && pointX <= mapCanvasElement.width + padding &&
-                    pointZ >= -padding && pointZ <= mapCanvasElement.height + padding) {
-                    
-                    // Draw point
-                    mapContext.fillStyle = point.color || "#ffffff";
-                    mapContext.beginPath();
-                    mapContext.arc(pointX, pointZ, 3, 0, Math.PI * 2);
-                    mapContext.fill();
-                    
-                    // Draw label if present
-                    if (point.label) {
-                        mapContext.fillStyle = "#ffffff";
-                        mapContext.font = "9px Orbitron";
-                        mapContext.fillText(point.label, pointX + 6, pointZ + 3);
-                    }
-                }
-            });
-        } catch (e) {
-            console.error("[MAP] Error in drawPoints:", e);
-        }
+            }
+        });
     }
     
-    // Draw player marker (arrow or triangle pointing in direction of travel)
+    // Draw player marker
     function drawPlayer() {
-        if (!mapContext) return;
+        if (!ctx || !mapCanvas) return;
         
-        try {
-            const expanded = mapContainerElement.classList.contains('expanded');
-            const centerX = mapCanvasElement.width / 2;
-            const centerZ = mapCanvasElement.height / 2;
-            const gridScale = expanded ? 0.5 : mapScale;
-            
-            // Calculate player position on map
-            const playerX = expanded ? 
-                centerX + (playerPosition.x * gridScale * mapCanvasElement.width) : 
-                centerX;
-                
-            const playerZ = expanded ? 
-                centerZ + (playerPosition.z * gridScale * mapCanvasElement.height) : 
-                centerZ;
-            
-            // Draw player marker as triangle/arrow
-            const size = 8; // Size of the triangle
-            
-            // Calculate points for triangle
-            const angle = playerRotation;
-            const x1 = playerX + Math.sin(angle) * size;
-            const z1 = playerZ + Math.cos(angle) * size;
-            
-            const x2 = playerX + Math.sin(angle + 2.5) * (size * 0.6);
-            const z2 = playerZ + Math.cos(angle + 2.5) * (size * 0.6);
-            
-            const x3 = playerX + Math.sin(angle - 2.5) * (size * 0.6);
-            const z3 = playerZ + Math.cos(angle - 2.5) * (size * 0.6);
-            
-            // Draw triangle
-            mapContext.fillStyle = "#ff00cc";
-            mapContext.beginPath();
-            mapContext.moveTo(x1, z1);
-            mapContext.lineTo(x2, z2);
-            mapContext.lineTo(x3, z3);
-            mapContext.closePath();
-            mapContext.fill();
-            
-            // Add outer glow
-            mapContext.strokeStyle = "#ffccff";
-            mapContext.lineWidth = 1;
-            mapContext.stroke();
-            
-            // Draw player coordinates
-            mapContext.fillStyle = "#ffffff";
-            mapContext.font = "10px Orbitron";
-            const coordText = `X: ${playerPosition.x.toFixed(1)} Z: ${playerPosition.z.toFixed(1)}`;
-            
-            // Position text based on direction player is facing
-            const textX = playerX + Math.sin(angle) * 12;
-            const textZ = playerZ + Math.cos(angle) * 12;
-            
-            mapContext.fillText(coordText, textX, textZ);
-            
-            if (DEBUG && Math.random() < 0.01) {
-                console.log("[MAP] Drew player at screen coord:", 
-                            playerX.toFixed(2), 
-                            playerZ.toFixed(2),
-                            "World:", 
-                            playerPosition.x.toFixed(2),
-                            playerPosition.z.toFixed(2));
-            }
-        } catch (e) {
-            console.error("[MAP] Error in drawPlayer:", e);
+        const centerX = mapCanvas.width / 2;
+        const centerY = mapCanvas.height / 2;
+        const expanded = mapContainer.classList.contains('expanded');
+        const gridSize = 20;
+        
+        // Calculate player position based on mode
+        let x, y;
+        
+        if (expanded) {
+            // In expanded mode, player position is based on map coordinates
+            x = centerX + playerPos.x * gridSize;
+            y = centerY + playerPos.z * gridSize;
+        } else {
+            // In collapsed mode, player is always centered
+            x = centerX;
+            y = centerY;
         }
+        
+        // Draw player arrow
+        ctx.fillStyle = config.playerColor;
+        
+        // Save context for rotation
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(-playerRot); // Negative because Canvas Y is inverted
+        
+        // Draw triangle for direction
+        ctx.beginPath();
+        ctx.moveTo(0, -8);    // Tip of arrow
+        ctx.lineTo(-5, 5);    // Bottom left
+        ctx.lineTo(5, 5);     // Bottom right
+        ctx.closePath();
+        ctx.fill();
+        
+        // Add glow
+        ctx.strokeStyle = "#ffccff";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        
+        // Restore context
+        ctx.restore();
+        
+        // Draw coordinates
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "10px monospace";
+        ctx.fillText(`X: ${playerPos.x.toFixed(1)} Z: ${playerPos.z.toFixed(1)}`, x + 10, y);
+    }
+    
+    // Draw debug info
+    function drawDebugInfo() {
+        if (!DEBUG || !ctx) return;
+        
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "10px monospace";
+        ctx.fillText(`Player: ${playerPos.x.toFixed(2)}, ${playerPos.z.toFixed(2)}`, 10, mapCanvas.height - 30);
+        ctx.fillText(`Rotation: ${playerRot.toFixed(2)}`, 10, mapCanvas.height - 15);
     }
     
     // Add a point to the map
     function addPoint(x, z, options = {}) {
-        if (!mapData) createEmptyMap();
-        
-        const point = {
-            x: x,
-            z: z,
+        points.push({
+            x: parseFloat(x),
+            z: parseFloat(z),
             color: options.color || "#ffffff",
-            label: options.label || null,
-            icon: options.icon || null
-        };
+            label: options.label || null
+        });
         
-        mapData.points.push(point);
-        
-        if (DEBUG) console.log("[MAP] Added point at:", x, z, options.label || "");
-        
-        // Force redraw when adding points
-        needsRedraw = true;
-        
-        return point;
+        return points[points.length - 1];
     }
     
     // Remove a point from the map
     function removePoint(x, z) {
-        if (!mapData || !mapData.points) return false;
+        const initialLength = points.length;
         
-        const initialLength = mapData.points.length;
+        points = points.filter(point => 
+            !(point.x === x && point.z === z)
+        );
         
-        // Filter out the point with the given coordinates
-        mapData.points = mapData.points.filter(point => {
-            return !(point.x === x && point.z === z);
-        });
-        
-        // Force redraw if a point was removed
-        if (mapData.points.length < initialLength) {
-            needsRedraw = true;
-            return true;
-        }
-        
-        return false;
+        return points.length < initialLength;
     }
     
     // Clear all points
     function clearPoints() {
-        if (!mapData) return;
-        
-        mapData.points = [];
-        needsRedraw = true;
+        points = [];
     }
     
-    // Set map data
-    function setMapData(data) {
-        mapData = data;
-        needsRedraw = true;
+    // Show map
+    function show() {
+        if (mapContainer) {
+            mapContainer.style.display = "block";
+        }
     }
     
-    // Get map data
-    function getMapData() {
-        return mapData;
+    // Hide map
+    function hide() {
+        if (mapContainer) {
+            mapContainer.style.display = "none";
+        }
     }
     
     // Check if map is collapsed
@@ -579,33 +415,22 @@ const MapSystem = (function() {
         return isCollapsed;
     }
     
-    // Show map
-    function show() {
-        if (!mapContainerElement) return;
-        mapContainerElement.style.display = "block";
-        needsRedraw = true;
+    // Set map data (dummy function for compatibility)
+    function setMapData(data) {
+        console.log("[MAP] setMapData called, but not implemented in new system");
     }
     
-    // Hide map
-    function hide() {
-        if (!mapContainerElement) return;
-        mapContainerElement.style.display = "none";
+    // Get map data (dummy function for compatibility)
+    function getMapData() {
+        return { points: points };
     }
     
-    // Handle window resize
-    function handleResize() {
-        resizeCanvas();
-    }
-    
-    // Add window resize listener
-    window.addEventListener('resize', handleResize);
-    
-    // Initialize when DOM is ready
+    // Initialize when the DOM is ready
     document.addEventListener('DOMContentLoaded', init);
     
     // Public API
     return {
-        init, 
+        init,
         updatePlayerPosition,
         addPoint,
         removePoint,
