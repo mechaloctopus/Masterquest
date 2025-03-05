@@ -17,49 +17,102 @@ const LoadingScreenSystem = (function() {
     
     // Initialize the loading screen
     function init() {
-        if (initialized) return true;
-        
-        loadingScreenElement = document.getElementById('loadingScreen');
-        if (!loadingScreenElement) {
-            console.error("Loading screen element not found!");
-            return false;
+        if (window.Utils && window.Utils.initializeComponent) {
+            return Utils.initializeComponent(
+                LoadingScreenSystem, 
+                "LOADING SCREEN", 
+                () => {
+                    loadingScreenElement = document.getElementById('loadingScreen');
+                    if (!loadingScreenElement) {
+                        console.error("Loading screen element not found!");
+                        return false;
+                    }
+                    
+                    loadingBarElement = document.getElementById('loadingBar');
+                    loadingStatusElement = document.getElementById('loadingStatus');
+                    loadingConsoleElement = document.getElementById('loadingConsole');
+                    gridHorizontalElement = document.getElementById('gridHorizontal');
+                    gridVerticalElement = document.getElementById('gridVertical');
+                    consoleIndicator = document.querySelector('.console-indicator');
+                    
+                    // Initialize the grid with fewer lines for better performance
+                    createGrid();
+                    
+                    // Listen for loader events
+                    if (window.EventSystem) {
+                        EventSystem.on('loader.start', handleLoaderStart);
+                        EventSystem.on('loader.progress', handleLoaderProgress);
+                        EventSystem.on('loader.complete', handleLoaderComplete);
+                        EventSystem.on('loader.error', handleLoaderError);
+                    }
+                    
+                    // Also listen for log events to show in the loading console
+                    if (window.EventSystem) {
+                        EventSystem.on('logAdded', handleLogEvent);
+                    }
+                    
+                    // Set a maximum time for the loading screen to be visible
+                    // This ensures we transition to the game even if loader.complete isn't fired
+                    forceHideTimer = setTimeout(hideLoadingScreen, 15000); // 15 seconds max
+                    
+                    // Show some initial console messages with delays to create a boot sequence effect
+                    setTimeout(() => addConsoleMessage("> SYSTEM HARDWARE CHECK: PASSED"), 800);
+                    setTimeout(() => addConsoleMessage("> INITIALIZING GRAPHICS ENGINE"), 1600);
+                    setTimeout(() => addConsoleMessage("> PREPARING AUDIO SUBSYSTEMS"), 2300);
+                    setTimeout(() => addConsoleMessage("> SCANNING FOR ASSET BUNDLE MANIFEST"), 3000);
+                    
+                    return true;
+                },
+                {
+                    checkGlobalLogger: true
+                }
+            );
+        } else {
+            // Fallback to original implementation
+            if (initialized) return true;
+            
+            loadingScreenElement = document.getElementById('loadingScreen');
+            if (!loadingScreenElement) {
+                console.error("Loading screen element not found!");
+                return false;
+            }
+            
+            loadingBarElement = document.getElementById('loadingBar');
+            loadingStatusElement = document.getElementById('loadingStatus');
+            loadingConsoleElement = document.getElementById('loadingConsole');
+            gridHorizontalElement = document.getElementById('gridHorizontal');
+            gridVerticalElement = document.getElementById('gridVertical');
+            consoleIndicator = document.querySelector('.console-indicator');
+            
+            // Initialize the grid with fewer lines for better performance
+            createGrid();
+            
+            // Listen for loader events
+            if (window.EventSystem) {
+                EventSystem.on('loader.start', handleLoaderStart);
+                EventSystem.on('loader.progress', handleLoaderProgress);
+                EventSystem.on('loader.complete', handleLoaderComplete);
+                EventSystem.on('loader.error', handleLoaderError);
+            }
+            
+            // Also listen for log events to show in the loading console
+            if (window.EventSystem) {
+                EventSystem.on('logAdded', handleLogEvent);
+            }
+            
+            // Set a maximum time for the loading screen to be visible
+            // This ensures we transition to the game even if loader.complete isn't fired
+            forceHideTimer = setTimeout(hideLoadingScreen, 15000); // 15 seconds max
+            
+            // Show some initial console messages with delays to create a boot sequence effect
+            setTimeout(() => addConsoleMessage("> SYSTEM HARDWARE CHECK: PASSED"), 800);
+            setTimeout(() => addConsoleMessage("> INITIALIZING GRAPHICS ENGINE"), 1600);
+            setTimeout(() => addConsoleMessage("> PREPARING AUDIO SUBSYSTEMS"), 2300);
+            setTimeout(() => addConsoleMessage("> SCANNING FOR ASSET BUNDLE MANIFEST"), 3000);
+            
+            initialized = true;
+            return true;
         }
-        
-        loadingBarElement = document.getElementById('loadingBar');
-        loadingStatusElement = document.getElementById('loadingStatus');
-        loadingConsoleElement = document.getElementById('loadingConsole');
-        gridHorizontalElement = document.getElementById('gridHorizontal');
-        gridVerticalElement = document.getElementById('gridVertical');
-        consoleIndicator = document.querySelector('.console-indicator');
-        
-        // Initialize the grid with fewer lines for better performance
-        createGrid();
-        
-        // Listen for loader events
-        if (window.EventSystem) {
-            EventSystem.on('loader.start', handleLoaderStart);
-            EventSystem.on('loader.progress', handleLoaderProgress);
-            EventSystem.on('loader.complete', handleLoaderComplete);
-            EventSystem.on('loader.error', handleLoaderError);
-        }
-        
-        // Also listen for log events to show in the loading console
-        if (window.EventSystem) {
-            EventSystem.on('logAdded', handleLogEvent);
-        }
-        
-        // Set a maximum time for the loading screen to be visible
-        // This ensures we transition to the game even if loader.complete isn't fired
-        forceHideTimer = setTimeout(hideLoadingScreen, 15000); // 15 seconds max
-        
-        // Show some initial console messages with delays to create a boot sequence effect
-        setTimeout(() => addConsoleMessage("> SYSTEM HARDWARE CHECK: PASSED"), 800);
-        setTimeout(() => addConsoleMessage("> INITIALIZING GRAPHICS ENGINE"), 1600);
-        setTimeout(() => addConsoleMessage("> PREPARING AUDIO SUBSYSTEMS"), 2300);
-        setTimeout(() => addConsoleMessage("> SCANNING FOR ASSET BUNDLE MANIFEST"), 3000);
-        
-        initialized = true;
-        return true;
     }
     
     // Create the grid lines for the background effect - optimized for performance

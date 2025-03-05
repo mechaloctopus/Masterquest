@@ -322,25 +322,35 @@ window.NPCSystem = (function() {
     function setupHoverAnimation(npc) {
         if (!scene) return;
         
-        const hoverHeight = npc.template.HOVER_HEIGHT || 0.5;
-        const hoverSpeed = npc.template.HOVER_SPEED || 0.3;
-        
-        // Register an animation to run before each render
-        scene.registerBeforeRender(() => {
-            if (npc && npc.mesh) {
-                // Update hover phase
-                npc.hoverParams.phase += hoverSpeed * scene.getAnimationRatio() * 0.01;
-                
-                // Calculate new Y position with sine wave
-                const newY = npc.hoverParams.originalY + Math.sin(npc.hoverParams.phase) * hoverHeight;
-                
-                // Apply new position
-                npc.mesh.position.y = newY;
-                
-                // Slowly rotate the NPC
-                npc.mesh.rotation.y += 0.002 * scene.getAnimationRatio();
-            }
-        });
+        if (window.Utils && window.Utils.setupHoverAnimation) {
+            // Use the shared utility if available
+            window.Utils.setupHoverAnimation(scene, npc, {
+                hoverHeight: npc.template.HOVER_HEIGHT || 0.5,
+                hoverSpeed: npc.template.HOVER_SPEED || 0.3,
+                rotationSpeed: 0.002
+            });
+        } else {
+            // Fallback implementation if shared utility is not available
+            const hoverHeight = npc.template.HOVER_HEIGHT || 0.5;
+            const hoverSpeed = npc.template.HOVER_SPEED || 0.3;
+            
+            // Register an animation to run before each render
+            scene.registerBeforeRender(() => {
+                if (npc && npc.mesh) {
+                    // Update hover phase
+                    npc.hoverParams.phase += hoverSpeed * scene.getAnimationRatio() * 0.01;
+                    
+                    // Calculate new Y position with sine wave
+                    const newY = npc.hoverParams.originalY + Math.sin(npc.hoverParams.phase) * hoverHeight;
+                    
+                    // Apply new position
+                    npc.mesh.position.y = newY;
+                    
+                    // Slowly rotate the NPC
+                    npc.mesh.rotation.y += 0.002 * scene.getAnimationRatio();
+                }
+            });
+        }
     }
     
     // Clear all NPCs from the scene

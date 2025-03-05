@@ -256,6 +256,125 @@ const Utils = (function() {
         });
     }
     
+    /**
+     * Setup a hover animation for a 3D object
+     * @param {Object} scene - The Babylon.js scene
+     * @param {Object} object - The object to animate (must have mesh and hoverParams properties)
+     * @param {Object} options - Configuration options
+     * @param {number} options.hoverHeight - Height of the hover animation
+     * @param {number} options.hoverSpeed - Speed of the hover animation
+     * @param {number} options.rotationSpeed - Speed of rotation
+     * @param {boolean} options.addPulse - Whether to add a pulse effect
+     * @param {number} options.pulseSpeed - Speed of the pulse effect
+     * @param {number} options.pulseAmount - Amount of pulse scaling
+     */
+    function setupHoverAnimation(scene, object, options = {}) {
+        if (!scene || !object || !object.mesh) return;
+        
+        // Extract options with defaults
+        const hoverHeight = options.hoverHeight || 0.5;
+        const hoverSpeed = options.hoverSpeed || 0.3;
+        const rotationSpeed = options.rotationSpeed || 0.002;
+        const addPulse = options.addPulse || false;
+        const pulseSpeed = options.pulseSpeed || 3;
+        const pulseAmount = options.pulseAmount || 0.1;
+        
+        // Make sure hoverParams exists
+        if (!object.hoverParams) {
+            object.hoverParams = {
+                phase: 0,
+                originalY: object.mesh.position.y
+            };
+        }
+        
+        // Register animation to run before each render
+        scene.registerBeforeRender(() => {
+            if (object && object.mesh) {
+                // Update hover phase
+                object.hoverParams.phase += hoverSpeed * scene.getAnimationRatio() * 0.01;
+                
+                // Calculate new Y position with sine wave
+                const newY = object.hoverParams.originalY + Math.sin(object.hoverParams.phase) * hoverHeight;
+                
+                // Apply new position
+                object.mesh.position.y = newY;
+                
+                // Slowly rotate the object
+                object.mesh.rotation.y += rotationSpeed * scene.getAnimationRatio();
+                
+                // Add pulse effect if enabled
+                if (addPulse && object.state === 'battle') {
+                    const pulse = 1 + pulseAmount * Math.sin(object.hoverParams.phase * pulseSpeed);
+                    object.mesh.scaling.x = pulse;
+                    object.mesh.scaling.y = pulse;
+                    object.mesh.scaling.z = pulse;
+                }
+            }
+        });
+    }
+    
+    /**
+     * Standard component initialization utility
+     * @param {Object} component - The component object
+     * @param {string} name - The name of the component (for logging)
+     * @param {Function} initFn - The initialization function to call if not already initialized
+     * @param {Object} options - Additional options
+     * @param {boolean} options.checkGlobalLogger - Whether to check for global Logger
+     * @param {string} options.logPrefix - Prefix for log messages (default: ">")
+     * @param {boolean} options.silent - Whether to suppress log messages
+     * @returns {boolean} - Whether initialization was successful
+     */
+    function initializeComponent(component, name, initFn, options = {}) {
+        // If already initialized, don't reinitialize
+        if (component.initialized) {
+            if (!options.silent) {
+                const message = `${name} already initialized`;
+                if (options.checkGlobalLogger && window.Logger) {
+                    window.Logger.warning(message);
+                } else {
+                    console.warn(message);
+                }
+            }
+            return true;
+        }
+        
+        try {
+            // Call the init function
+            const result = initFn();
+            
+            // If the function returns false, initialization failed
+            if (result === false) {
+                return false;
+            }
+            
+            // Mark as initialized
+            component.initialized = true;
+            
+            // Log success
+            if (!options.silent) {
+                const prefix = options.logPrefix || ">";
+                const message = `${prefix} ${name} INITIALIZED`;
+                
+                if (options.checkGlobalLogger && window.Logger) {
+                    window.Logger.log(message);
+                } else {
+                    console.log(message);
+                }
+            }
+            
+            return true;
+        } catch (e) {
+            // Log error
+            const errorMsg = `Failed to initialize ${name}: ${e.message}`;
+            if (options.checkGlobalLogger && window.Logger) {
+                window.Logger.error(errorMsg);
+            } else {
+                console.error(errorMsg);
+            }
+            return false;
+        }
+    }
+    
     // Expose public API
     return {
         easing,
@@ -268,11 +387,18 @@ const Utils = (function() {
         debug,
         togglePanelCollapse,
         typeText,
-        forceScrollToBottom
+        forceScrollToBottom,
+        setupHoverAnimation,
+        initializeComponent
     };
 })();
 
 // Expose utilities in the global scope
 window.togglePanelCollapse = Utils.togglePanelCollapse;
 window.typeText = Utils.typeText;
-window.forceScrollToBottom = Utils.forceScrollToBottom; 
+window.forceScrollToBottom = Utils.forceScrollToBottom;
+window.setupHoverAnimation = Utils.setupHoverAnimation;
+window.initializeComponent = Utils.initializeComponent;
+
+// Make utilities available globally
+window.Utils = Utils; 

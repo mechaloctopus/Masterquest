@@ -367,36 +367,47 @@ window.FoeSystem = (function() {
     function setupHoverAnimation(foe) {
         if (!scene) return;
         
-        const hoverHeight = foe.template.HOVER_HEIGHT || 0.7;
-        const hoverSpeed = foe.template.HOVER_SPEED || 0.5;
-        
-        // Register an animation to run before each render
-        scene.registerBeforeRender(() => {
-            if (foe && foe.mesh) {
-                // Update hover phase
-                foe.hoverParams.phase += hoverSpeed * scene.getAnimationRatio() * 0.01;
-                
-                // Calculate new Y position with sine wave
-                const newY = foe.hoverParams.originalY + Math.sin(foe.hoverParams.phase) * hoverHeight;
-                
-                // Apply new position
-                foe.mesh.position.y = newY;
-                
-                // Slowly rotate the foe
-                foe.mesh.rotation.y += 0.003 * scene.getAnimationRatio();
-                
-                // If in battle state, add more dramatic effects
-                if (foe.state === 'battle') {
-                    // Pulse size
-                    const pulse = 1 + 0.1 * Math.sin(foe.hoverParams.phase * 3);
-                    foe.mesh.scaling.x = pulse;
-                    foe.mesh.scaling.y = pulse;
-                    foe.mesh.scaling.z = pulse;
+        if (window.Utils && window.Utils.setupHoverAnimation) {
+            // Use the shared utility if available
+            window.Utils.setupHoverAnimation(scene, foe, {
+                hoverHeight: foe.template.HOVER_HEIGHT || 0.7,
+                hoverSpeed: foe.template.HOVER_SPEED || 0.5,
+                rotationSpeed: 0.003,
+                addPulse: true,
+                pulseSpeed: 3,
+                pulseAmount: 0.1
+            });
+        } else {
+            // Fallback implementation if shared utility is not available
+            const hoverHeight = foe.template.HOVER_HEIGHT || 0.7;
+            const hoverSpeed = foe.template.HOVER_SPEED || 0.5;
+            
+            // Register an animation to run before each render
+            scene.registerBeforeRender(() => {
+                if (foe && foe.mesh) {
+                    // Update hover phase
+                    foe.hoverParams.phase += hoverSpeed * scene.getAnimationRatio() * 0.01;
                     
-                    // Maybe add more battle effects here
+                    // Calculate new Y position with sine wave
+                    const newY = foe.hoverParams.originalY + Math.sin(foe.hoverParams.phase) * hoverHeight;
+                    
+                    // Apply new position
+                    foe.mesh.position.y = newY;
+                    
+                    // Slowly rotate the foe
+                    foe.mesh.rotation.y += 0.003 * scene.getAnimationRatio();
+                    
+                    // If in battle state, add more dramatic effects
+                    if (foe.state === 'battle') {
+                        // Pulse size
+                        const pulse = 1 + 0.1 * Math.sin(foe.hoverParams.phase * 3);
+                        foe.mesh.scaling.x = pulse;
+                        foe.mesh.scaling.y = pulse;
+                        foe.mesh.scaling.z = pulse;
+                    }
                 }
-            }
-        });
+            });
+        }
     }
     
     // Clear all foes from the scene
