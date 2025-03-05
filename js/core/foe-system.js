@@ -100,6 +100,30 @@ window.FoeSystem = (function() {
             position.y = 2;
             foeMesh.position = new BABYLON.Vector3(position.x, position.y, position.z);
             
+            // Add a name tag above the foe
+            const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("FOE_UI");
+            
+            // Create a text block for the name tag
+            const nameTag = new BABYLON.GUI.TextBlock();
+            nameTag.text = "FOE1";
+            nameTag.color = "white";
+            nameTag.fontSize = 16;
+            nameTag.outlineWidth = 2;
+            nameTag.outlineColor = "black";
+            
+            // Create a container for the name tag that will be linked to the foe
+            const nameTagContainer = new BABYLON.GUI.Rectangle();
+            nameTagContainer.width = "100px";
+            nameTagContainer.height = "30px";
+            nameTagContainer.cornerRadius = 5;
+            nameTagContainer.background = "rgba(0, 0, 0, 0.5)";
+            nameTagContainer.thickness = 0;
+            nameTagContainer.linkWithMesh(foeMesh);
+            nameTagContainer.linkOffsetY = -60; // Position above the foe
+            nameTagContainer.addControl(nameTag);
+            
+            advancedTexture.addControl(nameTagContainer);
+            
             console.log("Foe created at position:", foeMesh.position);
             
             // Store foe in the array
@@ -123,21 +147,11 @@ window.FoeSystem = (function() {
                     completed: false,
                     currentQuestion: 0,
                     score: 0,
-                    maxScore: 3,
+                    maxScore: 1,
                     questions: [
                         {
-                            question: "What color is this foe?",
-                            options: ["Red", "Blue", "Green", "Yellow"],
-                            correctAnswer: 0
-                        },
-                        {
-                            question: "What is 2 + 2?",
-                            options: ["3", "4", "5", "6"],
-                            correctAnswer: 1
-                        },
-                        {
-                            question: "This is a test foe. True or False?",
-                            options: ["True", "False"],
+                            question: "I am a FOE",
+                            options: ["Close"],
                             correctAnswer: 0
                         }
                     ]

@@ -325,26 +325,6 @@ const App = (function() {
             initializeCurrentRealm();
             console.log("Current realm initialization complete");
             
-            // Direct test - Create orbs regardless of realm initialization
-            try {
-                console.log("DIRECT TEST: Attempting to create orbs directly");
-                
-                if (typeof window.NPCSystem !== 'undefined') {
-                    console.log("Creating test NPC directly...");
-                    NPCSystem.createVisibleNPC();
-                    Logger.log("> TEST NPC CREATED DIRECTLY");
-                }
-                
-                if (typeof window.FoeSystem !== 'undefined') {
-                    console.log("Creating test foe directly...");
-                    FoeSystem.createVisibleFoe();
-                    Logger.log("> TEST FOE CREATED DIRECTLY");
-                }
-            } catch (e) {
-                console.error("Direct orb creation failed:", e);
-                Logger.error("> DIRECT ORB CREATION FAILED");
-            }
-            
             return true;
         } catch (e) {
             Logger.error(`System initialization failed: ${e.message}`);

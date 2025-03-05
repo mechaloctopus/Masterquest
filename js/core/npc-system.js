@@ -130,6 +130,30 @@ window.NPCSystem = (function() {
             // Set the position
             npcMesh.position = new BABYLON.Vector3(position.x, position.y, position.z);
             
+            // Add a name tag above the NPC
+            const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("NPC_UI");
+            
+            // Create a text block for the name tag
+            const nameTag = new BABYLON.GUI.TextBlock();
+            nameTag.text = "NPC1";
+            nameTag.color = "white";
+            nameTag.fontSize = 16;
+            nameTag.outlineWidth = 2;
+            nameTag.outlineColor = "black";
+            
+            // Create a container for the name tag that will be linked to the NPC
+            const nameTagContainer = new BABYLON.GUI.Rectangle();
+            nameTagContainer.width = "100px";
+            nameTagContainer.height = "30px";
+            nameTagContainer.cornerRadius = 5;
+            nameTagContainer.background = "rgba(0, 0, 0, 0.5)";
+            nameTagContainer.thickness = 0;
+            nameTagContainer.linkWithMesh(npcMesh);
+            nameTagContainer.linkOffsetY = -60; // Position above the NPC
+            nameTagContainer.addControl(nameTag);
+            
+            advancedTexture.addControl(nameTagContainer);
+            
             console.log("NPC created at position:", npcMesh.position);
             
             // Store NPC in the array
@@ -150,58 +174,22 @@ window.NPCSystem = (function() {
                 },
                 dialogueData: {
                     greetings: [
-                        "Hello traveler! Welcome to this virtual realm.",
-                        "Greetings! I'm your friendly NPC guide."
+                        "I am an NPC."
                     ],
                     conversations: [
                         {
                             id: "intro",
+                            text: "I am an NPC.",
                             responses: [
                                 {
-                                    id: "who_are_you",
-                                    text: "Who are you?"
-                                },
-                                {
-                                    id: "what_is_this_place",
-                                    text: "What is this place?"
-                                },
-                                {
-                                    id: "goodbye",
-                                    text: "Goodbye"
+                                    id: "close",
+                                    text: "Close"
                                 }
                             ]
                         },
                         {
-                            id: "who_are_you",
-                            text: "I am a virtual guide designed to help you navigate this realm. I'm here to provide information and assistance as you explore.",
-                            responses: [
-                                {
-                                    id: "intro",
-                                    text: "Tell me more"
-                                },
-                                {
-                                    id: "goodbye",
-                                    text: "Goodbye"
-                                }
-                            ]
-                        },
-                        {
-                            id: "what_is_this_place",
-                            text: "This is a virtual environment created for exploration and discovery. Feel free to move around and interact with objects and other NPCs you might find.",
-                            responses: [
-                                {
-                                    id: "intro",
-                                    text: "I have more questions"
-                                },
-                                {
-                                    id: "goodbye",
-                                    text: "Goodbye"
-                                }
-                            ]
-                        },
-                        {
-                            id: "goodbye",
-                            text: "Farewell traveler! Come back if you need any assistance.",
+                            id: "close",
+                            text: "Goodbye!",
                             responses: []
                         }
                     ]

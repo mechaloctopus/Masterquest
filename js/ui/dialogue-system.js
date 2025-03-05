@@ -92,12 +92,18 @@ const DialogueSystem = (function() {
         // Create title
         quizTitle = document.createElement('div');
         quizTitle.className = 'quiz-title';
-        quizTitle.textContent = 'QUIZ BATTLE';
+        quizTitle.textContent = 'FOE ENCOUNTER';
+        
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.className = 'dialogue-close';
+        closeButton.textContent = '×';
+        closeButton.onclick = hideQuiz;
         
         // Create progress indicator
         quizProgress = document.createElement('div');
         quizProgress.className = 'quiz-progress';
-        quizProgress.textContent = 'Question 1 of 3';
+        quizProgress.textContent = 'Foe Message';
         
         // Create question area
         quizQuestion = document.createElement('div');
@@ -114,6 +120,7 @@ const DialogueSystem = (function() {
         
         // Assemble the UI
         quizContainer.appendChild(quizTitle);
+        quizContainer.appendChild(closeButton);
         quizContainer.appendChild(quizProgress);
         quizContainer.appendChild(quizQuestion);
         quizContainer.appendChild(quizOptions);
@@ -300,40 +307,30 @@ const DialogueSystem = (function() {
         
         currentFoe = foeId;
         
-        // Hide any open dialogue
-        hideDialogue();
+        // Set title with foe ID
+        quizTitle.textContent = `FOE1`;
         
-        // Hide any previous result
-        quizResult.style.display = 'none';
+        // Simplify the progress indicator
+        quizProgress.style.display = 'none';
         
-        // Set title with foe name/ID
-        quizTitle.textContent = `QUIZ BATTLE: ${foeId.toUpperCase()}`;
+        // Set question content
+        quizQuestion.textContent = quizData.question || "I am a FOE";
         
-        // Set progress
-        quizProgress.textContent = `Question ${quizData.questionNumber} of ${quizData.totalQuestions}`;
-        
-        // Set question
-        quizQuestion.textContent = quizData.question;
-        
-        // Set up quiz options
+        // Clear and set options
         quizOptions.innerHTML = '';
         
-        if (quizData.options && quizData.options.length > 0) {
-            quizData.options.forEach((option, index) => {
-                const button = document.createElement('button');
-                button.className = 'quiz-option';
-                button.textContent = option;
-                
-                button.onclick = function() {
-                    handleQuizOptionClick(index);
-                };
-                
-                quizOptions.appendChild(button);
-            });
-        }
+        // Only add a close button
+        const closeButton = document.createElement('button');
+        closeButton.className = 'quiz-option';
+        closeButton.textContent = 'Close';
+        closeButton.onclick = hideQuiz;
+        quizOptions.appendChild(closeButton);
         
         // Show the container
         quizContainer.style.display = 'block';
+        
+        // Hide result area if it was visible
+        quizResult.style.display = 'none';
         
         // Emit game pause event
         if (window.EventSystem) {
@@ -356,23 +353,6 @@ const DialogueSystem = (function() {
                 source: 'quiz'
             });
         }
-    }
-    
-    // Handle quiz option click
-    function handleQuizOptionClick(answerIndex) {
-        if (!currentFoe || !window.EventSystem) return;
-        
-        // Disable all buttons to prevent multiple submissions
-        const buttons = quizOptions.querySelectorAll('button');
-        buttons.forEach(button => {
-            button.disabled = true;
-        });
-        
-        // Emit answer event
-        EventSystem.emit('quiz.answer', {
-            foeId: currentFoe,
-            answerIndex: answerIndex
-        });
     }
     
     // Handle quiz start event
