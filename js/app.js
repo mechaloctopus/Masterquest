@@ -545,24 +545,22 @@ const App = (function() {
     
     // Handle NPC interaction
     function handleNPCInteraction(npcId) {
-        // Placeholder for NPC dialogue system
         Logger.log(`> INTERACTING WITH NPC ID: ${npcId}`);
         
-        // Future implementation:
-        // 1. Find NPC data
-        // 2. Display dialogue UI
-        // 3. Process interaction
+        // Use NPCSystem to start interaction with this NPC
+        if (window.NPCSystem) {
+            NPCSystem.startInteraction(npcId);
+        }
     }
     
     // Handle foe/quiz interaction
     function handleFoeInteraction(foeId) {
-        // Placeholder for foe/quiz system
         Logger.log(`> INTERACTING WITH FOE ID: ${foeId}`);
         
-        // Future implementation:
-        // 1. Find foe data
-        // 2. Display quiz UI
-        // 3. Process interaction/combat
+        // Use FoeSystem to start battle with this foe
+        if (window.FoeSystem) {
+            FoeSystem.startBattle(foeId);
+        }
     }
     
     // Apply equipment effects when items are equipped/unequipped

@@ -138,6 +138,16 @@ window.NPCSystem = (function() {
                 mesh: npcMesh,
                 position: npcMesh.position,
                 gridPosition: window.CoordinateSystem ? CoordinateSystem.worldToGrid(npcMesh.position) : null,
+                isNearby: false,
+                isInteracting: false,
+                template: {
+                    HOVER_HEIGHT: 0.5,
+                    HOVER_SPEED: 0.3
+                },
+                hoverParams: {
+                    originalY: npcMesh.position.y,
+                    phase: Math.random() * Math.PI * 2 // Random starting phase
+                },
                 dialogueData: {
                     greetings: [
                         "Hello traveler! Welcome to this virtual realm.",
@@ -199,6 +209,32 @@ window.NPCSystem = (function() {
             };
             
             npcs.push(npc);
+            
+            // Setup hover animation
+            setupHoverAnimation(npc);
+            
+            // Make the NPC mesh interactive/clickable
+            if (npc && npc.mesh) {
+                npc.mesh.isPickable = true;
+                
+                // Create action manager if it doesn't exist
+                if (!npc.mesh.actionManager) {
+                    npc.mesh.actionManager = new BABYLON.ActionManager(scene);
+                }
+                
+                // Add click action
+                npc.mesh.actionManager.registerAction(
+                    new BABYLON.ExecuteCodeAction(
+                        BABYLON.ActionManager.OnPickTrigger,
+                        function() {
+                            if (window.EventSystem) {
+                                EventSystem.emit('npc.interact', { npcId: npc.id });
+                            }
+                        }
+                    )
+                );
+            }
+            
             return npc;
         } catch (e) {
             safeLog(`Failed to create visible NPC: ${e.message}`);
@@ -237,7 +273,53 @@ window.NPCSystem = (function() {
             mesh: npcMesh,
             realmIndex: realmIndex,
             template: template,
-            position: position
+            position: position,
+            isNearby: false,
+            isInteracting: false,
+            // Add sample dialogue data for testing
+            dialogueData: {
+                greetings: [
+                    "Hello traveler! I am an NPC.",
+                    "Greetings! I'm here to test dialogue.",
+                    "Welcome to the test realm!"
+                ],
+                conversations: [
+                    {
+                        id: "intro",
+                        text: "I am a test NPC. How can I help you?",
+                        responses: [
+                            {
+                                id: "about",
+                                text: "Tell me about yourself"
+                            },
+                            {
+                                id: "quest",
+                                text: "Do you have any quests?"
+                            }
+                        ]
+                    },
+                    {
+                        id: "about",
+                        text: "I'm a simple blue orb NPC created to test the dialogue system.",
+                        responses: [
+                            {
+                                id: "intro",
+                                text: "Back to main dialogue"
+                            }
+                        ]
+                    },
+                    {
+                        id: "quest",
+                        text: "No quests available yet, this is just a test!",
+                        responses: [
+                            {
+                                id: "intro",
+                                text: "Back to main dialogue"
+                            }
+                        ]
+                    }
+                ]
+            }
         };
         
         npcs.push(npc);

@@ -107,10 +107,71 @@ window.FoeSystem = (function() {
                 id: "visible_foe",
                 mesh: foeMesh,
                 position: foeMesh.position,
-                gridPosition: window.CoordinateSystem ? CoordinateSystem.worldToGrid(foeMesh.position) : null
+                gridPosition: window.CoordinateSystem ? CoordinateSystem.worldToGrid(foeMesh.position) : null,
+                state: 'idle', // idle, engaging, battle, defeated
+                isInteracting: false,
+                hoverParams: {
+                    originalY: foeMesh.position.y,
+                    phase: Math.random() * Math.PI * 2 // Random starting phase
+                },
+                template: {
+                    HOVER_HEIGHT: 0.7,
+                    HOVER_SPEED: 0.5
+                },
+                // Add sample quiz data for testing
+                quizData: {
+                    completed: false,
+                    currentQuestion: 0,
+                    score: 0,
+                    maxScore: 3,
+                    questions: [
+                        {
+                            question: "What color is this foe?",
+                            options: ["Red", "Blue", "Green", "Yellow"],
+                            correctAnswer: 0
+                        },
+                        {
+                            question: "What is 2 + 2?",
+                            options: ["3", "4", "5", "6"],
+                            correctAnswer: 1
+                        },
+                        {
+                            question: "This is a test foe. True or False?",
+                            options: ["True", "False"],
+                            correctAnswer: 0
+                        }
+                    ]
+                }
             };
             
             foes.push(foe);
+            
+            // Setup hover animation
+            setupHoverAnimation(foe);
+            
+            // Make the foe mesh interactive/clickable
+            if (foe && foe.mesh) {
+                foe.mesh.isPickable = true;
+                
+                // Create action manager if it doesn't exist
+                if (!foe.mesh.actionManager) {
+                    foe.mesh.actionManager = new BABYLON.ActionManager(scene);
+                }
+                
+                // Add click action
+                foe.mesh.actionManager.registerAction(
+                    new BABYLON.ExecuteCodeAction(
+                        BABYLON.ActionManager.OnPickTrigger,
+                        function() {
+                            // Only interact if foe is not already defeated
+                            if (foe.state !== 'defeated' && window.EventSystem) {
+                                EventSystem.emit('foe.interact', { foeId: foe.id });
+                            }
+                        }
+                    )
+                );
+            }
+            
             return foe;
         } catch (e) {
             safeLog(`Failed to create visible foe: ${e.message}`);
