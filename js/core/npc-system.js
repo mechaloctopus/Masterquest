@@ -127,38 +127,76 @@ window.NPCSystem = (function() {
                 if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERPICK) {
                     if (pointerInfo.pickInfo.pickedMesh === npcMesh) {
                         console.log("NPC CLICKED - DIRECT EVENT");
-                        alert("NPC clicked!");
+                        
+                        // Log to onscreen console instead of alert
+                        const message = "> NPC CLICKED: I am an NPC";
+                        
+                        // Try multiple approaches for logging to the onscreen console
+                        // 1. Direct add to Logger if available
+                        if (window.Logger && window.Logger.log) {
+                            window.Logger.log(message);
+                        }
+                        
+                        // 2. Direct DOM manipulation with typewriter effect
+                        const logElement = document.getElementById('logContent');
+                        if (logElement) {
+                            const entry = document.createElement('div');
+                            entry.className = 'log-message';
+                            logElement.appendChild(entry);
+                            
+                            // Type the text with animation
+                            typeText(entry, message, 0, 20);
+                            
+                            // Ensure the log scrolls to the bottom
+                            logElement.scrollTop = logElement.scrollHeight;
+                        }
+                        
+                        // 3. Update the global log visibility
+                        document.querySelectorAll('#log, #logContent').forEach(el => {
+                            el.style.display = 'block';
+                            el.classList.remove('collapsed');
+                        });
+                        
+                        // 4. Emit event if EventSystem is available
+                        if (window.EventSystem) {
+                            EventSystem.emit('npc.interact', { npcId: "visible_npc" });
+                        }
                     }
                 }
             });
             
-            // CREATE EXTRA LARGE NAME TAG FOR VISIBILITY
+            // CREATE EXTRA LARGE NAME TAG WITH TRANSPARENT BACKGROUND
             // Create a plane for the name
             const nameTagPlane = BABYLON.MeshBuilder.CreatePlane("npcNameTag", {
-                width: 2,
-                height: 0.5
+                width: 3,  // Make it wider for larger text
+                height: 1  // Make it taller for larger text
             }, scene);
             
             // Position above the NPC
-            nameTagPlane.position = new BABYLON.Vector3(0, 1.5, 0);
+            nameTagPlane.position = new BABYLON.Vector3(0, 1.8, 0);
             nameTagPlane.parent = npcMesh;
             
             // Always face the camera
             nameTagPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
             
-            // Create a bright material for visibility
+            // Create a transparent material for the name tag
             const nameMaterial = new BABYLON.StandardMaterial("npcNameMaterial", scene);
-            nameMaterial.diffuseColor = new BABYLON.Color3(1, 1, 0); // Yellow background
+            nameMaterial.diffuseColor = new BABYLON.Color3(1, 1, 1);
             nameMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
             nameMaterial.backFaceCulling = false;
+            nameMaterial.alpha = 0; // Make fully transparent
             
             // Apply material to name tag
             nameTagPlane.material = nameMaterial;
             
-            // Use a basic dynamic texture for the text
-            const nameTexture = new BABYLON.DynamicTexture("nameTexture", 512, scene, false);
-            nameTexture.drawText("NPC1", null, 80, "bold 120px Arial", "black", "#FFFF00");
+            // Use a dynamic texture with transparency for the text
+            const nameTexture = new BABYLON.DynamicTexture("nameTexture", 1024, scene, true);
+            nameTexture.hasAlpha = true;
             nameMaterial.diffuseTexture = nameTexture;
+            nameMaterial.useAlphaFromDiffuseTexture = true;
+            
+            // Clear the texture and draw the text (much larger)
+            nameTexture.drawText("NPC1", null, 200, "bold 240px Arial", "black", "transparent");
             
             console.log("NPC created at:", npcMesh.position.toString());
             console.log("Name tag created:", nameTagPlane.position.toString());

@@ -97,38 +97,76 @@ window.FoeSystem = (function() {
                 if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERPICK) {
                     if (pointerInfo.pickInfo.pickedMesh === foeMesh) {
                         console.log("FOE CLICKED - DIRECT EVENT");
-                        alert("FOE clicked!");
+                        
+                        // Log to onscreen console instead of alert
+                        const message = "> FOE CLICKED: I am a FOE";
+                        
+                        // Try multiple approaches for logging to the onscreen console
+                        // 1. Direct add to Logger if available
+                        if (window.Logger && window.Logger.log) {
+                            window.Logger.log(message);
+                        }
+                        
+                        // 2. Direct DOM manipulation with typewriter effect
+                        const logElement = document.getElementById('logContent');
+                        if (logElement) {
+                            const entry = document.createElement('div');
+                            entry.className = 'log-message';
+                            logElement.appendChild(entry);
+                            
+                            // Type the text with animation
+                            typeText(entry, message, 0, 20);
+                            
+                            // Ensure the log scrolls to the bottom
+                            logElement.scrollTop = logElement.scrollHeight;
+                        }
+                        
+                        // 3. Update the global log visibility
+                        document.querySelectorAll('#log, #logContent').forEach(el => {
+                            el.style.display = 'block';
+                            el.classList.remove('collapsed');
+                        });
+                        
+                        // 4. Emit event if EventSystem is available
+                        if (window.EventSystem) {
+                            EventSystem.emit('foe.interact', { foeId: "visible_foe" });
+                        }
                     }
                 }
             });
             
-            // CREATE EXTRA LARGE NAME TAG FOR VISIBILITY
+            // CREATE EXTRA LARGE NAME TAG WITH TRANSPARENT BACKGROUND
             // Create a plane for the name
             const nameTagPlane = BABYLON.MeshBuilder.CreatePlane("foeNameTag", {
-                width: 2,
-                height: 0.5
+                width: 3,  // Make it wider for larger text
+                height: 1  // Make it taller for larger text
             }, scene);
             
             // Position above the FOE
-            nameTagPlane.position = new BABYLON.Vector3(0, 1.5, 0);
+            nameTagPlane.position = new BABYLON.Vector3(0, 1.8, 0);
             nameTagPlane.parent = foeMesh;
             
             // Always face the camera
             nameTagPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
             
-            // Create a bright material for visibility
+            // Create a transparent material for the name tag
             const nameMaterial = new BABYLON.StandardMaterial("foeNameMaterial", scene);
-            nameMaterial.diffuseColor = new BABYLON.Color3(1, 0.5, 0); // Orange background
+            nameMaterial.diffuseColor = new BABYLON.Color3(1, 1, 1);
             nameMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
             nameMaterial.backFaceCulling = false;
+            nameMaterial.alpha = 0; // Make fully transparent
             
             // Apply material to name tag
             nameTagPlane.material = nameMaterial;
             
-            // Use a basic dynamic texture for the text
-            const nameTexture = new BABYLON.DynamicTexture("foeNameTexture", 512, scene, false);
-            nameTexture.drawText("FOE1", null, 80, "bold 120px Arial", "black", "#FF8000");
+            // Use a dynamic texture with transparency for the text
+            const nameTexture = new BABYLON.DynamicTexture("foeNameTexture", 1024, scene, true);
+            nameTexture.hasAlpha = true;
             nameMaterial.diffuseTexture = nameTexture;
+            nameMaterial.useAlphaFromDiffuseTexture = true;
+            
+            // Clear the texture and draw the text (much larger)
+            nameTexture.drawText("FOE1", null, 200, "bold 240px Arial", "black", "transparent");
             
             console.log("FOE created at:", foeMesh.position.toString());
             console.log("FOE name tag created:", nameTagPlane.position.toString());
