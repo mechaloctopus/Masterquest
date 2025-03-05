@@ -87,25 +87,53 @@ const Logger = (function() {
             return;
         }
 
-        // Create log entry with timestamp
-        const timestamp = new Date().toISOString().slice(11, 19); // HH:MM:SS
-        const logEntry = document.createElement('div');
-        logEntry.className = `log-entry ${type}`;
+        // Create a message element with proper class for CSS styling
+        const messageElement = document.createElement('div');
+        messageElement.className = 'log-message';
         
-        // Use appropriate entry format based on type
+        // Add type-specific classes
         if (type === MESSAGE_TYPES.ERROR) {
-            logEntry.innerHTML = `<span class="log-time">[${timestamp}]</span> <span class="log-error">ERROR:</span> ${message}`;
+            messageElement.classList.add('log-error');
         } else if (type === MESSAGE_TYPES.WARNING) {
-            logEntry.innerHTML = `<span class="log-time">[${timestamp}]</span> <span class="log-warning">WARNING:</span> ${message}`;
+            messageElement.classList.add('log-warning');
         } else if (type === MESSAGE_TYPES.DEBUG) {
-            logEntry.innerHTML = `<span class="log-time">[${timestamp}]</span> <span class="log-debug">DEBUG:</span> ${message}`;
-        } else {
-            logEntry.innerHTML = `<span class="log-time">[${timestamp}]</span> ${message}`;
+            messageElement.classList.add('log-debug');
         }
         
-        // Add the entry to the log
-        logContentElement.appendChild(logEntry);
+        // Create a span for the text that will be animated
+        const textSpan = document.createElement('span');
+        textSpan.className = 'log-text';
+        messageElement.appendChild(textSpan);
         
+        // Add to DOM first so it appears immediately
+        logContentElement.appendChild(messageElement);
+        
+        // Get prefix based on message type
+        let prefix = '';
+        switch (type) {
+            case MESSAGE_TYPES.ERROR:
+                prefix = 'ERROR: ';
+                break;
+            case MESSAGE_TYPES.WARNING:
+                prefix = 'WARNING: ';
+                break;
+            case MESSAGE_TYPES.DEBUG:
+                prefix = 'DEBUG: ';
+                break;
+        }
+        
+        // Use typewriter effect for displaying text
+        if (window.Utils && window.Utils.typeText) {
+            // Use shared utility if available
+            window.Utils.typeText(textSpan, prefix + message, 0, 5, null, logContentElement);
+        } else if (window.typeText) {
+            // Legacy support
+            window.typeText(textSpan, prefix + message, 0, 5, null, logContentElement);
+        } else {
+            // Fallback to direct text setting if utility not available
+            textSpan.textContent = prefix + message;
+        }
+
         // Limit number of log entries to prevent performance issues
         const maxEntries = window.Utils && window.Utils.getConfig 
             ? Utils.getConfig('UI.LOGGER.MAX_ENTRIES', 100)

@@ -360,8 +360,15 @@ const LoadingScreenSystem = (function() {
         // Auto-scroll to bottom
         loadingConsoleElement.scrollTop = loadingConsoleElement.scrollHeight;
         
-        // Use the shared typeText utility
-        if (window.typeText) {
+        // Try using various versions of typeText utility in order of preference
+        if (window.Utils && window.Utils.typeText) {
+            // Use the new utility function - modern format
+            window.Utils.typeText(messageElement, message, 0, 20, 
+                () => setTimeout(processMessageQueue, 300), 
+                loadingConsoleElement
+            );
+        } else if (window.typeText) {
+            // Legacy format
             window.typeText(
                 messageElement,
                 message,

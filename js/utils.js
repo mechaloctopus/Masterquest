@@ -193,16 +193,34 @@ const Utils = (function() {
     }
     
     /**
-     * Creates a typewriter effect by gradually revealing text
-     * @param {HTMLElement} element - The element to add text to
-     * @param {string} text - The full text to display
-     * @param {number} index - The current character index
+     * Creates a typewriter effect by typing text character by character
+     * Supports both legacy and modern invocation patterns for backward compatibility
+     * 
+     * Legacy: typeText(element, text, index, speed, onComplete, scrollElement, append)
+     * Modern: typeText({element, text, speed, scrollElement, onComplete, append, index})
+     * 
+     * @param {HTMLElement|Object} element - DOM element or config object
+     * @param {string} text - Text to type (if first param is DOM element)
+     * @param {number} index - Current character index (if first param is DOM element)
      * @param {number} speed - Milliseconds between characters
      * @param {Function} onComplete - Optional callback when typing is complete
      * @param {HTMLElement} scrollElement - Optional element to scroll to bottom while typing
      * @param {boolean} append - Whether to append (true) or replace (false) text
      */
     function typeText(element, text, index, speed, onComplete, scrollElement, append = false) {
+        // Check if called with config object (new format)
+        if (element && typeof element === 'object' && !(element instanceof HTMLElement)) {
+            const config = element;
+            // Extract parameters from config object
+            element = config.element;
+            text = config.text;
+            index = config.index || 0;
+            speed = config.speed || 30;
+            onComplete = config.onComplete;
+            scrollElement = config.scrollElement;
+            append = config.append || false;
+        }
+        
         if (!element || typeof text !== 'string') return;
         
         // Default speed if not specified
@@ -221,7 +239,20 @@ const Utils = (function() {
             
             // Continue with next character
             setTimeout(function() {
-                typeText(element, text, index + 1, speed, onComplete, scrollElement, append);
+                // Use the same calling format as the original call
+                if (arguments[0] && typeof arguments[0] === 'object' && !(arguments[0] instanceof HTMLElement)) {
+                    typeText({
+                        element,
+                        text,
+                        index: index + 1,
+                        speed,
+                        onComplete,
+                        scrollElement,
+                        append
+                    });
+                } else {
+                    typeText(element, text, index + 1, speed, onComplete, scrollElement, append);
+                }
                 
                 // Scroll if element provided
                 if (scrollElement) {
