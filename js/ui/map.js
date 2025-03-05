@@ -32,166 +32,140 @@ const MapSystem = (function() {
         }
         
         mapToggleElement = document.getElementById('mapToggle');
-        mapCanvasElement = document.getElementById('mapCanvas');
+        if (!mapToggleElement) {
+            console.error("[MAP] Map toggle element not found!");
+            return false;
+        }
         
+        mapCanvasElement = document.getElementById('mapCanvas');
         if (!mapCanvasElement) {
             console.error("[MAP] Map canvas element not found!");
             return false;
         }
         
-        // Check if map is already collapsed in the DOM
-        isCollapsed = mapContainerElement.classList.contains('collapsed');
+        // Initial collapse state
+        isCollapsed = !mapContainerElement.classList.contains('expanded');
         if (DEBUG) console.log("[MAP] Initial collapse state:", isCollapsed);
         
         // Set up map canvas
-        if (mapCanvasElement) {
-            const width = mapCanvasElement.parentElement.clientWidth;
-            const height = mapCanvasElement.parentElement.clientHeight - 30; // Subtract header height
-            
-            mapCanvasElement.width = width;
-            mapCanvasElement.height = height;
-            
-            mapContext = mapCanvasElement.getContext('2d');
-            if (!mapContext) {
-                console.error("[MAP] Could not get canvas context!");
-                return false;
-            }
-            
-            if (DEBUG) console.log("[MAP] Canvas setup complete", width, height);
-        }
+        mapCanvasElement.width = mapCanvasElement.parentElement.clientWidth;
+        mapCanvasElement.height = mapCanvasElement.parentElement.clientHeight - 30;
+        mapContext = mapCanvasElement.getContext('2d');
         
-        // Set up toggle functionality
-        if (mapToggleElement) {
-            mapToggleElement.addEventListener('click', toggleMap);
-        }
+        if (DEBUG) console.log("[MAP] Canvas setup complete", mapCanvasElement.width, mapCanvasElement.height);
         
-        // Initialize with empty map data
+        // Add toggle event listener
+        mapToggleElement.addEventListener('click', function(e) {
+            toggleMap();
+            e.preventDefault();
+        });
+        
+        // Create initial empty map
         createEmptyMap();
         
-        // Add a test point at origin
+        // Add test points for debugging
         if (DEBUG) {
-            addPoint(0, 0, { color: "#ff0000", size: 5, label: "Origin" });
-            addPoint(10, 10, { color: "#00ff00", size: 5, label: "10,10" });
-            addPoint(-10, -10, { color: "#0000ff", size: 5, label: "-10,-10" });
-            if (DEBUG) console.log("[MAP] Added test points");
+            addPoint(0, 0, { label: "Origin", color: "#00FFFF" });
+            addPoint(10, 10, { label: "10,10", color: "#00FF00" });
+            addPoint(-10, -10, { label: "-10,-10", color: "#FF00FF" });
+            console.log("[MAP] Added test points");
         }
         
-        // Start map rendering
+        // Start render loop
         requestAnimationFrame(render);
         
         initialized = true;
-        
-        // Log initialization if logger is available
-        if (window.Logger) {
-            Logger.log("> MAP SYSTEM INITIALIZED");
-        }
-        
-        // Output debug status
-        if (DEBUG) console.log("[MAP] Initialization complete:", initialized);
-        
+        console.log("[MAP] Initialization complete:", initialized);
         return true;
     }
     
-    // Create empty map data
+    // Create an empty map
     function createEmptyMap() {
-        mapData = {
-            width: 50,
-            height: 50,
-            grid: true,
-            gridSpacing: 2,
-            gridColor: "#00ffcc",
-            backgroundColor: "rgba(0, 0, 51, 0.8)",
-            points: [] // Points of interest
-        };
         if (DEBUG) console.log("[MAP] Empty map created");
+        
+        mapData = {
+            width: 100,
+            height: 100,
+            grid: true,
+            gridSpacing: 1,
+            gridColor: "#00cc99",
+            backgroundColor: "#001a33",
+            points: []
+        };
+        
+        return mapData;
     }
     
-    // Toggle map collapsed state
+    // Toggle map expanded/collapsed
     function toggleMap() {
-        if (!mapContainerElement) return;
-        
         if (DEBUG) console.log("[MAP] Toggle map called. Current state:", isCollapsed);
         
-        // Use the shared toggle utility if available
-        if (window.togglePanelCollapse) {
-            isCollapsed = window.togglePanelCollapse(mapContainerElement, mapToggleElement, function(collapsed) {
-                // Handle expanded state
-                if (!collapsed) {
-                    handleMapExpansion();
-                }
-                
-                // Emit map toggle event
-                if (window.EventSystem) {
-                    EventSystem.emit('map.toggled', { collapsed: collapsed });
-                }
-                
-                if (DEBUG) console.log("[MAP] Map toggled using global function. New state:", collapsed);
-            });
+        if (!mapContainerElement) return;
+        
+        // Toggle expanded class
+        if (isCollapsed) {
+            expandMap();
         } else {
-            // Fallback to original code
-            isCollapsed = !isCollapsed;
-            
-            if (isCollapsed) {
-                mapContainerElement.classList.add('collapsed');
-                if (mapToggleElement) {
-                    mapToggleElement.textContent = '▲';
-                }
-            } else {
-                mapContainerElement.classList.remove('collapsed');
-                if (mapToggleElement) {
-                    mapToggleElement.textContent = '▼';
-                }
-                
-                handleMapExpansion();
-            }
-            
-            // Emit map toggle event
-            if (window.EventSystem) {
-                EventSystem.emit('map.toggled', { collapsed: isCollapsed });
-            }
-            
-            if (DEBUG) console.log("[MAP] Map toggled using fallback. New state:", isCollapsed);
-        }
-    }
-    
-    // Helper function to handle map expansion
-    function handleMapExpansion() {
-        // Make the map take up the full screen when expanded
-        if (!mapContainerElement.classList.contains('expanded')) {
-            mapContainerElement.classList.add('expanded');
-            mapContainerElement.style.width = '90vw';
-            mapContainerElement.style.height = '90vh';
-            mapContainerElement.style.left = '5vw';
-            mapContainerElement.style.top = '5vh';
-            mapContainerElement.style.zIndex = '1000';
-        } else {
-            mapContainerElement.classList.remove('expanded');
-            mapContainerElement.style.width = '';
-            mapContainerElement.style.height = '';
-            mapContainerElement.style.left = '';
-            mapContainerElement.style.top = '';
-            mapContainerElement.style.zIndex = '';
+            collapseMap();
         }
         
-        // Resize canvas when expanded
-        if (mapCanvasElement) {
-            const width = mapCanvasElement.parentElement.clientWidth;
-            const height = mapCanvasElement.parentElement.clientHeight - 30;
-            
-            mapCanvasElement.width = width;
-            mapCanvasElement.height = height;
-            
-            if (DEBUG) console.log("[MAP] Expansion handled. Canvas resized to:", width, height);
-        }
+        // Toggle the collapse state
+        isCollapsed = !isCollapsed;
+        console.log("[MAP] Map toggled using global function. New state:", isCollapsed);
+        
+        // Resize canvas after toggle
+        handleMapExpansion();
+        
+        return isCollapsed;
+    }
+    
+    // Expand the map
+    function expandMap() {
+        if (!mapContainerElement) return;
+        
+        mapContainerElement.classList.add('expanded');
+        const expandEvent = new CustomEvent('map.expanded');
+        document.dispatchEvent(expandEvent);
+    }
+    
+    // Collapse the map
+    function collapseMap() {
+        if (!mapContainerElement) return;
+        
+        mapContainerElement.classList.remove('expanded');
+        const collapseEvent = new CustomEvent('map.collapsed');
+        document.dispatchEvent(collapseEvent);
+    }
+    
+    // Handle map expansion resize
+    function handleMapExpansion() {
+        if (!mapCanvasElement) return;
+        
+        // Get new dimensions
+        mapCanvasElement.width = mapCanvasElement.parentElement.clientWidth;
+        mapCanvasElement.height = mapCanvasElement.parentElement.clientHeight - 30;
+        
+        if (DEBUG) console.log("[MAP] Expansion handled. Canvas resized to:", mapCanvasElement.width, mapCanvasElement.height);
     }
     
     // Update player position on the map
     function updatePlayerPosition(position, rotation) {
+        if (!position || position.x === undefined || position.z === undefined) {
+            console.error("[MAP] Invalid position provided:", position);
+            return;
+        }
+        
         // Store previous position for change detection
-        lastPlayerPosition = { x: playerPosition.x, z: playerPosition.z };
+        lastPlayerPosition = { 
+            x: playerPosition.x, 
+            z: playerPosition.z 
+        };
         
         // Update current position
-        playerPosition = { x: position.x, z: position.z };
+        playerPosition = { 
+            x: position.x, 
+            z: position.z 
+        };
         playerRotation = rotation;
         
         // Debug logs with limited frequency to avoid console spam
@@ -310,8 +284,12 @@ const MapSystem = (function() {
                 // COLLAPSED MODE: Moving grid, fixed player
                 // Calculate offset based on player position
                 // This is the KEY part that makes the grid move with player movement
-                const playerOffsetX = (playerPosition.x / mapData.gridSpacing) * cellSizeX;
-                const playerOffsetZ = (playerPosition.z / mapData.gridSpacing) * cellSizeZ;
+                const gridCellsX = mapCanvasElement.width / cellSizeX;
+                const gridCellsZ = mapCanvasElement.height / cellSizeZ;
+                
+                // Calculate player offset in grid cells - NEGATIVE because grid moves opposite to player
+                const playerOffsetX = -playerPosition.x;
+                const playerOffsetZ = -playerPosition.z;
                 
                 // Debug log the offset occasionally
                 if (DEBUG && Math.random() < 0.01) {
@@ -323,112 +301,114 @@ const MapSystem = (function() {
                                 playerPosition.z.toFixed(2));
                 }
                 
-                // Calculate the remainder to get smooth movement
-                const remX = playerOffsetX % cellSizeX;
-                const remZ = playerOffsetZ % cellSizeZ;
+                // Calculate grid line positions relative to player position
+                const startOffsetX = (playerOffsetX % 1) * cellSizeX;
+                const startOffsetZ = (playerOffsetZ % 1) * cellSizeZ;
                 
-                // Calculate grid start positions - shifted by player position
-                const startX = -remX;
-                const startZ = -remZ;
+                // Adjust for positive and negative positions
+                const startX = (startOffsetX < 0) ? startOffsetX + cellSizeX : startOffsetX;
+                const startZ = (startOffsetZ < 0) ? startOffsetZ + cellSizeZ : startOffsetZ;
                 
                 // Draw vertical grid lines
-                for (let x = startX; x < mapCanvasElement.width + cellSizeX; x += cellSizeX) {
+                for (let x = startX; x <= mapCanvasElement.width + cellSizeX; x += cellSizeX) {
                     mapContext.beginPath();
                     mapContext.moveTo(x, 0);
                     mapContext.lineTo(x, mapCanvasElement.height);
                     mapContext.stroke();
-                    
-                    // Calculate world X coordinate for this grid line
-                    const worldX = Math.floor(playerPosition.x / mapData.gridSpacing) * mapData.gridSpacing + 
-                                 ((x - centerX) / cellSizeX) * mapData.gridSpacing;
-                    
-                    // Draw coordinate labels for major grid lines
-                    if (Math.round(worldX) % 10 === 0) {
-                        mapContext.fillStyle = "#00ffcc";
-                        mapContext.font = "8px Orbitron";
-                        mapContext.fillText(Math.round(worldX).toString(), x - 5, mapCanvasElement.height - 10);
-                    }
                 }
                 
                 // Draw horizontal grid lines
-                for (let z = startZ; z < mapCanvasElement.height + cellSizeZ; z += cellSizeZ) {
+                for (let z = startZ; z <= mapCanvasElement.height + cellSizeZ; z += cellSizeZ) {
                     mapContext.beginPath();
                     mapContext.moveTo(0, z);
                     mapContext.lineTo(mapCanvasElement.width, z);
                     mapContext.stroke();
+                }
+                
+                // Draw world origin indicator if it's in view
+                const originX = centerX + (playerOffsetX * cellSizeX);
+                const originZ = centerZ + (playerOffsetZ * cellSizeZ);
+                
+                // Check if origin is visible on map
+                if (originX >= 0 && originX <= mapCanvasElement.width &&
+                    originZ >= 0 && originZ <= mapCanvasElement.height) {
+                    mapContext.globalAlpha = 1.0;
+                    mapContext.strokeStyle = "#ffcc00";
+                    mapContext.lineWidth = 1;
                     
-                    // Calculate world Z coordinate for this grid line
-                    const worldZ = Math.floor(playerPosition.z / mapData.gridSpacing) * mapData.gridSpacing + 
-                                 ((z - centerZ) / cellSizeZ) * mapData.gridSpacing;
+                    // Draw crosshair at origin
+                    mapContext.beginPath();
+                    mapContext.moveTo(originX - 10, originZ);
+                    mapContext.lineTo(originX + 10, originZ);
+                    mapContext.stroke();
                     
-                    // Draw coordinate labels for major grid lines
-                    if (Math.round(worldZ) % 10 === 0) {
-                        mapContext.fillStyle = "#00ffcc";
-                        mapContext.font = "8px Orbitron";
-                        mapContext.fillText(Math.round(worldZ).toString(), 5, z + 8);
-                    }
+                    mapContext.beginPath();
+                    mapContext.moveTo(originX, originZ - 10);
+                    mapContext.lineTo(originX, originZ + 10);
+                    mapContext.stroke();
+                    
+                    // Reset opacity
+                    mapContext.globalAlpha = 0.3;
                 }
             }
             
+            // Reset opacity
             mapContext.globalAlpha = 1.0;
-            
         } catch (e) {
             console.error("[MAP] Error in drawGrid:", e);
         }
     }
     
-    // Draw points of interest
+    // Draw points of interest on the map
     function drawPoints() {
-        if (!mapContext || !mapData.points || !mapData.points.length) return;
+        if (!mapContext || !mapData || !mapData.points) return;
         
         try {
+            if (DEBUG && Math.random() < 0.01) {
+                console.log("[MAP] Drawing", mapData.points.length, "points. Player at:", playerPosition.x.toFixed(2), playerPosition.z.toFixed(2));
+            }
+            
             const expanded = mapContainerElement.classList.contains('expanded');
             const gridScale = expanded ? 0.5 : mapScale;
-            
-            // Calculate center offset
             const centerX = mapCanvasElement.width / 2;
             const centerZ = mapCanvasElement.height / 2;
             
-            if (DEBUG && Math.random() < 0.01) {
-                console.log("[MAP] Drawing", mapData.points.length, "points. Player at:", 
-                            playerPosition.x.toFixed(2), 
-                            playerPosition.z.toFixed(2));
-            }
-            
-            // Draw each point
             mapData.points.forEach(point => {
-                // When expanded, points move relative to the fixed grid
-                // When collapsed, grid moves relative to the centered player
-                let mapX, mapZ;
+                // Skip invalid points
+                if (point.x === undefined || point.z === undefined) return;
+                
+                let pointX, pointZ;
                 
                 if (expanded) {
-                    // In expanded view, points are positioned on the fixed grid
-                    mapX = centerX + (point.x * gridScale * mapCanvasElement.width);
-                    mapZ = centerZ + (point.z * gridScale * mapCanvasElement.height);
+                    // In expanded view, points are positioned relative to fixed grid
+                    pointX = centerX + (point.x * gridScale * mapCanvasElement.width);
+                    pointZ = centerZ + (point.z * gridScale * mapCanvasElement.height);
                 } else {
-                    // In collapsed view, points are positioned relative to player
-                    const offsetX = point.x - playerPosition.x;
-                    const offsetZ = point.z - playerPosition.z;
-                    mapX = centerX + (offsetX * gridScale * mapCanvasElement.width);
-                    mapZ = centerZ + (offsetZ * gridScale * mapCanvasElement.height);
+                    // In collapsed view, calculate point position relative to player
+                    const relativeX = point.x - playerPosition.x;
+                    const relativeZ = point.z - playerPosition.z;
+                    
+                    pointX = centerX + (relativeX * gridScale * mapCanvasElement.width);
+                    pointZ = centerZ + (relativeZ * gridScale * mapCanvasElement.height);
                 }
                 
-                // Skip points outside the map
-                if (mapX < 0 || mapX > mapCanvasElement.width || mapZ < 0 || mapZ > mapCanvasElement.height) {
-                    return;
-                }
-                
-                // Draw point
-                mapContext.fillStyle = point.color || "#ffffff";
-                mapContext.beginPath();
-                mapContext.arc(mapX, mapZ, point.size || 3, 0, Math.PI * 2);
-                mapContext.fill();
-                
-                // Draw label if specified
-                if (point.label) {
-                    mapContext.fillStyle = "#ffffff";
-                    mapContext.font = "8px Arial";
-                    mapContext.fillText(point.label, mapX + 5, mapZ + 3);
+                // Only draw if within canvas bounds (with padding)
+                const padding = 20;
+                if (pointX >= -padding && pointX <= mapCanvasElement.width + padding &&
+                    pointZ >= -padding && pointZ <= mapCanvasElement.height + padding) {
+                    
+                    // Draw point
+                    mapContext.fillStyle = point.color || "#ffffff";
+                    mapContext.beginPath();
+                    mapContext.arc(pointX, pointZ, 4, 0, Math.PI * 2);
+                    mapContext.fill();
+                    
+                    // Draw label if present
+                    if (point.label) {
+                        mapContext.fillStyle = "#ffffff";
+                        mapContext.font = "10px Orbitron";
+                        mapContext.fillText(point.label, pointX + 8, pointZ + 4);
+                    }
                 }
             });
         } catch (e) {
@@ -493,24 +473,21 @@ const MapSystem = (function() {
         }
     }
     
-    // Add a point of interest to the map
+    // Add a point to the map
     function addPoint(x, z, options = {}) {
         if (!mapData) createEmptyMap();
         
         const point = {
-            x,
-            z,
+            x: x,
+            z: z,
             color: options.color || "#ffffff",
-            size: options.size || 3,
             label: options.label || null,
-            type: options.type || "generic"
+            icon: options.icon || null
         };
         
         mapData.points.push(point);
         
-        if (DEBUG) {
-            console.log("[MAP] Added point at:", x, z, point.label || "");
-        }
+        if (DEBUG) console.log("[MAP] Added point at:", x, z, options.label || "");
         
         return point;
     }
@@ -519,32 +496,29 @@ const MapSystem = (function() {
     function removePoint(x, z) {
         if (!mapData || !mapData.points) return false;
         
-        const index = mapData.points.findIndex(p => p.x === x && p.z === z);
+        const initialLength = mapData.points.length;
         
-        if (index !== -1) {
-            mapData.points.splice(index, 1);
-            if (DEBUG) console.log("[MAP] Removed point at:", x, z);
-            return true;
-        }
+        // Filter out the point at the given coordinates
+        mapData.points = mapData.points.filter(point => {
+            return !(point.x === x && point.z === z);
+        });
         
-        return false;
+        return mapData.points.length < initialLength;
     }
     
-    // Clear all points from the map
+    // Clear all points
     function clearPoints() {
         if (!mapData) return;
         
         mapData.points = [];
-        if (DEBUG) console.log("[MAP] Cleared all points");
     }
     
-    // Set map data
+    // Set map data (replace current map)
     function setMapData(data) {
         mapData = data;
-        if (DEBUG) console.log("[MAP] Map data set");
     }
     
-    // Get map data
+    // Get current map data
     function getMapData() {
         return mapData;
     }
@@ -558,16 +532,14 @@ const MapSystem = (function() {
     function show() {
         if (!mapContainerElement) return;
         
-        mapContainerElement.style.display = 'block';
-        if (DEBUG) console.log("[MAP] Map shown");
+        mapContainerElement.style.display = "block";
     }
     
     // Hide the map
     function hide() {
         if (!mapContainerElement) return;
         
-        mapContainerElement.style.display = 'none';
-        if (DEBUG) console.log("[MAP] Map hidden");
+        mapContainerElement.style.display = "none";
     }
     
     // Handle window resize
