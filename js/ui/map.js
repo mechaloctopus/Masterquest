@@ -69,14 +69,14 @@ const MapSystem = (function() {
         // Set up coordinate connection
         setupDirectCoordinateConnection();
         
-        // Make sure CoordinateSystem is initialized
-        setTimeout(ensureCoordinateDisplay, 100);
-        
         // Connect to Entity system right away
         connectToEntitySystems();
         
         // Add the keyboard listener for map fullscreen toggle
         document.addEventListener('keydown', handleKeyPress);
+        
+        // Make sure coordinate display is initialized and visible
+        setTimeout(ensureCoordinateDisplay, 300);
         
         console.log("[MAP] Map system initialized successfully");
         return true;
@@ -402,7 +402,6 @@ const MapSystem = (function() {
     // Draw the grid with proper scaling and boundaries
     function drawGrid() {
         const center = isFullscreen ? mapCanvas.width / 2 : MAP_SIZE / 2;
-        const mapScale = isFullscreen ? mapCanvas.width / (WORLD_GRID_LIMITS * 2) : SCALE;
         
         // Calculate player offset in screen pixels
         const playerOffsetX = playerX * (isFullscreen ? 1 : SCALE);
@@ -413,7 +412,14 @@ const MapSystem = (function() {
         if (isFullscreen) {
             // Draw the entire grid with the player's position marked
             const gridSize = WORLD_GRID_LIMITS * 2;
-            const cellSize = mapCanvas.width / gridSize;
+            
+            // Ensure we can see the entire grid with some padding
+            // Use 85% of canvas size to leave some margin around the grid
+            const cellSize = Math.min(mapCanvas.width, mapCanvas.height) * 0.85 / gridSize;
+            
+            // Center the grid in the canvas
+            const offsetX = (mapCanvas.width - (cellSize * gridSize)) / 2;
+            const offsetY = (mapCanvas.height - (cellSize * gridSize)) / 2;
             
             // Draw grid lines
             ctx.strokeStyle = '#00cc99'; // Neon green
@@ -422,19 +428,19 @@ const MapSystem = (function() {
             
             // Draw vertical grid lines
             for (let x = 0; x <= gridSize; x++) {
-                const xPos = x * cellSize;
+                const xPos = offsetX + x * cellSize;
                 ctx.beginPath();
-                ctx.moveTo(xPos, 0);
-                ctx.lineTo(xPos, mapCanvas.height);
+                ctx.moveTo(xPos, offsetY);
+                ctx.lineTo(xPos, offsetY + gridSize * cellSize);
                 ctx.stroke();
             }
             
             // Draw horizontal grid lines
             for (let z = 0; z <= gridSize; z++) {
-                const zPos = z * cellSize;
+                const zPos = offsetY + z * cellSize;
                 ctx.beginPath();
-                ctx.moveTo(0, zPos);
-                ctx.lineTo(mapCanvas.width, zPos);
+                ctx.moveTo(offsetX, zPos);
+                ctx.lineTo(offsetX + gridSize * cellSize, zPos);
                 ctx.stroke();
             }
             
@@ -443,8 +449,16 @@ const MapSystem = (function() {
             ctx.strokeStyle = '#ff00ff'; // Magenta boundary
             ctx.globalAlpha = 0.8;
             ctx.beginPath();
-            ctx.rect(0, 0, mapCanvas.width, mapCanvas.height);
+            ctx.rect(offsetX, offsetY, gridSize * cellSize, gridSize * cellSize);
             ctx.stroke();
+            
+            // Store these values for use in other drawing functions
+            this.fullscreenGridInfo = {
+                offsetX: offsetX,
+                offsetY: offsetY,
+                cellSize: cellSize,
+                gridSize: gridSize
+            };
             
             // Reset alpha
             ctx.globalAlpha = 1.0;
@@ -495,7 +509,6 @@ const MapSystem = (function() {
     // Draw the player arrow
     function drawPlayer() {
         const center = isFullscreen ? mapCanvas.width / 2 : MAP_SIZE / 2;
-        const mapScale = isFullscreen ? mapCanvas.width / (WORLD_GRID_LIMITS * 2) : SCALE;
         
         // Draw cardinal direction indicators if not in fullscreen
         if (!isFullscreen) {
@@ -507,14 +520,13 @@ const MapSystem = (function() {
         let playerDrawY = center;
         
         // In fullscreen mode, position the player based on grid coordinates
-        if (isFullscreen) {
-            const gridSize = WORLD_GRID_LIMITS * 2;
-            const cellSize = mapCanvas.width / gridSize;
+        if (isFullscreen && this.fullscreenGridInfo) {
+            const { offsetX, offsetY, cellSize, gridSize } = this.fullscreenGridInfo;
             
             // Convert player coordinates to screen position
             // Center is 0,0, so we need to offset by half the grid size
-            playerDrawX = (playerX + WORLD_GRID_LIMITS) * cellSize;
-            playerDrawY = (playerZ + WORLD_GRID_LIMITS) * cellSize;
+            playerDrawX = offsetX + (playerX + WORLD_GRID_LIMITS) * cellSize;
+            playerDrawY = offsetY + (playerZ + WORLD_GRID_LIMITS) * cellSize;
         }
         
         // Save context for rotation
@@ -539,13 +551,8 @@ const MapSystem = (function() {
         ctx.lineWidth = 1;
         ctx.stroke();
         
-        // Restore context
+        // Reset rotation
         ctx.restore();
-        
-        // Draw debug direction line if needed
-        if (DEBUG) {
-            drawDirectionDebug(center);
-        }
     }
     
     // Separate function for direction debug drawing
@@ -613,18 +620,21 @@ const MapSystem = (function() {
         if (!npcs || npcs.length === 0) return;
         
         const center = isFullscreen ? mapCanvas.width / 2 : MAP_SIZE / 2;
-        const gridSize = WORLD_GRID_LIMITS * 2;
+        
+        // Use a bright blue color for NPCs
+        ctx.fillStyle = '#0088ff'; // Blue color for NPCs
+        ctx.strokeStyle = '#ffffff'; // White outline
         
         npcs.forEach(npc => {
             if (!npc || typeof npc.x !== 'number' || typeof npc.z !== 'number') return;
             
             let npcX, npcZ;
             
-            if (isFullscreen) {
+            if (isFullscreen && this.fullscreenGridInfo) {
                 // In fullscreen mode, position based on grid coordinates
-                const cellSize = mapCanvas.width / gridSize;
-                npcX = (npc.x + WORLD_GRID_LIMITS) * cellSize;
-                npcZ = (npc.z + WORLD_GRID_LIMITS) * cellSize;
+                const { offsetX, offsetY, cellSize } = this.fullscreenGridInfo;
+                npcX = offsetX + (npc.x + WORLD_GRID_LIMITS) * cellSize;
+                npcZ = offsetY + (npc.z + WORLD_GRID_LIMITS) * cellSize;
             } else {
                 // In normal mode, position relative to player
                 npcX = center + (npc.x - playerX) * SCALE;
@@ -633,15 +643,13 @@ const MapSystem = (function() {
             
             // Only draw if within the visible area
             if (npcX >= 0 && npcX <= mapCanvas.width && npcZ >= 0 && npcZ <= mapCanvas.height) {
-                // Draw NPC as cyan diamond
-                ctx.fillStyle = '#00ffff';
+                // Draw dot
+                const dotSize = isFullscreen ? 5 : 4; // Slightly larger in fullscreen
                 ctx.beginPath();
-                ctx.moveTo(npcX, npcZ - 6);  // Top
-                ctx.lineTo(npcX + 6, npcZ);  // Right
-                ctx.lineTo(npcX, npcZ + 6);  // Bottom
-                ctx.lineTo(npcX - 6, npcZ);  // Left
-                ctx.closePath();
+                ctx.arc(npcX, npcZ, dotSize, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.lineWidth = 1;
+                ctx.stroke();
                 
                 // Draw NPC label if provided and in fullscreen mode
                 if (isFullscreen && npc.label) {
@@ -649,6 +657,9 @@ const MapSystem = (function() {
                     ctx.font = '10px Arial';
                     ctx.textAlign = 'center';
                     ctx.fillText(npc.label, npcX, npcZ - 10);
+                    
+                    // Reset fill color for the next NPC
+                    ctx.fillStyle = '#0088ff';
                 }
             }
         });
@@ -659,18 +670,21 @@ const MapSystem = (function() {
         if (!foes || foes.length === 0) return;
         
         const center = isFullscreen ? mapCanvas.width / 2 : MAP_SIZE / 2;
-        const gridSize = WORLD_GRID_LIMITS * 2;
+        
+        // Use a bright red for maximum visibility
+        ctx.fillStyle = '#ff0000'; // Bright red color for Foes
+        ctx.strokeStyle = '#ffffff'; // White outline
         
         foes.forEach(foe => {
             if (!foe || typeof foe.x !== 'number' || typeof foe.z !== 'number') return;
             
             let foeX, foeZ;
             
-            if (isFullscreen) {
+            if (isFullscreen && this.fullscreenGridInfo) {
                 // In fullscreen mode, position based on grid coordinates
-                const cellSize = mapCanvas.width / gridSize;
-                foeX = (foe.x + WORLD_GRID_LIMITS) * cellSize;
-                foeZ = (foe.z + WORLD_GRID_LIMITS) * cellSize;
+                const { offsetX, offsetY, cellSize } = this.fullscreenGridInfo;
+                foeX = offsetX + (foe.x + WORLD_GRID_LIMITS) * cellSize;
+                foeZ = offsetY + (foe.z + WORLD_GRID_LIMITS) * cellSize;
             } else {
                 // In normal mode, position relative to player
                 foeX = center + (foe.x - playerX) * SCALE;
@@ -679,14 +693,13 @@ const MapSystem = (function() {
             
             // Only draw if within the visible area
             if (foeX >= 0 && foeX <= mapCanvas.width && foeZ >= 0 && foeZ <= mapCanvas.height) {
-                // Draw foe as red triangle
-                ctx.fillStyle = '#ff0000';
+                // Draw dot
+                const dotSize = isFullscreen ? 5 : 4; // Slightly larger in fullscreen
                 ctx.beginPath();
-                ctx.moveTo(foeX, foeZ - 7);  // Top
-                ctx.lineTo(foeX + 7, foeZ + 7);  // Bottom right
-                ctx.lineTo(foeX - 7, foeZ + 7);  // Bottom left
-                ctx.closePath();
+                ctx.arc(foeX, foeZ, dotSize, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.lineWidth = 1;
+                ctx.stroke();
                 
                 // Draw foe label if provided and in fullscreen mode
                 if (isFullscreen && foe.label) {
@@ -694,6 +707,9 @@ const MapSystem = (function() {
                     ctx.font = '10px Arial';
                     ctx.textAlign = 'center';
                     ctx.fillText(foe.label, foeX, foeZ - 10);
+                    
+                    // Reset fill color for the next foe
+                    ctx.fillStyle = '#ff0000';
                 }
             }
         });
@@ -750,6 +766,11 @@ const MapSystem = (function() {
             // Expand the map
             mapContainer.classList.add('expanded');
             
+            // Hide coordinate display in fullscreen mode
+            if (window.CoordinateSystem && typeof window.CoordinateSystem.hide === 'function') {
+                window.CoordinateSystem.hide();
+            }
+            
             // Resize canvas to match new container size
             setTimeout(() => {
                 resizeMapCanvas();
@@ -758,6 +779,14 @@ const MapSystem = (function() {
         } else {
             // Return to normal size
             mapContainer.classList.remove('expanded');
+            
+            // Show coordinate display in normal mode
+            if (window.CoordinateSystem && typeof window.CoordinateSystem.show === 'function') {
+                window.CoordinateSystem.show();
+            } else {
+                // If not available, try to initialize it
+                setTimeout(ensureCoordinateDisplay, 100);
+            }
             
             // Resize canvas to original size
             setTimeout(() => {
