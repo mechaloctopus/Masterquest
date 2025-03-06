@@ -254,6 +254,11 @@ const MapSystem = (function() {
         
         // Draw player arrow
         drawPlayer();
+        
+        // Add debug info if enabled
+        if (DEBUG) {
+            drawDebugInfo();
+        }
     }
     
     // Draw the grid with proper scaling
@@ -324,15 +329,22 @@ const MapSystem = (function() {
     function drawPlayer() {
         const center = MAP_SIZE / 2;
         
+        // First draw cardinal direction indicators around the edge
+        drawCardinalDirections();
+        
         // Save context for rotation
         ctx.save();
         ctx.translate(center, center);
-        ctx.rotate(-playerRotation); // Negative rotation for correct direction
+        
+        // Fix: Apply rotation to match the player's view direction
+        // In Babylon.js, 0 radians = facing +Z (SOUTH)
+        // So we need to adjust our rotation accordingly
+        ctx.rotate(playerRotation); // Remove the negative sign to correct the direction
         
         // Draw player arrow
         ctx.fillStyle = '#ff00cc'; // Pink/purple
         ctx.beginPath();
-        ctx.moveTo(0, -8);  // Arrow tip
+        ctx.moveTo(0, -8);  // Arrow tip (points UP/NORTH by default)
         ctx.lineTo(-5, 5);  // Bottom left
         ctx.lineTo(5, 5);   // Bottom right
         ctx.closePath();
@@ -345,6 +357,61 @@ const MapSystem = (function() {
         
         // Restore context
         ctx.restore();
+    }
+    
+    // Draw cardinal direction indicators (N, S, E, W)
+    function drawCardinalDirections() {
+        const margin = 5;
+        const size = MAP_SIZE;
+        
+        // Set text style
+        ctx.font = '12px monospace';
+        ctx.fillStyle = '#00cc99'; // Neon green
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Draw the letters at the edges
+        // North
+        ctx.fillText('N', size/2, margin + 6);
+        
+        // South
+        ctx.fillText('S', size/2, size - margin - 6);
+        
+        // East
+        ctx.fillText('E', size - margin - 6, size/2);
+        
+        // West
+        ctx.fillText('W', margin + 6, size/2);
+    }
+    
+    // Draw debug information
+    function drawDebugInfo() {
+        // Convert rotation to degrees for easier reading
+        const degrees = ((playerRotation * 180 / Math.PI) % 360 + 360) % 360;
+        const directionName = getCardinalDirection(playerRotation);
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '9px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`Rot: ${degrees.toFixed(0)}° (${directionName})`, 5, 10);
+    }
+    
+    // Get cardinal direction name
+    function getCardinalDirection(radians) {
+        // Convert to degrees and normalize to 0-360
+        const degrees = ((radians * 180 / Math.PI) % 360 + 360) % 360;
+        
+        // Map to cardinal directions
+        if (degrees >= 337.5 || degrees < 22.5) return 'N';
+        if (degrees >= 22.5 && degrees < 67.5) return 'NE';
+        if (degrees >= 67.5 && degrees < 112.5) return 'E';
+        if (degrees >= 112.5 && degrees < 157.5) return 'SE';
+        if (degrees >= 157.5 && degrees < 202.5) return 'S';
+        if (degrees >= 202.5 && degrees < 247.5) return 'SW';
+        if (degrees >= 247.5 && degrees < 292.5) return 'W';
+        if (degrees >= 292.5 && degrees < 337.5) return 'NW';
+        
+        return 'N'; // fallback
     }
     
     // Clean up when unloading
