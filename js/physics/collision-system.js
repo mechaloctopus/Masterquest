@@ -11,6 +11,7 @@ const CollisionSystem = (function() {
     // Configuration
     const COLLISION_RADIUS = 1.0; // Size of the player's collision sphere (reduced to 1 unit)
     const RESET_DISTANCE = 2.0;   // Distance player needs to move away to allow for re-collision detection
+    const BOUNCE_DISTANCE = 1.0;  // How far to bounce the player away on collision
     
     // Direct log message to the on-screen console
     function logToConsole(message) {
@@ -21,6 +22,33 @@ const CollisionSystem = (function() {
             // Fallback to console.log if Logger isn't available
             console.log(message);
         }
+    }
+    
+    /**
+     * Apply a bounce effect away from an entity
+     * @param {Object} entityPosition - The position of the entity to bounce away from
+     */
+    function applyBounceEffect(entityPosition) {
+        if (!camera) return;
+        
+        // Calculate direction vector from entity to player (this is the bounce direction)
+        const bounceDirection = new BABYLON.Vector3(
+            camera.position.x - entityPosition.x,
+            0, // Only bounce horizontally, not vertically
+            camera.position.z - entityPosition.z
+        );
+        
+        // Normalize the direction vector
+        bounceDirection.normalize();
+        
+        // Scale by the bounce distance
+        bounceDirection.scaleInPlace(BOUNCE_DISTANCE);
+        
+        // Apply the bounce to the camera position
+        camera.position.addInPlace(bounceDirection);
+        
+        // Log the bounce for debugging
+        console.log(`Bounce applied: ${bounceDirection.x.toFixed(2)}, ${bounceDirection.z.toFixed(2)}`);
     }
     
     /**
@@ -138,6 +166,9 @@ const CollisionSystem = (function() {
                     
                     // Add to collided entities to avoid duplicate messages
                     collidedEntities.add(entityId);
+                    
+                    // Apply bounce effect when first colliding
+                    applyBounceEffect(entityPosition);
                 }
             } else if (distance > RESET_DISTANCE) {
                 // When player moves sufficiently away, remove from collided set to allow future collisions
