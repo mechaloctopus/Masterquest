@@ -7,6 +7,7 @@ const HealthBarSystem = (function() {
     let healthTextElement = null;
     let currentHealth = 100;
     let maxHealth = 100;
+    let gameOverScreenElement = null;
     
     // Initialize the health bar
     function init() {
@@ -170,6 +171,73 @@ const HealthBarSystem = (function() {
         };
     }
     
+    // Display game over screen
+    function showGameOver() {
+        console.log("HealthBarSystem: Player died, showing game over screen");
+        
+        // Create game over screen if it doesn't exist
+        if (!gameOverScreenElement) {
+            gameOverScreenElement = document.createElement('div');
+            gameOverScreenElement.id = 'gameOverScreen';
+            gameOverScreenElement.style.position = 'fixed';
+            gameOverScreenElement.style.top = '0';
+            gameOverScreenElement.style.left = '0';
+            gameOverScreenElement.style.width = '100%';
+            gameOverScreenElement.style.height = '100%';
+            gameOverScreenElement.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+            gameOverScreenElement.style.display = 'flex';
+            gameOverScreenElement.style.flexDirection = 'column';
+            gameOverScreenElement.style.justifyContent = 'center';
+            gameOverScreenElement.style.alignItems = 'center';
+            gameOverScreenElement.style.color = '#ff0000';
+            gameOverScreenElement.style.fontFamily = 'monospace';
+            gameOverScreenElement.style.fontSize = '32px';
+            gameOverScreenElement.style.fontWeight = 'bold';
+            gameOverScreenElement.style.zIndex = '9999';
+            
+            // Create message element
+            const messageElement = document.createElement('div');
+            messageElement.textContent = "YOU DIED IN BATTLE";
+            messageElement.style.marginBottom = '20px';
+            messageElement.style.textShadow = '0 0 10px #ff0000';
+            
+            // Create subtitle element
+            const subtitleElement = document.createElement('div');
+            subtitleElement.textContent = "press any key to continue from your last checkpoint";
+            subtitleElement.style.fontSize = '18px';
+            subtitleElement.style.color = '#ffffff';
+            
+            // Add elements to game over screen
+            gameOverScreenElement.appendChild(messageElement);
+            gameOverScreenElement.appendChild(subtitleElement);
+            
+            // Add to DOM
+            document.body.appendChild(gameOverScreenElement);
+            
+            // Add event listener for key press
+            document.addEventListener('keydown', handleGameOverKeyPress);
+        } else {
+            // If it already exists, just show it
+            gameOverScreenElement.style.display = 'flex';
+        }
+        
+        // Log game over if logger is available
+        if (window.Logger) {
+            Logger.log("> PLAYER DIED IN BATTLE");
+        }
+    }
+    
+    // Handle key press during game over
+    function handleGameOverKeyPress(event) {
+        console.log("HealthBarSystem: Key pressed during game over, reloading page");
+        
+        // Remove the event listener to prevent multiple reloads
+        document.removeEventListener('keydown', handleGameOverKeyPress);
+        
+        // Reload the page
+        window.location.reload();
+    }
+    
     // Damage the player
     function damage(amount) {
         if (amount <= 0) return currentHealth;
@@ -184,6 +252,12 @@ const HealthBarSystem = (function() {
         
         // Add hit effect
         addHitEffect();
+        
+        // Check if player died
+        if (newHealth <= 0) {
+            // Show game over screen when health reaches 0
+            showGameOver();
+        }
         
         // Return new health
         return newHealth;
