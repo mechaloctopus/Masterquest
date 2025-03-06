@@ -14,6 +14,13 @@ const CollisionSystem = (function() {
     const BOUNCE_FORCE = 1.0;     // Force applied when bouncing horizontally (impulse) - increased for visibility
     const BOUNCE_HEIGHT = 5.0;    // Vertical jump force for the bounce - increased for visibility
     
+    // Damage effect configuration
+    const DAMAGE_FLASH_DURATION = 500; // How long the red flash lasts in milliseconds
+    const DAMAGE_FLASH_OPACITY = 0.4;  // Maximum opacity of the red flash
+    
+    // Reference to damage overlay element
+    let damageOverlay = null;
+    
     // Reference to player state for smooth physics
     let playerState = null;
     
@@ -29,6 +36,56 @@ const CollisionSystem = (function() {
     }
     
     /**
+     * Create and initialize the damage overlay element
+     */
+    function initDamageOverlay() {
+        // Check if it already exists
+        if (damageOverlay) return;
+        
+        // Create a new div element for the damage overlay
+        damageOverlay = document.createElement('div');
+        
+        // Set its styles
+        Object.assign(damageOverlay.style, {
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(255, 0, 0, 0)', // Start transparent
+            pointerEvents: 'none', // Don't capture mouse events
+            transition: 'background-color 0.1s ease-in, background-color 0.4s ease-out',
+            zIndex: 1000, // Make sure it's on top
+            opacity: 0
+        });
+        
+        // Add it to the document body
+        document.body.appendChild(damageOverlay);
+    }
+    
+    /**
+     * Show the damage indicator (red flash)
+     */
+    function showDamageIndicator() {
+        // Make sure we have the overlay initialized
+        if (!damageOverlay) {
+            initDamageOverlay();
+        }
+        
+        // Set the opacity to show the red flash
+        damageOverlay.style.backgroundColor = `rgba(255, 0, 0, ${DAMAGE_FLASH_OPACITY})`;
+        damageOverlay.style.opacity = 1;
+        
+        // Set a timeout to fade it out
+        setTimeout(() => {
+            if (damageOverlay) {
+                damageOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0)';
+                damageOverlay.style.opacity = 0;
+            }
+        }, DAMAGE_FLASH_DURATION);
+    }
+    
+    /**
      * Apply a bounce effect away from an entity
      * @param {Object} entityPosition - The position of the entity to bounce away from
      */
@@ -39,6 +96,9 @@ const CollisionSystem = (function() {
         if (window.gameState && window.gameState.playerState) {
             playerState = window.gameState.playerState;
         }
+        
+        // Show damage indicator when bounce occurs
+        showDamageIndicator();
         
         // Calculate direction vector from entity to player (this is the bounce direction)
         const bounceDirection = new BABYLON.Vector3(
@@ -109,6 +169,9 @@ const CollisionSystem = (function() {
         // Directly set the scene and camera
         scene = sceneInstance;
         camera = cameraInstance;
+        
+        // Initialize the damage overlay
+        initDamageOverlay();
         
         // Register with scene rendering to guarantee collision checks
         if (scene) {
