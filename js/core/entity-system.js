@@ -252,6 +252,13 @@ window.EntitySystem = (function() {
         npcMaterial.emissiveColor = new BABYLON.Color3(0, 0.2, 0.5);
         npcMesh.material = npcMaterial;
         
+        // Set health data
+        npcMesh.metadata = {
+            type: ENTITY_TYPES.NPC,
+            currentHealth: template.currentHealth !== undefined ? template.currentHealth : 100,
+            maxHealth: template.maxHealth !== undefined ? template.maxHealth : 100
+        };
+        
         // Add nametag
         const name = template.name || `NPC${index+1}`;
         addNametag(npcMesh, name);
@@ -267,6 +274,8 @@ window.EntitySystem = (function() {
             position: position,
             size: size,
             isHighlighted: false,
+            currentHealth: npcMesh.metadata.currentHealth,
+            maxHealth: npcMesh.metadata.maxHealth,
             interactionRange: template.interactionRange || 3,
             dialogOptions: template.dialogOptions || {
                 greeting: "Hello adventurer!",
@@ -331,6 +340,13 @@ window.EntitySystem = (function() {
         foeMaterial.emissiveColor = new BABYLON.Color3(0.5, 0, 0);
         foeMesh.material = foeMaterial;
         
+        // Set health data
+        foeMesh.metadata = {
+            type: ENTITY_TYPES.FOE,
+            currentHealth: template.currentHealth !== undefined ? template.currentHealth : 100,
+            maxHealth: template.maxHealth !== undefined ? template.maxHealth : 100
+        };
+        
         // Add nametag
         const name = template.name || `Foe${index+1}`;
         addNametag(foeMesh, name);
@@ -349,6 +365,8 @@ window.EntitySystem = (function() {
             position: position,
             size: size,
             isHighlighted: false,
+            currentHealth: foeMesh.metadata.currentHealth,
+            maxHealth: foeMesh.metadata.maxHealth,
             interactionRange: template.interactionRange || 3,
             quizQuestions: quizQuestions,
             defeated: false
@@ -412,6 +430,54 @@ window.EntitySystem = (function() {
             scene
         );
         
+        // Create container to link to the 3D position
+        const container = new BABYLON.GUI.Container();
+        container.width = "150px";
+        container.height = "60px"; // Increased height to accommodate health bar
+        container.background = "transparent";
+        
+        // Create health bar if entity has health data
+        if (mesh.metadata && (mesh.metadata.currentHealth !== undefined && mesh.metadata.maxHealth !== undefined)) {
+            // Create health bar background (gray)
+            const healthBarBackground = new BABYLON.GUI.Rectangle();
+            healthBarBackground.width = "120px";
+            healthBarBackground.height = "10px";
+            healthBarBackground.background = "#444444";
+            healthBarBackground.color = "#444444";
+            healthBarBackground.cornerRadius = 5;
+            healthBarBackground.top = "-15px"; // Position above the name text
+            
+            // Create health bar fill (green)
+            const healthBarFill = new BABYLON.GUI.Rectangle();
+            healthBarFill.width = (mesh.metadata.currentHealth / mesh.metadata.maxHealth) * 120 + "px";
+            healthBarFill.height = "8px";
+            healthBarFill.background = "#22FF22";
+            healthBarFill.color = "#22FF22";
+            healthBarFill.cornerRadius = 4;
+            healthBarFill.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+            healthBarFill.left = "1px";
+            
+            // Create health text
+            const healthText = new BABYLON.GUI.TextBlock();
+            healthText.text = `${mesh.metadata.currentHealth}/${mesh.metadata.maxHealth} HP`;
+            healthText.fontSize = 10;
+            healthText.fontFamily = "Orbitron";
+            healthText.color = "white";
+            healthText.top = "-15px";
+            
+            // Add health elements to container
+            healthBarBackground.addControl(healthBarFill);
+            container.addControl(healthBarBackground);
+            container.addControl(healthText);
+            
+            // Store references for updating
+            mesh.healthBar = {
+                background: healthBarBackground,
+                fill: healthBarFill,
+                text: healthText
+            };
+        }
+        
         // Create text block for the nametag - simplify to just show the name without entity type
         const entityType = mesh.metadata && mesh.metadata.type ? mesh.metadata.type : "";
         
@@ -420,6 +486,7 @@ window.EntitySystem = (function() {
         nameText.fontSize = 16;
         nameText.fontFamily = "Orbitron";
         nameText.outlineWidth = 3;
+        nameText.top = "5px"; // Move name text down to make room for health bar
         
         // Enhanced glow effect
         nameText.shadowBlur = 15;
@@ -444,28 +511,22 @@ window.EntitySystem = (function() {
             nameText.shadowColor = "#00FF00";
         }
         
-        // Create container to link the nametag to the 3D position
-        const nameContainer = new BABYLON.GUI.Container();
-        nameContainer.width = "150px";
-        nameContainer.height = "40px";
-        nameContainer.background = "transparent";
-        
         // Add text to container
-        nameContainer.addControl(nameText);
-        advancedTexture.addControl(nameContainer);
+        container.addControl(nameText);
+        advancedTexture.addControl(container);
         
         // Link the container to the mesh using a better positioning approach
-        nameContainer.linkWithMesh(mesh);
+        container.linkWithMesh(mesh);
         
         // Position above the entity with a smaller offset
-        nameContainer.linkOffsetY = -50;
+        container.linkOffsetY = -60; // Increased offset to accommodate health bar
         
         // Set scaling options to keep text readable at any distance
         // This uses a different approach that should be more compatible
-        nameContainer.ignoreAdaptivePositioning = true;
+        container.ignoreAdaptivePositioning = true;
         
         // Adjust additional positioning options
-        nameContainer.transformCenterY = 1.0;
+        container.transformCenterY = 1.0;
         
         // Store a reference to the scene's onBeforeRenderObservable
         // This will help us adjust the positioning if needed
@@ -478,18 +539,34 @@ window.EntitySystem = (function() {
                 );
                 
                 // Show/hide based on distance
-                nameContainer.alpha = distance > 50 ? 0 : 1;
+                container.alpha = distance > 50 ? 0 : 1;
                 
                 // Adjust size slightly based on distance for better readability
                 // But keep a minimum size to avoid text becoming too small
                 const scale = Math.max(0.7, 1 - (distance / 100));
                 nameText.fontSize = 16 * scale;
+                
+                // Update health bar if it exists and health changed
+                if (mesh.healthBar && mesh.metadata) {
+                    const healthPercentage = mesh.metadata.currentHealth / mesh.metadata.maxHealth;
+                    mesh.healthBar.fill.width = healthPercentage * 120 + "px";
+                    mesh.healthBar.text.text = `${mesh.metadata.currentHealth}/${mesh.metadata.maxHealth} HP`;
+                    
+                    // Change color based on health percentage
+                    if (healthPercentage > 0.6) {
+                        mesh.healthBar.fill.background = "#22FF22"; // Green
+                    } else if (healthPercentage > 0.3) {
+                        mesh.healthBar.fill.background = "#FFFF22"; // Yellow
+                    } else {
+                        mesh.healthBar.fill.background = "#FF2222"; // Red
+                    }
+                }
             }
         });
         
         // Store a reference to allow removal later
         mesh.nametag = {
-            container: nameContainer,
+            container: container,
             texture: advancedTexture,
             observer: observer
         };
