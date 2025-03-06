@@ -374,24 +374,27 @@ window.EntitySystem = (function() {
             false
         );
         
-        // Set background color (black semi-transparent background for better visibility)
+        // Clear the texture (transparent background)
         const ctx = dynamicTexture.getContext();
-        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-        ctx.fillRect(0, 0, textureWidth, textureHeight);
+        ctx.clearRect(0, 0, textureWidth, textureHeight);
         
-        // Set text
-        const font = "bold 40px Arial";
-        dynamicTexture.drawText(name, null, 48, font, "#ffffff", "#00000000", true, true);
+        // Set text - create neon-style text
+        const entityType = mesh.metadata && mesh.metadata.type ? mesh.metadata.type : "";
+        const displayName = `${name} (${entityType})`;
+        const font = "bold 36px Arial";
+        
+        // Draw text with a neon glow effect
+        dynamicTexture.drawText(displayName, null, 42, font, "#ffffff", "transparent", true, true);
         
         // Create plane for nametag
         const nametagPlane = BABYLON.MeshBuilder.CreatePlane(
             `nametag-${mesh.name}`,
-            { width: 1.5, height: 0.5 },
+            { width: 2, height: 0.5 },
             scene
         );
         
         // Position nametag above entity
-        nametagPlane.position = new BABYLON.Vector3(0, 1.2, 0);
+        nametagPlane.position = new BABYLON.Vector3(0, 1.5, 0);
         nametagPlane.parent = mesh;
         
         // Ensure nametag always faces camera
@@ -401,7 +404,18 @@ window.EntitySystem = (function() {
         const nametagMaterial = new BABYLON.StandardMaterial(`nametagMaterial-${mesh.name}`, scene);
         nametagMaterial.diffuseTexture = dynamicTexture;
         nametagMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-        nametagMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
+        
+        // Choose color based on entity type
+        let emissiveColor;
+        if (entityType.toLowerCase().includes('npc')) {
+            emissiveColor = new BABYLON.Color3(0, 1, 0.5); // Cyan/teal for NPCs
+        } else if (entityType.toLowerCase().includes('foe')) {
+            emissiveColor = new BABYLON.Color3(1, 0.2, 0.2); // Red for foes
+        } else {
+            emissiveColor = new BABYLON.Color3(0.5, 0.5, 1); // Blue for other entities
+        }
+        
+        nametagMaterial.emissiveColor = emissiveColor;
         nametagMaterial.disableLighting = true;
         
         // Enable transparency

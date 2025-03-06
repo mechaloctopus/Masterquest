@@ -117,52 +117,56 @@ const MapSystem = (function() {
     
     // Fallback methods for getting entities if EntitySystem is not available
     function tryFallbackEntityMethods() {
+        // Log that we're trying legacy systems
+        console.log("[MAP] EntitySystem not available or returned no entities, trying legacy systems");
+        
         // Try legacy NPC system
         if (window.NPCSystem && typeof NPCSystem.getAllNPCs === 'function') {
             try {
                 const allNPCs = NPCSystem.getAllNPCs();
                 updateNPCsOnMap(allNPCs);
-                console.log(`[MAP] Found ${allNPCs.length} NPCs via NPCSystem (legacy)`);
+                console.log(`[MAP] FALLBACK: Found ${allNPCs.length} NPCs via legacy NPCSystem`);
             } catch (e) {
-                console.warn("[MAP] Could not get NPCs from legacy system:", e);
+                console.warn("[MAP] Legacy NPCSystem failed:", e);
             }
+        } else {
+            console.log("[MAP] Legacy NPCSystem not available");
         }
         
-        // Try legacy FOE system with multiple approaches
+        // Try legacy FOE system
         tryLegacyFoeMethods();
     }
     
     // Enhanced foe update function for legacy system - tries multiple methods
     function tryLegacyFoeMethods() {
+        console.log("[MAP] Attempting to use legacy FoeSystem as fallback");
+        
         // First try the standard FoeSystem approach
         if (window.FoeSystem && typeof FoeSystem.getAllFoes === 'function') {
             try {
                 const allFoes = FoeSystem.getAllFoes();
                 if (Array.isArray(allFoes) && allFoes.length > 0) {
-                    console.log(`[MAP] Found ${allFoes.length} foes via FoeSystem.getAllFoes (legacy)`);
+                    console.log(`[MAP] FALLBACK: Found ${allFoes.length} foes via legacy FoeSystem.getAllFoes`);
                     updateFoesOnMap(allFoes);
                     return; // Successfully updated
                 } else {
-                    console.log("[MAP] FoeSystem.getAllFoes returned empty array");
+                    console.log("[MAP] Legacy FoeSystem.getAllFoes returned empty array");
                 }
             } catch (e) {
-                console.warn("[MAP] Error using FoeSystem.getAllFoes:", e);
+                console.warn("[MAP] Legacy FoeSystem.getAllFoes failed:", e);
             }
         }
         
         // Try second approach - check if foes are directly accessible
         if (window.FoeSystem && Array.isArray(FoeSystem.foes)) {
-            console.log(`[MAP] Found ${FoeSystem.foes.length} foes via FoeSystem.foes property (legacy)`);
+            console.log(`[MAP] FALLBACK: Found ${FoeSystem.foes.length} foes via legacy FoeSystem.foes property`);
             updateFoesOnMap(FoeSystem.foes);
             return; // Successfully updated
+        } else {
+            console.log("[MAP] Legacy FoeSystem.foes not available");
         }
         
-        // Final approach - check global state for foes
-        if (window.state && state.foes) {
-            console.log(`[MAP] Found foes via global state.foes (legacy)`);
-            updateFoesOnMap(Array.isArray(state.foes) ? state.foes : [state.foes]);
-            return; // Successfully updated
-        }
+        console.log("[MAP] All fallback methods for foes failed");
     }
     
     // Process NPC data from the NPC system

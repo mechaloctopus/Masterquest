@@ -213,8 +213,11 @@ const DialogueSystem = (function() {
         
         dialogueContainer.style.display = 'none';
         
-        // Let NPCSystem know the interaction ended
-        if (window.NPCSystem && currentNPC) {
+        // Let Entity system know the interaction ended
+        if (window.EntitySystem && currentNPC) {
+            EntitySystem.endInteraction(currentNPC);
+        } else if (window.NPCSystem && currentNPC) {
+            // Fallback to legacy system
             NPCSystem.endInteraction(currentNPC);
         }
         
@@ -230,10 +233,21 @@ const DialogueSystem = (function() {
     
     // Handle dialogue option click
     function handleDialogueOptionClick(responseId) {
-        if (!currentNPC || !window.NPCSystem) return;
+        // Try EntitySystem first, then fallback to NPCSystem
+        if (!currentNPC) return;
         
-        // Get NPC data
-        const npc = NPCSystem.getNPC(currentNPC);
+        let npc = null;
+        
+        // Try to get NPC from EntitySystem first
+        if (window.EntitySystem) {
+            npc = EntitySystem.getNPC(currentNPC);
+        }
+        
+        // Fallback to legacy NPCSystem if needed
+        if (!npc && window.NPCSystem) {
+            npc = NPCSystem.getNPC(currentNPC);
+        }
+        
         if (!npc || !npc.dialogueData) return;
         
         // Find the corresponding conversation for this response
