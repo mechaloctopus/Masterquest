@@ -36,10 +36,18 @@ window.CoordinateSystem = (function() {
                 return false;
             }
             
-            // Create coordinate display within map container
+            // Check if coordinate display already exists and remove it
+            const existingDisplay = document.getElementById('coordinateDisplay');
+            if (existingDisplay) {
+                existingDisplay.parentNode.removeChild(existingDisplay);
+                console.log('[CoordSys] Removed existing coordinate display');
+            }
+            
+            // Create coordinate display as a separate element
             coordDisplayElement = document.createElement('div');
             coordDisplayElement.id = 'coordinateDisplay';
             coordDisplayElement.className = 'map-coordinates';
+            coordDisplayElement.style.display = 'flex'; // Ensure it's visible
             
             // Set initial content
             coordDisplayElement.innerHTML = `
@@ -54,8 +62,8 @@ window.CoordinateSystem = (function() {
                 <div id="coordCompass" class="coord-compass">N</div>
             `;
             
-            // Add to the map container
-            mapContainer.appendChild(coordDisplayElement);
+            // Add to the document body rather than inside the map
+            document.body.appendChild(coordDisplayElement);
             
             // Connect to the Babylon.js camera
             connectToCamera();
@@ -234,4 +242,15 @@ window.CoordinateSystem = (function() {
         gridToWorld: gridToWorld,
         getGridCellAt: getGridCellAt
     };
-})(); 
+})();
+
+// Initialize coordinate display when document is ready
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('[CoordSys] Document ready, initializing coordinate system');
+    if (window.CoordinateSystem && typeof window.CoordinateSystem.init === 'function') {
+        setTimeout(function() {
+            window.CoordinateSystem.init();
+            window.CoordinateSystem.show();
+        }, 500); // Slight delay to ensure other systems are ready
+    }
+}); 
