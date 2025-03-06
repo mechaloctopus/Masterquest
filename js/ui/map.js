@@ -38,6 +38,11 @@ const MapSystem = (function() {
     let lastRenderTime = 0;
     const RENDER_THROTTLE = 50; // ms, limits to ~20fps max
     
+    // Cached calculations for improved performance
+    const center = MAP_SIZE / 2;
+    let visibleMapBounds = { min: -5, max: MAP_SIZE + 5 }; // Used for visibility checks
+    let isMapVisible = true; // Track if map is in viewport
+    
     function init() {
         if (DEBUG) console.log("[MAP] Initializing map system");
         
@@ -63,11 +68,14 @@ const MapSystem = (function() {
         mapCanvas.height = MAP_SIZE;
         
         // Get drawing context
-        ctx = mapCanvas.getContext('2d');
+        ctx = mapCanvas.getContext('2d', { alpha: false }); // Disable alpha for better performance
         if (!ctx) {
             console.error("[MAP] Could not get canvas context");
             return false;
         }
+        
+        // Add visibility observer to pause rendering when not visible
+        setupVisibilityObserver();
         
         // Start the update loop
         requestAnimationFrame(updateLoop);
@@ -85,6 +93,22 @@ const MapSystem = (function() {
         return true;
     }
     
+    // Add visibility observer to improve performance when map is not visible
+    function setupVisibilityObserver() {
+        // Only set up if IntersectionObserver is available
+        if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver((entries) => {
+                // Update visibility flag based on intersection
+                isMapVisible = entries[0].isIntersecting;
+            }, { threshold: 0.1 }); // 10% visibility threshold
+            
+            // Start observing the map container
+            if (mapContainer) {
+                observer.observe(mapContainer);
+            }
+        }
+    }
+    
     // Connect to Entity system to get entity data
     function connectToEntitySystems() {
         if (DEBUG) console.log("[MAP] Connecting to entity system...");
@@ -98,6 +122,9 @@ const MapSystem = (function() {
     
     // Update NPC and Foe positions from Entity system
     function updateEntities() {
+        // Skip updates if map is not visible
+        if (!isMapVisible && !DEBUG) return;
+        
         // Check if EntitySystem is available
         if (window.EntitySystem) {
             try {
@@ -166,8 +193,13 @@ const MapSystem = (function() {
         npcs = [];
         
         // Process each NPC
-        if (Array.isArray(npcData)) {
-            npcData.forEach((npc, index) => {
+        if (Array.isArray(npcData) && npcData.length > 0) {
+            // Pre-allocate array size for better performance
+            npcs = new Array(npcData.length);
+            let validCount = 0;
+            
+            for (let i = 0; i < npcData.length; i++) {
+                const npc = npcData[i];
                 // Try to extract position data
                 let npcPosition = null;
                 
@@ -178,32 +210,44 @@ const MapSystem = (function() {
                 }
                 
                 if (npcPosition) {
-                    npcs.push({
-                        id: npc.id || `npc-${index}`,
+                    npcs[validCount++] = {
+                        id: npc.id || `npc-${i}`,
                         x: npcPosition.x,
                         z: npcPosition.z,
-                        label: npc.name || `NPC ${index + 1}`
-                    });
+                        label: npc.name || `NPC ${i + 1}`
+                    };
                 }
-            });
+            }
+            
+            // Trim array to actual size if needed
+            if (validCount < npcData.length) {
+                npcs.length = validCount;
+            }
+        } else {
+            npcs = [];
         }
     }
     
     // Process Foe data from the Foe system
     function updateFoesOnMap(foeData) {
         // Back up existing foes in case we need to restore them
-        const oldFoes = [...foes];
+        const oldFoes = foes.length > 0 ? [...foes] : [];
         
         // Reset the Foe array
         foes = [];
         
         // Process each Foe
-        if (Array.isArray(foeData)) {
-            foeData.forEach((foe, index) => {
+        if (Array.isArray(foeData) && foeData.length > 0) {
+            // Pre-allocate array size for better performance
+            foes = new Array(foeData.length);
+            let validCount = 0;
+            
+            for (let i = 0; i < foeData.length; i++) {
+                const foe = foeData[i];
                 // Extract foe position using various possible data structures
                 let foePosition = null;
-                let foeId = foe.id || `foe-${index}`;
-                let foeName = foe.name || `Foe ${index + 1}`;
+                let foeId = foe.id || `foe-${i}`;
+                let foeName = foe.name || `Foe ${i + 1}`;
                 
                 // Check all possible position paths
                 if (foe.mesh && foe.mesh.position) {
@@ -216,16 +260,21 @@ const MapSystem = (function() {
                 
                 // Only add if we found a valid position
                 if (foePosition && typeof foePosition.x === 'number' && typeof foePosition.z === 'number') {
-                    foes.push({
+                    foes[validCount++] = {
                         id: foeId,
                         x: foePosition.x,
                         z: foePosition.z,
                         label: foeName
-                    });
+                    };
                 } else if (DEBUG) {
                     console.warn(`[MAP] Could not determine position for foe '${foeName}'`);
                 }
-            });
+            }
+            
+            // Trim array to actual size if needed
+            if (validCount < foeData.length) {
+                foes.length = validCount;
+            }
         }
         
         if (foes.length === 0 && oldFoes.length > 0) {
@@ -250,11 +299,13 @@ const MapSystem = (function() {
                 overflow: hidden;
                 pointer-events: none;
                 z-index: 1000;
+                will-change: transform; /* Optimize for GPU acceleration */
             }
             
             #mapCanvas {
                 width: 100%;
                 height: 100%;
+                image-rendering: pixelated; /* Sharper pixels for pixel art style */
             }
         `;
         document.head.appendChild(style);
@@ -263,6 +314,9 @@ const MapSystem = (function() {
     function setupDirectCoordinateConnection() {
         // Poll the coordinate display DOM elements less frequently
         coordinateCheckTimer = setInterval(function() {
+            // Skip checking if map is not visible
+            if (!isMapVisible && !DEBUG) return;
+            
             const coordPos = document.getElementById('coordPos');
             const compassElem = document.getElementById('coordCompass');
             
@@ -278,7 +332,7 @@ const MapSystem = (function() {
                     let newRotation = playerRotation;
                     if (compassElem) {
                         const direction = compassElem.textContent;
-                        // Convert compass direction to radians
+                        // Convert compass direction to radians using lookup table
                         switch (direction) {
                             case 'N': newRotation = 0; break;
                             case 'NE': newRotation = Math.PI / 4; break;
@@ -297,7 +351,7 @@ const MapSystem = (function() {
             }
         }, COORDINATE_CHECK_INTERVAL);
         
-        // Backup method: Connect to Babylon camera if available
+        // Babylon camera connection (optimized)
         if (window.BABYLON && BABYLON.Engine.Instances.length > 0) {
             try {
                 const engine = BABYLON.Engine.Instances[0];
@@ -307,6 +361,9 @@ const MapSystem = (function() {
                     // and throttle the updates to reduce performance impact
                     let lastCameraUpdate = 0;
                     scene.onAfterRenderObservable.add(() => {
+                        // Skip checks if map is not visible
+                        if (!isMapVisible && !DEBUG) return;
+                        
                         const now = performance.now();
                         if (now - lastCameraUpdate > COORDINATE_CHECK_INTERVAL && scene.activeCamera?.position) {
                             const camera = scene.activeCamera;
@@ -341,8 +398,8 @@ const MapSystem = (function() {
     function updateLoop() {
         const now = performance.now();
         
-        // Only render if enough time has passed since last render
-        if (now - lastRenderTime >= RENDER_THROTTLE) {
+        // Only render if the map is visible and enough time has passed
+        if (isMapVisible && now - lastRenderTime >= RENDER_THROTTLE) {
             renderMap();
             lastRenderTime = now;
         }
@@ -372,8 +429,6 @@ const MapSystem = (function() {
     
     // Draw the grid with proper scaling and boundaries
     function drawGrid() {
-        const center = MAP_SIZE / 2;
-        
         // Calculate player offset in screen pixels
         const playerOffsetX = playerX * SCALE;
         const playerOffsetZ = playerZ * SCALE;
@@ -397,8 +452,15 @@ const MapSystem = (function() {
         ctx.lineWidth = 0.5;
         ctx.globalAlpha = 0.4;
         
+        // Only draw grid lines that would be visible (optimization)
+        const gridStep = WORLD_GRID_SIZE * SCALE;
+        const startX = Math.max(-WORLD_GRID_LIMITS, Math.floor((playerX - WORLD_GRID_LIMITS) / WORLD_GRID_SIZE) * WORLD_GRID_SIZE);
+        const endX = Math.min(WORLD_GRID_LIMITS, Math.ceil((playerX + WORLD_GRID_LIMITS) / WORLD_GRID_SIZE) * WORLD_GRID_SIZE);
+        const startZ = Math.max(-WORLD_GRID_LIMITS, Math.floor((playerZ - WORLD_GRID_LIMITS) / WORLD_GRID_SIZE) * WORLD_GRID_SIZE);
+        const endZ = Math.min(WORLD_GRID_LIMITS, Math.ceil((playerZ + WORLD_GRID_LIMITS) / WORLD_GRID_SIZE) * WORLD_GRID_SIZE);
+        
         // Draw vertical grid lines (running north-south)
-        for (let worldX = -WORLD_GRID_LIMITS; worldX <= WORLD_GRID_LIMITS; worldX += WORLD_GRID_SIZE) {
+        for (let worldX = startX; worldX <= endX; worldX += WORLD_GRID_SIZE) {
             // Convert world X to screen X
             const screenX = center + (worldX - playerX) * SCALE;
             
@@ -412,7 +474,7 @@ const MapSystem = (function() {
         }
         
         // Draw horizontal grid lines (running east-west)
-        for (let worldZ = -WORLD_GRID_LIMITS; worldZ <= WORLD_GRID_LIMITS; worldZ += WORLD_GRID_SIZE) {
+        for (let worldZ = startZ; worldZ <= endZ; worldZ += WORLD_GRID_SIZE) {
             // Convert world Z to screen Y (remember Z is inverted)
             const screenY = center - (worldZ - playerZ) * SCALE;
             
@@ -448,8 +510,6 @@ const MapSystem = (function() {
     
     // Draw the player arrow
     function drawPlayer() {
-        const center = MAP_SIZE / 2;
-        
         // Draw cardinal direction indicators
         drawCardinalDirections();
         
@@ -536,55 +596,74 @@ const MapSystem = (function() {
     function drawNPCs() {
         if (!npcs.length) return;
         
-        const center = MAP_SIZE / 2;
         ctx.fillStyle = '#0088ff'; // Blue color for NPCs
         ctx.strokeStyle = '#ffffff'; // White outline
         
-        npcs.forEach(npc => {
+        // Pre-calculate bounds check values for optimization
+        const bounds = visibleMapBounds;
+        
+        // Draw all NPCs in a single path for better performance
+        ctx.beginPath();
+        
+        let drawnCount = 0;
+        for (let i = 0; i < npcs.length; i++) {
+            const npc = npcs[i];
             // Calculate position relative to player
             const x = center + (npc.x - playerX) * SCALE;
             const y = center - (npc.z - playerZ) * SCALE; // Reversed Z
             
             // Only draw if within map boundaries (with margin)
-            if (x >= -5 && x <= MAP_SIZE + 5 && y >= -5 && y <= MAP_SIZE + 5) {
-                // Draw dot
-                ctx.beginPath();
+            if (x >= bounds.min && x <= bounds.max && y >= bounds.min && y <= bounds.max) {
+                ctx.moveTo(x + 4, y); // Move to right side of circle
                 ctx.arc(x, y, 4, 0, Math.PI * 2); // Larger size for visibility
-                ctx.fill();
-                ctx.lineWidth = 1;
-                ctx.stroke();
+                drawnCount++;
             }
-        });
+        }
+        
+        // Only fill and stroke if we drew something
+        if (drawnCount > 0) {
+            ctx.fill();
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
     }
     
     // Draw Foes as red dots
     function drawFoes() {
         if (!foes.length) return;
         
-        const center = MAP_SIZE / 2;
-        
         // Use a bright red for maximum visibility
         ctx.fillStyle = '#ff0000'; // Bright red color for Foes
         ctx.strokeStyle = '#ffffff'; // White outline
         
-        foes.forEach(foe => {
+        // Pre-calculate bounds check values for optimization
+        const bounds = visibleMapBounds;
+        
+        // Draw all foes in a single path for better performance
+        ctx.beginPath();
+        
+        let drawnCount = 0;
+        for (let i = 0; i < foes.length; i++) {
+            const foe = foes[i];
             // Calculate position relative to player
             const x = center + (foe.x - playerX) * SCALE;
             const y = center - (foe.z - playerZ) * SCALE; // Reversed Z
             
             // Only draw if within map boundaries (with margin)
-            if (x >= -5 && x <= MAP_SIZE + 5 && y >= -5 && y <= MAP_SIZE + 5) {
-                // Draw dot
-                ctx.beginPath();
+            if (x >= bounds.min && x <= bounds.max && y >= bounds.min && y <= bounds.max) {
+                ctx.moveTo(x + 4, y); // Move to right side of circle
                 ctx.arc(x, y, 4, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.lineWidth = 1;
-                ctx.stroke();
+                drawnCount++;
             }
-        });
+        }
+        
+        // Only fill and stroke if we drew something
+        if (drawnCount > 0) {
+            ctx.fill();
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
     }
-    
-    // Adding the missing functions that were referenced in the return object
     
     // Update a single NPC's position
     function updateNPC(id, position) {
