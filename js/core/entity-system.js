@@ -364,67 +364,69 @@ window.EntitySystem = (function() {
     
     // Add nametag to an entity
     function addNametag(mesh, name) {
-        // Create dynamic texture for nametag
-        const textureWidth = 256;
-        const textureHeight = 64;
-        const dynamicTexture = new BABYLON.DynamicTexture(
-            `nametagTexture-${mesh.name}`,
-            { width: textureWidth, height: textureHeight },
-            scene,
-            false
-        );
-        
-        // Clear the texture (transparent background)
-        const ctx = dynamicTexture.getContext();
-        ctx.clearRect(0, 0, textureWidth, textureHeight);
-        
-        // Set text - create neon-style text
-        const entityType = mesh.metadata && mesh.metadata.type ? mesh.metadata.type : "";
-        const displayName = `${name} (${entityType})`;
-        const font = "bold 36px Arial";
-        
-        // Draw text with a neon glow effect
-        dynamicTexture.drawText(displayName, null, 42, font, "#ffffff", "transparent", true, true);
-        
-        // Create plane for nametag
-        const nametagPlane = BABYLON.MeshBuilder.CreatePlane(
-            `nametag-${mesh.name}`,
-            { width: 2, height: 0.5 },
+        // Create a Babylon GUI AdvancedDynamicTexture for the nametag
+        const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI(
+            `nametagUI-${mesh.name}`,
+            true,
             scene
         );
         
-        // Position nametag above entity
-        nametagPlane.position = new BABYLON.Vector3(0, 1.5, 0);
-        nametagPlane.parent = mesh;
+        // Create text block for the nametag
+        const entityType = mesh.metadata && mesh.metadata.type ? mesh.metadata.type : "";
+        const displayName = `${name} (${entityType})`;
         
-        // Ensure nametag always faces camera
-        nametagPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+        const nameText = new BABYLON.GUI.TextBlock();
+        nameText.text = displayName;
+        nameText.fontSize = 16;
+        nameText.fontFamily = "Orbitron";
+        nameText.outlineWidth = 3;
         
-        // Apply material with dynamic texture
-        const nametagMaterial = new BABYLON.StandardMaterial(`nametagMaterial-${mesh.name}`, scene);
-        nametagMaterial.diffuseTexture = dynamicTexture;
-        nametagMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+        // Enhanced glow effect
+        nameText.shadowBlur = 15;
+        nameText.shadowOffsetX = 0;
+        nameText.shadowOffsetY = 0;
         
         // Choose color based on entity type
-        let emissiveColor;
         if (entityType.toLowerCase().includes('npc')) {
-            emissiveColor = new BABYLON.Color3(0, 1, 0.5); // Cyan/teal for NPCs
+            // Cyan/teal for NPCs
+            nameText.color = "#00FFCC";
+            nameText.outlineColor = "#009977";
+            nameText.shadowColor = "#00FFAA";
         } else if (entityType.toLowerCase().includes('foe')) {
-            emissiveColor = new BABYLON.Color3(1, 0.2, 0.2); // Red for foes
+            // Red for foes
+            nameText.color = "#FF5555";
+            nameText.outlineColor = "#AA0000";
+            nameText.shadowColor = "#FF0000";
         } else {
-            emissiveColor = new BABYLON.Color3(0.5, 0.5, 1); // Blue for other entities
+            // Default neon green
+            nameText.color = "#55FF55";
+            nameText.outlineColor = "#00AA00";
+            nameText.shadowColor = "#00FF00";
         }
         
-        nametagMaterial.emissiveColor = emissiveColor;
-        nametagMaterial.disableLighting = true;
+        // Create container to link the nametag to the 3D position
+        const nameContainer = new BABYLON.GUI.Container();
+        nameContainer.width = "200px";
+        nameContainer.height = "40px";
+        nameContainer.background = "transparent";
         
-        // Enable transparency
-        nametagMaterial.useAlphaFromDiffuseTexture = true;
-        nametagMaterial.backFaceCulling = false;
+        // Add text to container
+        nameContainer.addControl(nameText);
+        advancedTexture.addControl(nameContainer);
         
-        nametagPlane.material = nametagMaterial;
+        // Link the container to the mesh
+        nameContainer.linkWithMesh(mesh);
         
-        return nametagPlane;
+        // Position above the entity
+        nameContainer.linkOffsetY = -150;
+        
+        // Store a reference to allow removal later
+        mesh.nametag = {
+            container: nameContainer,
+            texture: advancedTexture
+        };
+        
+        return mesh.nametag;
     }
     
     // Generate quiz questions for foes
@@ -474,6 +476,11 @@ window.EntitySystem = (function() {
         // Clear NPCs
         entities.npcs.forEach(npc => {
             if (npc.mesh) {
+                // Clean up nametag if it exists
+                if (npc.mesh.nametag) {
+                    npc.mesh.nametag.container.dispose();
+                    npc.mesh.nametag.texture.dispose();
+                }
                 npc.mesh.dispose();
             }
         });
@@ -482,6 +489,11 @@ window.EntitySystem = (function() {
         // Clear foes
         entities.foes.forEach(foe => {
             if (foe.mesh) {
+                // Clean up nametag if it exists
+                if (foe.mesh.nametag) {
+                    foe.mesh.nametag.container.dispose();
+                    foe.mesh.nametag.texture.dispose();
+                }
                 foe.mesh.dispose();
             }
         });
@@ -490,6 +502,11 @@ window.EntitySystem = (function() {
         // Clear environmental objects
         entities.environment.forEach(obj => {
             if (obj.mesh) {
+                // Clean up nametag if it exists
+                if (obj.mesh.nametag) {
+                    obj.mesh.nametag.container.dispose();
+                    obj.mesh.nametag.texture.dispose();
+                }
                 obj.mesh.dispose();
             }
         });
