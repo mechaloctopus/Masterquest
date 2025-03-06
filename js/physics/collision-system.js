@@ -11,8 +11,8 @@ const CollisionSystem = (function() {
     // Configuration
     const COLLISION_RADIUS = 1.0; // Size of the player's collision sphere (reduced to 1 unit)
     const RESET_DISTANCE = 2.0;   // Distance player needs to move away to allow for re-collision detection
-    const BOUNCE_FORCE = 0.15;    // Force applied when bouncing horizontally (impulse)
-    const BOUNCE_HEIGHT = 0.15;   // Vertical jump force for the bounce
+    const BOUNCE_FORCE = 1.0;     // Force applied when bouncing horizontally (impulse) - increased for visibility
+    const BOUNCE_HEIGHT = 5.0;    // Vertical jump force for the bounce - increased for visibility
     
     // Reference to player state for smooth physics
     let playerState = null;
@@ -54,51 +54,41 @@ const CollisionSystem = (function() {
         if (playerState) {
             // For horizontal movement, add velocity to moveVector if it exists
             if (playerState.moveVector) {
-                // Add bounce force in the appropriate direction
-                playerState.moveVector.x += bounceDirection.x * BOUNCE_FORCE * 5;
-                playerState.moveVector.z += bounceDirection.z * BOUNCE_FORCE * 5;
+                // Add bounce force in the appropriate direction - increased for visibility
+                playerState.moveVector.x += bounceDirection.x * BOUNCE_FORCE * 10; // Increased multiplier
+                playerState.moveVector.z += bounceDirection.z * BOUNCE_FORCE * 10; // Increased multiplier
                 
-                // Limit the maximum speed to prevent excessive bouncing
-                const maxSpeed = 0.5;
-                const currentSpeed = Math.sqrt(
-                    playerState.moveVector.x * playerState.moveVector.x + 
-                    playerState.moveVector.z * playerState.moveVector.z
-                );
-                
-                if (currentSpeed > maxSpeed) {
-                    const scale = maxSpeed / currentSpeed;
-                    playerState.moveVector.x *= scale;
-                    playerState.moveVector.z *= scale;
-                }
+                // Limit removed to allow for exaggerated bounce for testing
                 
                 // Create a small timer to gradually reduce this added velocity
                 setTimeout(() => {
                     if (playerState && playerState.moveVector) {
-                        playerState.moveVector.x *= 0.8;
-                        playerState.moveVector.z *= 0.8;
+                        playerState.moveVector.x *= 0.9; // Slower decay for more dramatic effect
+                        playerState.moveVector.z *= 0.9; // Slower decay for more dramatic effect
                     }
-                }, 100);
+                }, 200); // Longer timeout for more dramatic effect
             }
             
             // For vertical movement, use jumpForce for a natural arc
             if (typeof playerState.jumpForce !== 'undefined') {
-                // Only apply upward force if we're on/near the ground
-                if (playerState.grounded || camera.position.y <= CONFIG.CAMERA.GROUND_Y + 0.1) {
-                    playerState.jumpForce = BOUNCE_HEIGHT;
-                    playerState.grounded = false;
-                }
+                // Apply strong upward force regardless of ground state for testing
+                playerState.jumpForce = BOUNCE_HEIGHT;
+                playerState.grounded = false;
+                
+                // Log that we're applying the exaggerated bounce
+                console.log(`Applied exaggerated test bounce: Horizontal=${BOUNCE_FORCE * 10}, Vertical=${BOUNCE_HEIGHT}`);
             }
         } else {
             // Fallback for when we don't have access to the player state
-            // Apply a gentle impulse to the camera directly (less smooth but better than teleporting)
-            const impulse = bounceDirection.scale(BOUNCE_FORCE);
-            impulse.y = BOUNCE_HEIGHT / 2;
+            // Apply a large impulse to the camera directly
+            const impulse = bounceDirection.scale(BOUNCE_FORCE * 5); // Increased for visibility
+            impulse.y = BOUNCE_HEIGHT;
             
-            // Apply small movement over several frames for smoother effect
-            let framesLeft = 5;
+            // Apply movement in fewer frames for more immediate effect
+            let framesLeft = 3;
             const applyImpulse = () => {
                 if (framesLeft > 0 && camera) {
-                    camera.position.addInPlace(impulse.scale(1 / 5));
+                    camera.position.addInPlace(impulse.scale(1 / 3));
                     framesLeft--;
                     requestAnimationFrame(applyImpulse);
                 }
@@ -107,7 +97,7 @@ const CollisionSystem = (function() {
         }
         
         // Log the bounce for debugging
-        console.log(`Bounce applied with force: ${BOUNCE_FORCE.toFixed(2)}, jump: ${BOUNCE_HEIGHT.toFixed(2)}`);
+        console.log(`Bounce applied with EXAGGERATED test force: ${BOUNCE_FORCE.toFixed(2)}, jump: ${BOUNCE_HEIGHT.toFixed(2)}`);
     }
     
     /**
