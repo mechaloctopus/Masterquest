@@ -173,14 +173,14 @@ const MapSystem = (function() {
                             const direction = compassElem.textContent;
                             // Convert compass direction to radians
                             switch (direction) {
-                                case 'N': newRotation = Math.PI; break;
-                                case 'NE': newRotation = Math.PI * 3/4; break;
+                                case 'N': newRotation = 0; break;
+                                case 'NE': newRotation = Math.PI / 4; break;
                                 case 'E': newRotation = Math.PI / 2; break;
-                                case 'SE': newRotation = Math.PI / 4; break;
-                                case 'S': newRotation = 0; break;
-                                case 'SW': newRotation = -Math.PI / 4; break;
-                                case 'W': newRotation = -Math.PI / 2; break;
-                                case 'NW': newRotation = -Math.PI * 3/4; break;
+                                case 'SE': newRotation = Math.PI * 3/4; break;
+                                case 'S': newRotation = Math.PI; break;
+                                case 'SW': newRotation = Math.PI * 5/4; break;
+                                case 'W': newRotation = Math.PI * 3/2; break;
+                                case 'NW': newRotation = Math.PI * 7/4; break;
                             }
                         }
                         
@@ -191,7 +191,7 @@ const MapSystem = (function() {
                         if (DEBUG && (Math.abs(x - lastLoggedPosition.x) > 0.5 || 
                                       Math.abs(z - lastLoggedPosition.z) > 0.5 ||
                                       Math.abs(newRotation - playerRotation) > 0.1)) {
-                            console.log(`[MAP] Position from CoordinateSystem: (${x}, ${z}), Rotation: ${newRotation.toFixed(2)}`);
+                            console.log(`[MAP] Position from CoordinateSystem: (${x}, ${z}), Rotation: ${newRotation.toFixed(2)}, Direction: ${compassElem ? compassElem.textContent : 'unknown'}`);
                             lastLoggedPosition = {x, z};
                         }
                     }
@@ -307,15 +307,17 @@ const MapSystem = (function() {
         const center = MAP_SIZE / 2;
         
         // Calculate grid offsets based on player position
-        // Grid moves in opposite direction of player
+        // FIXED: Corrected Z-axis interpretation - negative Z is North
+        // In Babylon, +Z is South and -Z is North, so we flip the Z coordinate for the map
         const offsetX = (-playerX * SCALE) % GRID_CELL_SIZE;
-        const offsetZ = (-playerZ * SCALE) % GRID_CELL_SIZE;
+        const offsetZ = (playerZ * SCALE) % GRID_CELL_SIZE; // Reversed Z direction
         
         // Calculate where the grid boundaries are in pixels relative to the player
+        // FIXED: Adjusted boundary calculations for Z-axis reversal
         const gridLeftEdge = center - (playerX + WORLD_GRID_LIMITS) * SCALE;
         const gridRightEdge = center - (playerX - WORLD_GRID_LIMITS) * SCALE;
-        const gridTopEdge = center - (playerZ + WORLD_GRID_LIMITS) * SCALE;
-        const gridBottomEdge = center - (playerZ - WORLD_GRID_LIMITS) * SCALE;
+        const gridTopEdge = center + (playerZ + WORLD_GRID_LIMITS) * SCALE; // Reversed
+        const gridBottomEdge = center + (playerZ - WORLD_GRID_LIMITS) * SCALE; // Reversed
         
         // Set grid style
         ctx.strokeStyle = '#00cc99'; // Neon green
@@ -336,7 +338,6 @@ const MapSystem = (function() {
         ctx.globalAlpha = 0.3;
         
         // Draw vertical grid lines
-        // Start at leftmost visible line based on player position
         const firstLineX = Math.ceil(playerX - WORLD_GRID_LIMITS) * WORLD_GRID_SIZE;
         const linesToDraw = Math.floor(WORLD_GRID_LIMITS * 2 / WORLD_GRID_SIZE) + 1;
         
@@ -359,7 +360,8 @@ const MapSystem = (function() {
             const worldZ = firstLineZ + i * WORLD_GRID_SIZE;
             // Only draw if within grid boundaries
             if (worldZ >= -WORLD_GRID_LIMITS && worldZ <= WORLD_GRID_LIMITS) {
-                const screenZ = center + (worldZ - playerZ) * SCALE;
+                // FIXED: Adjusted for Z-axis reversal
+                const screenZ = center - (worldZ - playerZ) * SCALE;
                 ctx.beginPath();
                 ctx.moveTo(gridLeftEdge, screenZ);
                 ctx.lineTo(gridRightEdge, screenZ);
@@ -392,8 +394,9 @@ const MapSystem = (function() {
         const center = MAP_SIZE / 2;
         
         // Calculate origin position relative to player
+        // FIXED: Adjusted for Z-axis reversal
         const x = center + (origin.x - playerX) * SCALE;
-        const y = center + (origin.z - playerZ) * SCALE;
+        const y = center - (origin.z - playerZ) * SCALE; // Reversed Z
         
         // Check if within view
         if (x >= -10 && x <= MAP_SIZE + 10 && y >= -10 && y <= MAP_SIZE + 10) {
@@ -429,10 +432,9 @@ const MapSystem = (function() {
         ctx.save();
         ctx.translate(center, center);
         
-        // FIXED: Correctly align with Babylon.js camera rotation
-        // In Babylon, rotation.y = 0 means looking down +Z axis (South)
-        // Our arrow points up (North) by default, so we need to adjust
-        ctx.rotate(playerRotation);
+        // FIXED: Correctly align with coordinate system
+        // In our game, 0 means facing north, Math.PI means facing south
+        ctx.rotate(-playerRotation - Math.PI/2); // Adjusted for arrow pointing up
         
         // Draw player arrow
         ctx.fillStyle = '#ff00cc'; // Pink/purple
@@ -459,12 +461,20 @@ const MapSystem = (function() {
             ctx.globalAlpha = 0.7;
             ctx.beginPath();
             ctx.moveTo(center, center);
-            // Calculate point 15 pixels in the direction the player is facing
-            const dirX = center + Math.sin(playerRotation) * 15;
-            const dirZ = center + Math.cos(playerRotation) * 15;
+            // FIXED: Adjusted line calculation for correct rotation
+            const angle = playerRotation + Math.PI/2; // Adjusted angle
+            const dirX = center + Math.cos(angle) * 15;
+            const dirZ = center - Math.sin(angle) * 15; // Inverted Z
             ctx.lineTo(dirX, dirZ);
             ctx.stroke();
             ctx.restore();
+            
+            // Show rotation as debug text
+            ctx.fillStyle = "#ffff00";
+            ctx.font = "9px monospace";
+            ctx.textAlign = "left";
+            const degrees = ((playerRotation * 180 / Math.PI) % 360 + 360) % 360;
+            ctx.fillText(`Angle: ${degrees.toFixed(0)}°`, 5, 40);
         }
     }
     
