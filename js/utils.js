@@ -642,22 +642,9 @@ const Utils = (function() {
         }
     }
     
-    /**
-     * Event utility functions to standardize event handling across components
-     * @param {string} eventName - Name of the event to listen for or emit
-     * @param {function|object} handlerOrData - Event handler function or data to emit
-     * @param {object} options - Additional options for event handling
-     * @return {function|void} - Unsubscribe function for listeners
-     */
+    // Event utility functions
     function createEventUtils() {
         return {
-            /**
-             * Subscribe to an event with standardized error handling
-             * @param {string} eventName - Name of the event to listen for
-             * @param {function} handler - Event handler function
-             * @param {object} options - Additional options
-             * @return {function} - Unsubscribe function
-             */
             listen: function(eventName, handler, options = {}) {
                 const { once = false, system = 'UNKNOWN' } = options;
                 
@@ -693,12 +680,6 @@ const Utils = (function() {
                 };
             },
             
-            /**
-             * Emit an event with standardized error handling
-             * @param {string} eventName - Name of the event to emit
-             * @param {object} data - Data to emit with the event
-             * @param {object} options - Additional options
-             */
             emit: function(eventName, data = {}, options = {}) {
                 const { system = 'UNKNOWN' } = options;
                 
@@ -728,32 +709,15 @@ const Utils = (function() {
                 }
             },
             
-            /**
-             * Listen for an event once then automatically unsubscribe
-             * @param {string} eventName - Name of the event to listen for
-             * @param {function} handler - Event handler function
-             * @param {object} options - Additional options
-             * @return {function} - Unsubscribe function
-             */
             once: function(eventName, handler, options = {}) {
                 return this.listen(eventName, handler, { ...options, once: true });
             }
         };
     }
     
-    const eventUtils = createEventUtils();
-    
-    /**
-     * DOM utility functions to standardize DOM operations across components
-     */
+    // DOM utility functions
     function createDOMUtils() {
         return {
-            /**
-             * Safely get a DOM element by ID with error handling
-             * @param {string} id - Element ID
-             * @param {object} options - Additional options
-             * @return {HTMLElement|null} - The DOM element or null if not found
-             */
             getElement: function(id, options = {}) {
                 const { 
                     system = 'DOM', 
@@ -770,12 +734,6 @@ const Utils = (function() {
                 return element;
             },
             
-            /**
-             * Safely query selector with error handling
-             * @param {string} selector - CSS selector
-             * @param {object} options - Additional options
-             * @return {HTMLElement|null} - The DOM element or null if not found
-             */
             querySelector: function(selector, options = {}) {
                 const { 
                     system = 'DOM', 
@@ -798,12 +756,6 @@ const Utils = (function() {
                 }
             },
             
-            /**
-             * Safely query multiple elements with error handling
-             * @param {string} selector - CSS selector
-             * @param {object} options - Additional options
-             * @return {Array<HTMLElement>} - Array of DOM elements
-             */
             querySelectorAll: function(selector, options = {}) {
                 const { 
                     system = 'DOM',
@@ -818,13 +770,6 @@ const Utils = (function() {
                 }
             },
             
-            /**
-             * Toggle a class on an element with additional functionality
-             * @param {HTMLElement} element - The DOM element
-             * @param {string} className - CSS class to toggle
-             * @param {boolean} force - Force add or remove (optional)
-             * @return {boolean} - Whether the class is present after toggling
-             */
             toggleClass: function(element, className, force) {
                 if (!element) return false;
                 
@@ -845,14 +790,6 @@ const Utils = (function() {
                 }
             },
             
-            /**
-             * Add an event listener with error handling
-             * @param {HTMLElement} element - The DOM element
-             * @param {string} eventType - Type of event (e.g., 'click')
-             * @param {function} handler - Event handler
-             * @param {object} options - Additional options
-             * @return {function} - Function to remove the event listener
-             */
             addEvent: function(element, eventType, handler, options = {}) {
                 const { system = 'DOM', once = false } = options;
                 
@@ -890,11 +827,7 @@ const Utils = (function() {
         };
     }
     
-    const domUtils = createDOMUtils();
-    
-    /**
-     * Asset management utilities to standardize asset handling
-     */
+    // Asset management utilities
     function createAssetUtils() {
         // Cache for preloaded assets
         const assetCache = {
@@ -904,13 +837,6 @@ const Utils = (function() {
         };
         
         return {
-            /**
-             * Preload an image with error handling
-             * @param {string} src - Image source URL
-             * @param {string} id - Unique identifier for the image
-             * @param {object} options - Additional options
-             * @return {Promise} - Promise resolving to the loaded image
-             */
             preloadImage: function(src, id, options = {}) {
                 const { system = 'ASSETS' } = options;
                 
@@ -938,13 +864,6 @@ const Utils = (function() {
                 });
             },
             
-            /**
-             * Preload an audio file with error handling
-             * @param {string} src - Audio source URL
-             * @param {string} id - Unique identifier for the audio
-             * @param {object} options - Additional options
-             * @return {Promise} - Promise resolving to the loaded audio
-             */
             preloadAudio: function(src, id, options = {}) {
                 const { 
                     system = 'ASSETS',
@@ -985,13 +904,6 @@ const Utils = (function() {
                 });
             },
             
-            /**
-             * Preload JSON data with error handling
-             * @param {string} src - JSON source URL
-             * @param {string} id - Unique identifier for the data
-             * @param {object} options - Additional options
-             * @return {Promise} - Promise resolving to the loaded data
-             */
             preloadJSON: function(src, id, options = {}) {
                 const { system = 'ASSETS' } = options;
                 
@@ -1021,12 +933,6 @@ const Utils = (function() {
                 });
             },
             
-            /**
-             * Get a preloaded asset from cache
-             * @param {string} id - Asset identifier
-             * @param {string} type - Asset type ('images', 'audio', 'data')
-             * @return {any} - The cached asset or null if not found
-             */
             getAsset: function(id, type = 'images') {
                 if (!assetCache[type] || !assetCache[type][id]) {
                     return null;
@@ -1035,47 +941,59 @@ const Utils = (function() {
                 return assetCache[type][id];
             },
             
-            /**
-             * Check if an asset is loaded
-             * @param {string} id - Asset identifier
-             * @param {string} type - Asset type ('images', 'audio', 'data')
-             * @return {boolean} - Whether the asset is loaded
-             */
             isAssetLoaded: function(id, type = 'images') {
                 return !!(assetCache[type] && assetCache[type][id]);
             }
         };
     }
     
+    // Initialize the utility sub-modules
+    const eventUtils = createEventUtils();
+    const domUtils = createDOMUtils();
     const assetUtils = createAssetUtils();
     
     // Expose public API
     return {
+        // Math & Animation utilities
         easing,
         getEasingFunction,
         lerp,
         clamp,
+        
+        // Color utilities
         hexToRgb,
         rgbToHex,
+        
+        // Device & environment utilities
         isTouchDevice,
+        
+        // Logging & debugging
         debug,
+        safeLog,
+        handleError,
+        
+        // UI utilities
         togglePanelCollapse,
         typeText,
         forceScrollToBottom,
+        
+        // Game object utilities
         setupHoverAnimation,
-        initializeComponent,
-        safeLog,
-        isInProximity,
         setupHighlight,
+        isInProximity,
+        
+        // System utilities
+        initializeComponent,
         getConfig,
-        handleError,
+        
+        // Specialized utility modules
         events: eventUtils,
         dom: domUtils,
         assets: assetUtils
     };
 })();
 
-// Expose utilities in the global scope
+// Expose utilities in the global scope for legacy support
 window.togglePanelCollapse = Utils.togglePanelCollapse;
 window.typeText = Utils.typeText;
 window.forceScrollToBottom = Utils.forceScrollToBottom;
@@ -1083,10 +1001,5 @@ window.setupHoverAnimation = Utils.setupHoverAnimation;
 window.initializeComponent = Utils.initializeComponent;
 window.safeLog = Utils.safeLog;
 
-// Make utilities available globally
-window.Utils = Utils;
-window.Utils.getConfig = Utils.getConfig;
-window.Utils.handleError = Utils.handleError;
-window.Utils.events = Utils.events;
-window.Utils.dom = Utils.dom;
-window.Utils.assets = Utils.assets; 
+// Make utils available globally
+window.Utils = Utils; 
