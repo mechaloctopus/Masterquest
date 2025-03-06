@@ -16,7 +16,7 @@ const MapSystem = (function() {
     
     // Simple configuration
     const MAP_SIZE = 150;
-    const GRID_CELL_SIZE = 20; // Pixels per grid cell
+    const GRID_CELL_SIZE = 10; // Pixels per grid cell (changed from 20 to 10 to zoom out)
     const WORLD_GRID_SIZE = 2; // World units per grid cell
     const SCALE = GRID_CELL_SIZE / WORLD_GRID_SIZE; // Pixels per world unit
     
@@ -26,8 +26,8 @@ const MapSystem = (function() {
     // Direct coordinate check timer
     let coordinateCheckTimer = null;
     
-    // Debug mode - set to false for production
-    const DEBUG = false;
+    // Debug mode - set to true temporarily for troubleshooting
+    const DEBUG = true;
     
     function init() {
         console.log("[MAP] Initializing map system");
@@ -81,17 +81,34 @@ const MapSystem = (function() {
     
     // Connect to NPC and Foe systems to get entity data
     function connectToEntitySystems() {
+        console.log("[MAP] Attempting to connect to entity systems...");
+        
         // Try to connect to NPC and Foe systems
         if (window.NPCSystem && typeof NPCSystem.getAllNPCs === 'function') {
             console.log("[MAP] Connected to NPCSystem");
+            // Test the NPC connection
+            try {
+                const npcs = NPCSystem.getAllNPCs();
+                console.log(`[MAP] NPCSystem returned ${npcs.length} NPCs`);
+            } catch (e) {
+                console.error("[MAP] Error testing NPCSystem:", e);
+            }
+        } else {
+            console.warn("[MAP] NPCSystem not available");
         }
         
         if (window.FoeSystem && typeof FoeSystem.getAllFoes === 'function') {
             console.log("[MAP] Connected to FoeSystem");
+            // Test the Foe connection
+            try {
+                const foes = FoeSystem.getAllFoes();
+                console.log(`[MAP] FoeSystem returned ${foes.length} foes:`, foes);
+            } catch (e) {
+                console.error("[MAP] Error testing FoeSystem:", e);
+            }
         } else {
-            console.warn("[MAP] FoeSystem not available, will try to find it later");
-            
-            // Add some test foes for now
+            console.warn("[MAP] FoeSystem not available, using test foes");
+            // Add test foes
             updateFoe('test-foe-1', 10, 10, 'Test Foe 1');
             updateFoe('test-foe-2', -15, 5, 'Test Foe 2');
             updateFoe('test-foe-3', 5, -20, 'Test Foe 3');
@@ -131,7 +148,9 @@ const MapSystem = (function() {
         
         // Process each NPC
         if (Array.isArray(npcData)) {
-            npcData.forEach(npc => {
+            console.log(`[MAP] Processing ${npcData.length} NPCs from NPCSystem`);
+            
+            npcData.forEach((npc, index) => {
                 if (npc && npc.mesh && npc.mesh.position) {
                     npcs.push({
                         id: npc.id || `npc-${npcs.length}`,
@@ -139,11 +158,20 @@ const MapSystem = (function() {
                         z: npc.mesh.position.z,
                         label: npc.name || `NPC ${npcs.length + 1}`
                     });
+                    
+                    if (DEBUG) {
+                        console.log(`[MAP] NPC at position: (${npc.mesh.position.x.toFixed(1)}, ${npc.mesh.position.z.toFixed(1)})`);
+                    }
                 }
             });
         }
         
-        if (DEBUG) console.log(`[MAP] Updated ${npcs.length} NPCs on map`);
+        console.log(`[MAP] Updated ${npcs.length} NPCs on map`);
+        
+        // Always add a test NPC for comparison with foes
+        if (DEBUG) {
+            updateNPC('test-npc', 0, 0, 'Test NPC');
+        }
     }
     
     // Process Foe data from the Foe system
@@ -623,6 +651,10 @@ const MapSystem = (function() {
         ctx.fillText(`Rot: ${degrees.toFixed(0)}° (${directionName})`, 5, 10);
         ctx.fillText(`Pos: ${playerX.toFixed(0)},${playerZ.toFixed(0)}`, 5, 20);
         ctx.fillText(`Grid: ${inGrid ? 'ON' : 'OFF'}`, 5, 30);
+        ctx.fillText(`Scale: ${SCALE.toFixed(1)} px/unit`, 5, 40); // Show scale for debugging
+        
+        // Draw grid size indicator
+        ctx.fillText(`View: 16x16 grid`, 5, 50);
     }
     
     // Get cardinal direction based on rotation angle
@@ -656,9 +688,9 @@ const MapSystem = (function() {
             if (x >= -5 && x <= MAP_SIZE + 5 && y >= -5 && y <= MAP_SIZE + 5) {
                 // Draw dot
                 ctx.beginPath();
-                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.arc(x, y, 4, 0, Math.PI * 2); // Larger size for visibility
                 ctx.fill();
-                ctx.lineWidth = 0.5;
+                ctx.lineWidth = 1;
                 ctx.stroke();
                 
                 // Draw label if debug mode is on
@@ -666,58 +698,75 @@ const MapSystem = (function() {
                     ctx.fillStyle = '#ffffff';
                     ctx.font = '8px monospace';
                     ctx.textAlign = 'center';
-                    ctx.fillText(npc.label, x, y - 5);
+                    ctx.fillText(npc.label, x, y - 6);
                     ctx.fillStyle = '#0088ff'; // Reset to blue for next NPC
                 }
             }
         });
+        
+        // Debug count in corner if we have NPCs
+        if (DEBUG) {
+            ctx.fillStyle = '#0088ff';
+            ctx.font = '8px monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(`NPCs: ${npcs.length}`, 5, MAP_SIZE - 5);
+        }
     }
     
-    // Draw Foes as red dots
+    // Draw Foes as red dots - FIXED to match NPC drawing style
     function drawFoes() {
+        // Directly add test foes every frame to ensure they show up
+        if (DEBUG && foes.length === 0) {
+            foes = [
+                { id: 'test-foe-1', x: 10, z: 10, label: 'Test Foe 1' },
+                { id: 'test-foe-2', x: -15, z: 5, label: 'Test Foe 2' },
+                { id: 'test-foe-3', x: 5, z: -20, label: 'Test Foe 3' }
+            ];
+            console.log("[MAP] Added test foes:", foes);
+        }
+        
         if (!foes.length) return;
         
         const center = MAP_SIZE / 2;
         
-        // Brighter red for better visibility
-        ctx.fillStyle = '#ff3333'; // Red color for Foes
+        // Use a much brighter red for maximum visibility
+        ctx.fillStyle = '#ff0000'; // Bright red color for Foes
         ctx.strokeStyle = '#ffffff'; // White outline
         
-        // Draw each foe
         foes.forEach(foe => {
-            // Calculate position relative to player
+            // Calculate position relative to player - EXACT SAME CALCULATION AS NPCS
             const x = center + (foe.x - playerX) * SCALE;
             const y = center - (foe.z - playerZ) * SCALE; // Reversed Z
             
-            // Only draw if within map boundaries (with margin)
-            if (x >= -5 && x <= MAP_SIZE + 5 && y >= -5 && y <= MAP_SIZE + 5) {
-                // Draw dot with slightly larger size
+            console.log(`[MAP] Drawing foe at screen position: (${x.toFixed(1)}, ${y.toFixed(1)}) from world position: (${foe.x}, ${foe.z})`);
+            
+            // Only draw if within map boundaries with larger margin
+            if (x >= -10 && x <= MAP_SIZE + 10 && y >= -10 && y <= MAP_SIZE + 10) {
+                // Draw dot with LARGER size
                 ctx.beginPath();
-                ctx.arc(x, y, 4, 0, Math.PI * 2); // Increased size
+                ctx.arc(x, y, 5, 0, Math.PI * 2); // Even larger for better visibility
                 ctx.fill();
                 
-                // Add white halo for better visibility
-                ctx.lineWidth = 1;
+                // Add double white outline for better visibility
+                ctx.lineWidth = 1.5;
                 ctx.stroke();
                 
-                // Draw label if debug mode is on or label is set
-                if ((DEBUG || foe.id.startsWith('test')) && foe.label) {
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = '8px monospace';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(foe.label, x, y - 6);
-                    ctx.fillStyle = '#ff3333'; // Reset to red for next Foe
-                }
+                // Always draw labels for test foes
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '9px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(foe.label || "FOE", x, y - 7);
+                ctx.fillStyle = '#ff0000'; // Reset to red for next Foe
+            } else {
+                console.log(`[MAP] Foe at (${x.toFixed(1)}, ${y.toFixed(1)}) is outside map view`);
             }
         });
         
-        // Debug count in corner if we have foes
-        if (DEBUG || foes.some(f => f.id.startsWith('test'))) {
-            ctx.fillStyle = '#ff3333';
-            ctx.font = '8px monospace';
-            ctx.textAlign = 'right';
-            ctx.fillText(`Foes: ${foes.length}`, MAP_SIZE - 5, MAP_SIZE - 5);
-        }
+        // Always show foe count in corner
+        ctx.fillStyle = '#ff0000';
+        ctx.font = '9px monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText(`Foes: ${foes.length}`, MAP_SIZE - 5, MAP_SIZE - 5);
     }
     
     // Clean up when unloading
@@ -755,6 +804,12 @@ const MapSystem = (function() {
         init: init,
         // Add methods for updating NPCs and Foes
         updateNPC: updateNPC,
-        updateFoe: updateFoe
+        updateFoe: updateFoe,
+        // Add direct access for debugging
+        debug: {
+            getNPCs: () => npcs,
+            getFoes: () => foes,
+            setDebug: (value) => { DEBUG = value; }
+        }
     };
 })(); 
