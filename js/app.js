@@ -849,6 +849,14 @@ const App = (function() {
             const camera = state.systems.camera;
             const position = camera.position;
             
+            // Debug logging - do this only occasionally to avoid console spam
+            if (Math.random() < 0.01) { // 1% chance each frame
+                console.log("Emitting player.position event", {
+                    position: { x: position.x, y: position.y, z: position.z },
+                    rotation: camera.rotation.y
+                });
+            }
+            
             // Emit player position event for NPC and Foe proximity checks
             EventSystem.emit('player.position', {
                 position: { x: position.x, y: position.y, z: position.z },
