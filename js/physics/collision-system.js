@@ -93,48 +93,101 @@ const CollisionSystem = (function() {
     }
     
     /**
+     * Make sure the health system is available and initialized
+     * @returns {boolean} Whether the health system is available
+     */
+    function ensureHealthSystem() {
+        // Check if already available
+        if (window.HealthBarSystem && typeof window.HealthBarSystem.damage === 'function') {
+            return true;
+        }
+        
+        console.log("Attempting to load or initialize health system...");
+        
+        // Try to initialize it if it exists but isn't fully initialized
+        if (window.HealthBarSystem && typeof window.HealthBarSystem.init === 'function') {
+            window.HealthBarSystem.init();
+            return true;
+        }
+        
+        // Try to create a very basic health system as a last resort
+        if (!window.HealthBarSystem) {
+            console.log("Creating a basic fallback health system...");
+            
+            // Create minimal health system
+            window.HealthBarSystem = {
+                _health: 100,
+                _maxHealth: 100,
+                
+                init: function() { 
+                    console.log("Fallback health system initialized");
+                    return true; 
+                },
+                
+                getHealth: function() { 
+                    return { 
+                        current: this._health, 
+                        max: this._maxHealth, 
+                        percentage: (this._health / this._maxHealth) * 100 
+                    }; 
+                },
+                
+                damage: function(amount) {
+                    this._health = Math.max(0, this._health - amount);
+                    console.log(`Fallback health system: Health reduced to ${this._health}/${this._maxHealth}`);
+                    return this._health;
+                },
+                
+                setHealth: function(health, max) {
+                    if (max !== undefined) this._maxHealth = max;
+                    this._health = Math.min(this._maxHealth, Math.max(0, health));
+                    return this._health;
+                }
+            };
+            
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
      * Apply damage to player health
      */
     function applyDamage() {
-        // Check if the health system is available
-        if (window.HealthBarSystem && typeof window.HealthBarSystem.damage === 'function') {
-            try {
-                // Apply the damage amount
-                const newHealth = window.HealthBarSystem.damage(COLLISION_DAMAGE);
-                
-                // Force an update if possible
-                if (typeof window.HealthBarSystem.setHealth === 'function') {
-                    window.HealthBarSystem.setHealth(newHealth);
-                }
-                
-                // Log the damage
-                logToConsole(`Player took ${COLLISION_DAMAGE} damage. Health: ${newHealth}/${window.HealthBarSystem.getHealth().max}`);
-                
-                // Debug output for health update
-                if (DEBUG) {
-                    console.log(`Health update: ${newHealth}/${window.HealthBarSystem.getHealth().max}`);
-                }
-                
-                // Check if player is dead (health <= 0)
-                if (newHealth <= 0) {
-                    logToConsole("CRITICAL: Player health depleted!");
-                    // Could trigger game over or respawn logic here
-                }
-                
-                return newHealth;
-            } catch (e) {
-                console.error("Error updating health:", e);
-            }
-        } else {
-            console.warn("HealthBarSystem not available or damage method missing!");
+        // First ensure the health system is available
+        if (!ensureHealthSystem()) {
+            console.error("Failed to initialize health system after multiple attempts!");
+            return null;
+        }
+        
+        try {
+            // Apply the damage amount
+            const newHealth = window.HealthBarSystem.damage(COLLISION_DAMAGE);
             
-            // Debug output for health system
-            if (DEBUG) {
-                console.log("HealthBarSystem available:", !!window.HealthBarSystem);
-                if (window.HealthBarSystem) {
-                    console.log("HealthBarSystem methods:", Object.keys(window.HealthBarSystem));
-                }
+            // Force an update if possible
+            if (typeof window.HealthBarSystem.setHealth === 'function') {
+                window.HealthBarSystem.setHealth(newHealth);
             }
+            
+            // Log the damage
+            const healthInfo = window.HealthBarSystem.getHealth();
+            logToConsole(`Player took ${COLLISION_DAMAGE} damage. Health: ${healthInfo.current}/${healthInfo.max}`);
+            
+            // Debug output for health update
+            if (DEBUG) {
+                console.log(`Health update: ${newHealth}/${healthInfo.max} (${healthInfo.percentage.toFixed(1)}%)`);
+            }
+            
+            // Check if player is dead (health <= 0)
+            if (newHealth <= 0) {
+                logToConsole("CRITICAL: Player health depleted!");
+                // Could trigger game over or respawn logic here
+            }
+            
+            return newHealth;
+        } catch (e) {
+            console.error("Error updating health:", e);
         }
         
         return null;
@@ -242,15 +295,13 @@ const CollisionSystem = (function() {
         }
         
         // Make sure health system is initialized
-        if (window.HealthBarSystem && typeof window.HealthBarSystem.init === 'function') {
-            window.HealthBarSystem.init();
-            
-            // Debug check that health system is working
-            if (DEBUG) {
-                console.log("Health System initialized. Current health:", window.HealthBarSystem.getHealth());
-            }
+        ensureHealthSystem();
+        
+        // Verify that health system is correctly initialized
+        if (window.HealthBarSystem) {
+            console.log("Health System detected during collision system init:", window.HealthBarSystem);
         } else {
-            console.warn("HealthBarSystem not found or init method missing!");
+            console.warn("Health System not found during collision system init!");
         }
         
         // Notify of initialization
@@ -413,4 +464,13 @@ const CollisionSystem = (function() {
 })();
 
 // Export to window
-window.CollisionSystem = CollisionSystem; 
+window.CollisionSystem = CollisionSystem;
+
+// Initialize after page load to ensure all dependencies are loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM loaded - checking collision system initialization");
+    // If there's a scene available, initialize
+    if (window.scene && window.camera) {
+        window.CollisionSystem.init(window.scene, window.camera);
+    }
+}); 

@@ -78,16 +78,16 @@ const CONFIG = {
                 URL: "js/audio/vhs.mp3"
             },
             {
-                NAME: "happy airlines",
-                URL: "js/audio/happyairlines.wav"
+                NAME: "8bitloop",
+                URL: "js/audio/8bitloop.mp3"
             },
             {
-                NAME: "klaxon",
-                URL: "js/audio/klaxon.wav"
+                NAME: "25x25",
+                URL: "js/audio/25x25.wav"
             },
             {
-                NAME: "video game land",
-                URL: "js/audio/videogameland.wav"
+                NAME: "vaporwave",
+                URL: "js/audio/vaporwave.wav"
             }
         ]
     },
