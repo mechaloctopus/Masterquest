@@ -157,21 +157,42 @@ const MapSystem = (function() {
             // Method 1: Poll the coordinate display DOM elements (most reliable)
             coordinateCheckTimer = setInterval(function() {
                 const coordPos = document.getElementById('coordPos');
+                const compassElem = document.getElementById('coordCompass');
+                
                 if (coordPos) {
+                    // Get position from coordinates
                     const text = coordPos.textContent;
                     const match = text.match(/X:(-?\d+) Z:(-?\d+)/);
                     if (match) {
                         const x = parseFloat(match[1]);
                         const z = parseFloat(match[2]);
                         
-                        // Only update if position actually changed
-                        if (x !== playerX || z !== playerZ) {
-                            updatePlayerPosition({x, z}, playerRotation);
-                            
-                            if (DEBUG && (Math.abs(x - lastLoggedPosition.x) > 0.5 || Math.abs(z - lastLoggedPosition.z) > 0.5)) {
-                                console.log(`[MAP] Position from CoordinateSystem: (${x}, ${z})`);
-                                lastLoggedPosition = {x, z};
+                        // Get rotation from compass direction
+                        let newRotation = playerRotation;
+                        if (compassElem) {
+                            const direction = compassElem.textContent;
+                            // Convert compass direction to radians
+                            switch (direction) {
+                                case 'N': newRotation = Math.PI; break;
+                                case 'NE': newRotation = Math.PI * 3/4; break;
+                                case 'E': newRotation = Math.PI / 2; break;
+                                case 'SE': newRotation = Math.PI / 4; break;
+                                case 'S': newRotation = 0; break;
+                                case 'SW': newRotation = -Math.PI / 4; break;
+                                case 'W': newRotation = -Math.PI / 2; break;
+                                case 'NW': newRotation = -Math.PI * 3/4; break;
                             }
+                        }
+                        
+                        // Update position and rotation
+                        updatePlayerPosition({x, z}, newRotation);
+                        
+                        // Debug log for significant changes
+                        if (DEBUG && (Math.abs(x - lastLoggedPosition.x) > 0.5 || 
+                                      Math.abs(z - lastLoggedPosition.z) > 0.5 ||
+                                      Math.abs(newRotation - playerRotation) > 0.1)) {
+                            console.log(`[MAP] Position from CoordinateSystem: (${x}, ${z}), Rotation: ${newRotation.toFixed(2)}`);
+                            lastLoggedPosition = {x, z};
                         }
                     }
                 }
@@ -186,10 +207,16 @@ const MapSystem = (function() {
                         scene.onBeforeRenderObservable.add(() => {
                             if (scene.activeCamera?.position) {
                                 const camera = scene.activeCamera;
+                                // IMPORTANT: This is a direct connection to camera rotation
                                 updatePlayerPosition({
                                     x: camera.position.x,
                                     z: camera.position.z
                                 }, camera.rotation.y);
+                                
+                                // Log camera rotation for debugging
+                                if (DEBUG && frameCount % 300 === 0) {
+                                    console.log(`[MAP] Camera rotation: ${camera.rotation.y.toFixed(2)}`);
+                                }
                             }
                         });
                         console.log("[MAP] Connected to Babylon camera for position updates");
@@ -206,10 +233,12 @@ const MapSystem = (function() {
                 if (window.state?.systems?.camera) {
                     const camera = state.systems.camera;
                     if (camera?.position) {
+                        // Also get rotation if available
+                        const rotation = camera.rotation?.y || playerRotation;
                         updatePlayerPosition({
                             x: camera.position.x,
                             z: camera.position.z
-                        }, camera.rotation.y);
+                        }, rotation);
                     }
                 }
             }, 100); // Check 10 times per second
@@ -223,7 +252,15 @@ const MapSystem = (function() {
         // Store values
         playerX = typeof position.x === 'number' ? position.x : playerX;
         playerZ = typeof position.z === 'number' ? position.z : playerZ;
-        playerRotation = typeof rotation === 'number' ? rotation : playerRotation;
+        
+        // Only update rotation if provided and different
+        if (typeof rotation === 'number' && Math.abs(rotation - playerRotation) > 0.01) {
+            playerRotation = rotation;
+            // Log rotation changes for debugging
+            if (DEBUG) {
+                console.log(`[MAP] Rotation updated: ${playerRotation.toFixed(2)}`);
+            }
+        }
     }
     
     // Main render loop
@@ -380,16 +417,22 @@ const MapSystem = (function() {
         // First draw cardinal direction indicators around the edge
         drawCardinalDirections();
         
+        // Draw a debug circle to show the center point
+        if (DEBUG) {
+            ctx.beginPath();
+            ctx.arc(center, center, 2, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+        }
+        
         // Save context for rotation
         ctx.save();
         ctx.translate(center, center);
         
-        // Fix: Apply rotation correctly to match Babylon.js coordinate system
-        // In Babylon.js, 0 radians = looking down +Z axis (SOUTH on our map)
-        // Math.PI/2 = looking down +X axis (EAST on our map)
-        // Math.PI = looking down -Z axis (NORTH on our map)
-        // We need to adjust by Math.PI because our arrow is drawn pointing North by default
-        ctx.rotate(playerRotation + Math.PI);
+        // FIXED: Correctly align with Babylon.js camera rotation
+        // In Babylon, rotation.y = 0 means looking down +Z axis (South)
+        // Our arrow points up (North) by default, so we need to adjust
+        ctx.rotate(playerRotation);
         
         // Draw player arrow
         ctx.fillStyle = '#ff00cc'; // Pink/purple
