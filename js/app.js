@@ -1,5 +1,12 @@
 // Application Entry Point
 const App = (function() {
+    // Constants
+    const FORCE_LOAD_TIMEOUT = 8000; // 8 seconds max loading time
+    const FALLBACK_LOAD_TIMEOUT = 2000; // 2 seconds for fallback loading screen
+    const COORDINATE_SHOW_DELAY = 500; // Delay for coordinate system display
+    const MAP_LOG_FREQUENCY = 0.01; // Frequency for position logging (was 0.05)
+    const REALM_CONFIG_PREFIX = 'REALM_';
+    
     // Private application state
     const state = {
         initialized: false,
@@ -50,7 +57,12 @@ const App = (function() {
                 throw new Error("Canvas element not found! Cannot initialize game.");
             }
             
-            state.engine = new BABYLON.Engine(canvas, true);
+            state.engine = new BABYLON.Engine(canvas, true, { 
+                stencil: true,
+                antialias: true,
+                adaptToDeviceRatio: true
+            });
+            
             state.engine.onError = function(e) {
                 Logger.error("Engine error: " + e.message);
             };
@@ -84,22 +96,10 @@ const App = (function() {
             }, 1000);
             
             // Initialize radio player if available
-            try {
-                if (window.RadioPlayerSystem) {
-                    // RadioPlayerSystem will self-initialize on DOM ready
-                    Logger.log("> RADIO PLAYER INITIALIZED");
-                    state.systems.radioPlayer = true;
-                }
-            } catch (e) {
-                Logger.error(`Radio player reference failed: ${e.message}`);
-            }
+            initializeRadioPlayer();
             
-            // Remove any test coordinates button that might be present
-            const testBtn = document.getElementById('testCoordButton');
-            if (testBtn) {
-                testBtn.parentNode.removeChild(testBtn);
-                Logger.log("> TEST COORDINATES BUTTON REMOVED");
-            }
+            // Cleanup test components
+            cleanupTestComponents();
             
         } catch (error) {
             Logger.error(error.message);
@@ -107,192 +107,42 @@ const App = (function() {
         }
     }
     
+    // Initialize radio player
+    function initializeRadioPlayer() {
+        try {
+            if (window.RadioPlayerSystem) {
+                // RadioPlayerSystem will self-initialize on DOM ready
+                Logger.log("> RADIO PLAYER INITIALIZED");
+                state.systems.radioPlayer = true;
+            }
+        } catch (e) {
+            Logger.error(`Radio player reference failed: ${e.message}`);
+        }
+    }
+    
+    // Cleanup any test components
+    function cleanupTestComponents() {
+        const testBtn = document.getElementById('testCoordButton');
+        if (testBtn) {
+            testBtn.parentNode.removeChild(testBtn);
+            Logger.log("> TEST COORDINATES BUTTON REMOVED");
+        }
+    }
+    
     // Initialize all systems in order
     function initializeAllSystems() {
         try {
-            // Initialize loader first if available
-            if (window.LoaderSystem) {
-                LoaderSystem.initialize(state.scene);
-                Logger.log("> ASSET LOADER INITIALIZED");
-                state.systems.loader = true;
-            }
+            // Initialize core systems
+            initializeCoreSystems();
             
-            // Initialize grid
-            try {
-                GridSystem.create(state.scene);
-                Logger.log("> NEON GREEN GRID INITIALIZED");
-                state.systems.grid = true;
-            } catch (e) {
-                Logger.error(`Grid initialization failed: ${e.message}`);
-            }
+            // Initialize UI systems
+            initializeUISystems();
             
-            // Initialize skybox
-            try {
-                SkyboxSystem.create(state.scene);
-                Logger.log("> VAPORWAVE SKYBOX INITIALIZED");
-                state.systems.skybox = true;
-            } catch (e) {
-                Logger.error(`Skybox initialization failed: ${e.message}`);
-            }
+            // Initialize entity system
+            initializeEntitySystem();
             
-            // Initialize camera
-            try {
-                const canvas = document.getElementById('renderCanvas');
-                state.systems.camera = CameraManager.create(state.scene, canvas);
-                Logger.log("> CAMERA INITIALIZED");
-            } catch (e) {
-                Logger.error(`Camera initialization failed: ${e.message}`);
-                // Create fallback camera
-                state.systems.camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, 0), state.scene);
-            }
-            
-            // Initialize health system
-            try {
-                if (window.HealthBarSystem) {
-                    HealthBarSystem.init();
-                    HealthBarSystem.setHealth(state.gameState.health, state.gameState.maxHealth);
-                    state.systems.health = true;
-                }
-            } catch (e) {
-                Logger.error(`Health system initialization failed: ${e.message}`);
-            }
-            
-            // Initialize map system
-            try {
-                if (window.MapSystem) {
-                    MapSystem.init();
-                    Logger.log("> MAP SYSTEM INITIALIZED");
-                    state.systems.map = true;
-                }
-            } catch (e) {
-                Logger.error(`Map system initialization failed: ${e.message}`);
-            }
-            
-            // Initialize coordinate display system
-            try {
-                console.log("Initializing coordinate display system...");
-                if (typeof window.CoordinateSystem !== 'undefined') {
-                    if (CoordinateSystem.init()) {
-                        Logger.log("> COORDINATE SYSTEM INITIALIZED");
-                        state.systems.coordinates = true;
-                        
-                        // Make sure it's shown
-                        setTimeout(() => {
-                            CoordinateSystem.show();
-                            console.log("Coordinate system display shown after timeout");
-                        }, 500); // Add a small delay to ensure DOM is ready
-                    }
-                } else {
-                    console.error("CoordinateSystem is not defined globally");
-                    Logger.error("> COORDINATE SYSTEM NOT FOUND");
-                }
-            } catch (e) {
-                console.error("Coordinate system initialization failed:", e);
-                Logger.error(`Coordinate system initialization failed: ${e.message}`);
-            }
-            
-            // Initialize inventory system
-            try {
-                if (window.InventorySystem) {
-                    InventorySystem.init();
-                    state.systems.inventory = true;
-                }
-            } catch (e) {
-                Logger.error(`Inventory system initialization failed: ${e.message}`);
-            }
-            
-            // Initialize hands
-            try {
-                state.systems.hands = HandsSystem.create(state.scene, state.systems.camera);
-                Logger.log("> HANDS SYSTEM INITIALIZED");
-            } catch (e) {
-                Logger.error(`Hands initialization failed: ${e.message}`);
-                state.systems.hands = null;
-            }
-            
-            // Initialize audio
-            try {
-                state.systems.audio = AudioSystem.create();
-                Logger.log("> AUDIO SYSTEM INITIALIZED");
-            } catch (e) {
-                Logger.error(`Audio initialization failed: ${e.message}`);
-                // Create dummy audio system
-                state.systems.audio = {
-                    sfx: { footsteps: {}, jump: {}, strike: {} },
-                    isWalking: false
-                };
-            }
-            
-            // Initialize controls - CRITICAL for joysticks and buttons
-            try {
-                ControlSystem.setupControls(state.scene, state.systems.camera, state.gameState, state.systems.audio);
-                Logger.log("> CONTROLS INITIALIZED");
-                state.systems.controls = true;
-            } catch (e) {
-                Logger.error(`Controls initialization failed: ${e.message}`);
-            }
-            
-            // Setup performance monitoring
-            try {
-                SceneManager.addPerformanceMonitor(state.engine, state.scene);
-                state.systems.performance = true;
-            } catch (e) {
-                Logger.error(`Performance monitor initialization failed: ${e.message}`);
-            }
-            
-            // Initialize Entity system (replacing NPC and Foe systems)
-            console.log("Initializing Entity system, checking window.EntitySystem:", typeof window.EntitySystem);
-            if (typeof window.EntitySystem !== 'undefined') {
-                EntitySystem.init(state.scene);
-                Logger.log("> ENTITY SYSTEM INITIALIZED");
-                state.systems.entity = true;
-            } else {
-                console.error("EntitySystem is not defined globally");
-                Logger.error("> ENTITY SYSTEM NOT FOUND");
-            }
-            
-            // Initialize fallback dialogue system
-            try {
-                if (window.DialogueSystem) {
-                    DialogueSystem.init();
-                    Logger.log("> DIALOGUE SYSTEM INITIALIZED");
-                    state.systems.dialogue = true;
-                }
-            } catch (e) {
-                Logger.error(`Dialogue system initialization failed: ${e.message}`);
-            }
-            
-            // If asset loader is available, queue and load assets
-            if (state.systems.loader) {
-                queueAssetLoading();
-                LoaderSystem.startLoading();
-                
-                // Set a timer to force loader completion if it doesn't complete on its own
-                setTimeout(() => {
-                    if (window.EventSystem && state.initialized) {
-                        // Check if the loading screen is still visible
-                        const loadingScreen = document.getElementById('loadingScreen');
-                        if (loadingScreen && loadingScreen.style.display !== 'none' && !loadingScreen.classList.contains('hidden')) {
-                            console.log("Forcing loader completion event after timeout");
-                            EventSystem.emit('loader.complete', { 
-                                forced: true,
-                                message: "Loading completed (forced)"
-                            });
-                        }
-                    }
-                }, 8000); // 8 seconds max loading time
-            } else {
-                // If no loader is available, emit loader complete immediately
-                if (window.EventSystem) {
-                    console.log("No loader system available, emitting completion immediately");
-                    setTimeout(() => {
-                        EventSystem.emit('loader.complete', { 
-                            forced: true,
-                            message: "Loading completed (no loader available)"
-                        });
-                    }, 2000); // Give 2 seconds to view the loading screen anyway
-                }
-            }
+            // Set up asset loading
+            setupAssetLoading();
             
             // Set up system event listeners
             setupEventListeners();
@@ -311,6 +161,260 @@ const App = (function() {
         }
     }
     
+    // Initialize core systems (grid, skybox, camera, audio)
+    function initializeCoreSystems() {
+        // Initialize loader first if available
+        if (window.LoaderSystem) {
+            LoaderSystem.initialize(state.scene);
+            Logger.log("> ASSET LOADER INITIALIZED");
+            state.systems.loader = true;
+        }
+        
+        // Initialize grid
+        initializeGridSystem();
+        
+        // Initialize skybox
+        initializeSkyboxSystem();
+        
+        // Initialize camera
+        initializeCameraSystem();
+        
+        // Initialize audio
+        initializeAudioSystem();
+        
+        // Initialize hands
+        initializeHandsSystem();
+        
+        // Initialize controls - CRITICAL for joysticks and buttons
+        initializeControlSystem();
+        
+        // Setup performance monitoring
+        initializePerformanceMonitoring();
+    }
+    
+    // Initialize grid system
+    function initializeGridSystem() {
+        try {
+            GridSystem.create(state.scene);
+            Logger.log("> NEON GREEN GRID INITIALIZED");
+            state.systems.grid = true;
+        } catch (e) {
+            Logger.error(`Grid initialization failed: ${e.message}`);
+        }
+    }
+    
+    // Initialize skybox system
+    function initializeSkyboxSystem() {
+        try {
+            SkyboxSystem.create(state.scene);
+            Logger.log("> VAPORWAVE SKYBOX INITIALIZED");
+            state.systems.skybox = true;
+        } catch (e) {
+            Logger.error(`Skybox initialization failed: ${e.message}`);
+        }
+    }
+    
+    // Initialize camera system
+    function initializeCameraSystem() {
+        try {
+            const canvas = document.getElementById('renderCanvas');
+            state.systems.camera = CameraManager.create(state.scene, canvas);
+            Logger.log("> CAMERA INITIALIZED");
+        } catch (e) {
+            Logger.error(`Camera initialization failed: ${e.message}`);
+            // Create fallback camera
+            state.systems.camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, 0), state.scene);
+        }
+    }
+    
+    // Initialize audio system
+    function initializeAudioSystem() {
+        try {
+            state.systems.audio = AudioSystem.create();
+            Logger.log("> AUDIO SYSTEM INITIALIZED");
+        } catch (e) {
+            Logger.error(`Audio initialization failed: ${e.message}`);
+            // Create dummy audio system
+            state.systems.audio = {
+                sfx: { footsteps: {}, jump: {}, strike: {} },
+                isWalking: false
+            };
+        }
+    }
+    
+    // Initialize hands system
+    function initializeHandsSystem() {
+        try {
+            state.systems.hands = HandsSystem.create(state.scene, state.systems.camera);
+            Logger.log("> HANDS SYSTEM INITIALIZED");
+        } catch (e) {
+            Logger.error(`Hands initialization failed: ${e.message}`);
+            state.systems.hands = null;
+        }
+    }
+    
+    // Initialize control system
+    function initializeControlSystem() {
+        try {
+            ControlSystem.setupControls(state.scene, state.systems.camera, state.gameState, state.systems.audio);
+            Logger.log("> CONTROLS INITIALIZED");
+            state.systems.controls = true;
+        } catch (e) {
+            Logger.error(`Controls initialization failed: ${e.message}`);
+        }
+    }
+    
+    // Initialize performance monitoring
+    function initializePerformanceMonitoring() {
+        try {
+            SceneManager.addPerformanceMonitor(state.engine, state.scene);
+            state.systems.performance = true;
+        } catch (e) {
+            Logger.error(`Performance monitor initialization failed: ${e.message}`);
+        }
+    }
+    
+    // Initialize UI systems (health, map, coordinates, inventory, dialogue)
+    function initializeUISystems() {
+        // Initialize health system
+        initializeHealthSystem();
+        
+        // Initialize map system
+        initializeMapSystem();
+        
+        // Initialize coordinate display system
+        initializeCoordinateSystem();
+        
+        // Initialize inventory system
+        initializeInventorySystem();
+        
+        // Initialize dialogue system
+        initializeDialogueSystem();
+    }
+    
+    // Initialize health system
+    function initializeHealthSystem() {
+        try {
+            if (window.HealthBarSystem) {
+                HealthBarSystem.init();
+                HealthBarSystem.setHealth(state.gameState.health, state.gameState.maxHealth);
+                state.systems.health = true;
+            }
+        } catch (e) {
+            Logger.error(`Health system initialization failed: ${e.message}`);
+        }
+    }
+    
+    // Initialize map system
+    function initializeMapSystem() {
+        try {
+            if (window.MapSystem) {
+                MapSystem.init();
+                Logger.log("> MAP SYSTEM INITIALIZED");
+                state.systems.map = true;
+            }
+        } catch (e) {
+            Logger.error(`Map system initialization failed: ${e.message}`);
+        }
+    }
+    
+    // Initialize coordinate system
+    function initializeCoordinateSystem() {
+        try {
+            console.log("Initializing coordinate display system...");
+            if (typeof window.CoordinateSystem !== 'undefined') {
+                if (CoordinateSystem.init()) {
+                    Logger.log("> COORDINATE SYSTEM INITIALIZED");
+                    state.systems.coordinates = true;
+                    
+                    // Make sure it's shown
+                    setTimeout(() => {
+                        CoordinateSystem.show();
+                        console.log("Coordinate system display shown after timeout");
+                    }, COORDINATE_SHOW_DELAY);
+                }
+            } else {
+                console.error("CoordinateSystem is not defined globally");
+                Logger.error("> COORDINATE SYSTEM NOT FOUND");
+            }
+        } catch (e) {
+            console.error("Coordinate system initialization failed:", e);
+            Logger.error(`Coordinate system initialization failed: ${e.message}`);
+        }
+    }
+    
+    // Initialize inventory system
+    function initializeInventorySystem() {
+        try {
+            if (window.InventorySystem) {
+                InventorySystem.init();
+                state.systems.inventory = true;
+            }
+        } catch (e) {
+            Logger.error(`Inventory system initialization failed: ${e.message}`);
+        }
+    }
+    
+    // Initialize dialogue system
+    function initializeDialogueSystem() {
+        try {
+            if (window.DialogueSystem) {
+                DialogueSystem.init();
+                Logger.log("> DIALOGUE SYSTEM INITIALIZED");
+                state.systems.dialogue = true;
+            }
+        } catch (e) {
+            Logger.error(`Dialogue system initialization failed: ${e.message}`);
+        }
+    }
+    
+    // Initialize entity system
+    function initializeEntitySystem() {
+        console.log("Initializing Entity system, checking window.EntitySystem:", typeof window.EntitySystem);
+        if (typeof window.EntitySystem !== 'undefined') {
+            EntitySystem.init(state.scene);
+            Logger.log("> ENTITY SYSTEM INITIALIZED");
+            state.systems.entity = true;
+        } else {
+            console.error("EntitySystem is not defined globally");
+            Logger.error("> ENTITY SYSTEM NOT FOUND");
+        }
+    }
+    
+    // Setup asset loading
+    function setupAssetLoading() {
+        if (state.systems.loader) {
+            queueAssetLoading();
+            LoaderSystem.startLoading();
+            
+            // Set a timer to force loader completion if it doesn't complete on its own
+            setTimeout(() => {
+                if (window.EventSystem && state.initialized) {
+                    // Check if the loading screen is still visible
+                    const loadingScreen = document.getElementById('loadingScreen');
+                    if (loadingScreen && loadingScreen.style.display !== 'none' && !loadingScreen.classList.contains('hidden')) {
+                        console.log("Forcing loader completion event after timeout");
+                        EventSystem.emit('loader.complete', { 
+                            forced: true,
+                            message: "Loading completed (forced)"
+                        });
+                    }
+                }
+            }, FORCE_LOAD_TIMEOUT);
+        } else {
+            // If no loader is available, emit loader complete immediately
+            if (window.EventSystem) {
+                console.log("No loader system available, emitting completion immediately");
+                setTimeout(() => {
+                    EventSystem.emit('loader.complete', { 
+                        forced: true,
+                        message: "Loading completed (no loader available)"
+                    });
+                }, FALLBACK_LOAD_TIMEOUT);
+            }
+        }
+    }
+    
     // Initialize the current realm
     function initializeCurrentRealm() {
         try {
@@ -320,7 +424,7 @@ const App = (function() {
             state.gameState.currentRealm = realmIndex;
             
             // Get realm config
-            const realmConfig = CONFIG.REALMS[`REALM_${realmIndex}`];
+            const realmConfig = CONFIG.REALMS[`${REALM_CONFIG_PREFIX}${realmIndex}`];
             
             if (!realmConfig) {
                 console.error(`Realm configuration for realm ${realmIndex} not found`);
@@ -348,15 +452,7 @@ const App = (function() {
             Logger.log(`> CREATING SCENE OBJECTS`);
             
             // Initialize entities for current realm
-            console.log("Checking for Entity System:", typeof window.EntitySystem);
-            if (typeof window.EntitySystem !== 'undefined') {
-                console.log("Found EntitySystem, initializing...");
-                EntitySystem.loadEntitiesForRealm(realmIndex);
-                Logger.log(`> REALM ${realmIndex} ENTITIES LOADED`);
-            } else {
-                console.error("EntitySystem not available globally");
-                Logger.error("> ENTITIES NOT LOADED: SYSTEM UNAVAILABLE");
-            }
+            loadEntitiesForCurrentRealm(realmIndex);
             
             Logger.log(`> REALM ${realmConfig.NAME} INITIALIZATION COMPLETE`);
         } catch (e) {
@@ -365,9 +461,36 @@ const App = (function() {
         }
     }
     
+    // Load entities for current realm
+    function loadEntitiesForCurrentRealm(realmIndex) {
+        console.log("Checking for Entity System:", typeof window.EntitySystem);
+        if (typeof window.EntitySystem !== 'undefined') {
+            console.log("Found EntitySystem, initializing...");
+            EntitySystem.loadEntitiesForRealm(realmIndex);
+            Logger.log(`> REALM ${realmIndex} ENTITIES LOADED`);
+        } else {
+            console.error("EntitySystem not available globally");
+            Logger.error("> ENTITIES NOT LOADED: SYSTEM UNAVAILABLE");
+        }
+    }
+    
     // Setup event listeners for system events
     function setupEventListeners() {
         // Listen for map position updates
+        setupMapPositionUpdates();
+        
+        // Listen for health changes
+        setupHealthListeners();
+        
+        // Listen for inventory events
+        setupInventoryListeners();
+        
+        // Listen for realm-specific events
+        setupRealmListeners();
+    }
+    
+    // Setup map position updates
+    function setupMapPositionUpdates() {
         if (window.EventSystem && state.systems.map) {
             // Update map with player position
             state.scene.registerBeforeRender(() => {
@@ -380,7 +503,7 @@ const App = (function() {
                     MapSystem.updatePlayerPosition({ x: position.x, z: position.z }, rotation);
                     
                     // Add debug logging to verify position updates are being sent properly
-                    if (Math.random() < 0.05) { // Log occasionally
+                    if (Math.random() < MAP_LOG_FREQUENCY) { // Log occasionally (reduced frequency)
                         console.warn("[APP] Sent position to map:", position.x.toFixed(2), position.z.toFixed(2), "rotation:", rotation.toFixed(2));
                     }
                     
@@ -394,8 +517,10 @@ const App = (function() {
                 }
             });
         }
-        
-        // Listen for health changes
+    }
+    
+    // Setup health listeners
+    function setupHealthListeners() {
         if (window.EventSystem && state.systems.health) {
             EventSystem.on('health.changed', (data) => {
                 // Handle health changes, possibly update UI or game state
@@ -403,83 +528,84 @@ const App = (function() {
                 state.gameState.maxHealth = data.max;
             });
         }
+    }
+    
+    // Setup inventory listeners
+    function setupInventoryListeners() {
+        if (!window.EventSystem || !state.systems.inventory) return;
         
-        // Listen for inventory events
-        if (window.EventSystem && state.systems.inventory) {
-            EventSystem.on('inventory.itemSelected', (data) => {
-                // Handle item selection
-                console.log(`Selected item: ${data.item.name}`);
-            });
+        // Item selection
+        EventSystem.on('inventory.itemSelected', (data) => {
+            // Handle item selection
+            console.log(`Selected item: ${data.item.name}`);
             
-            EventSystem.on('inventory.itemAdded', (data) => {
-                // Handle item added
-                console.log(`Added item: ${data.item.name}`);
-            });
-            
-            EventSystem.on('inventory.itemRemoved', (data) => {
-                // Handle item removed
-                console.log(`Removed item with ID: ${data.id}`);
-            });
-            
-            // Listen for game pause/resume from inventory
-            EventSystem.on('game.paused', (data) => {
-                if (data.source === 'inventory') {
-                    pauseGame();
-                }
-            });
-            
-            EventSystem.on('game.resumed', (data) => {
-                if (data.source === 'inventory') {
-                    resumeGame();
-                }
-            });
-            
-            // Equipment events
-            EventSystem.on('inventory.itemEquipped', (data) => {
-                console.log(`Equipped ${data.item.name} in ${data.slot} slot`);
-                // Handle equipment effects
-                applyEquipmentEffects(data.item, data.slot, true);
-            });
-            
-            EventSystem.on('inventory.itemUnequipped', (data) => {
-                console.log(`Unequipped ${data.item.name} from ${data.slot} slot`);
-                // Remove equipment effects
-                applyEquipmentEffects(data.item, data.slot, false);
-            });
-        }
+            // Check for health potion
+            if (data.item && data.item.id === 'health_potion') {
+                useHealthPotion();
+            }
+        });
         
-        // Use health potion when selected
-        if (window.EventSystem) {
-            EventSystem.on('inventory.itemSelected', (data) => {
-                if (data.item && data.item.id === 'health_potion') {
-                    useHealthPotion();
-                }
-            });
-        }
+        // Item added
+        EventSystem.on('inventory.itemAdded', (data) => {
+            console.log(`Added item: ${data.item.name}`);
+        });
         
-        // Future: Add event listeners for realm-specific events
-        if (window.EventSystem) {
-            // Listen for realm change events
-            EventSystem.on('realm.change', (data) => {
-                if (data && data.realmIndex) {
-                    changeRealm(data.realmIndex);
-                }
-            });
-            
-            // Listen for NPC interaction events
-            EventSystem.on('npc.interact', (data) => {
-                if (data && data.npcId) {
-                    handleNPCInteraction(data.npcId);
-                }
-            });
-            
-            // Listen for foe/quiz interaction events
-            EventSystem.on('foe.interact', (data) => {
-                if (data && data.foeId) {
-                    handleFoeInteraction(data.foeId);
-                }
-            });
-        }
+        // Item removed
+        EventSystem.on('inventory.itemRemoved', (data) => {
+            console.log(`Removed item with ID: ${data.id}`);
+        });
+        
+        // Game pause/resume from inventory
+        EventSystem.on('game.paused', (data) => {
+            if (data.source === 'inventory') {
+                pauseGame();
+            }
+        });
+        
+        EventSystem.on('game.resumed', (data) => {
+            if (data.source === 'inventory') {
+                resumeGame();
+            }
+        });
+        
+        // Equipment events
+        EventSystem.on('inventory.itemEquipped', (data) => {
+            console.log(`Equipped ${data.item.name} in ${data.slot} slot`);
+            // Handle equipment effects
+            applyEquipmentEffects(data.item, data.slot, true);
+        });
+        
+        EventSystem.on('inventory.itemUnequipped', (data) => {
+            console.log(`Unequipped ${data.item.name} from ${data.slot} slot`);
+            // Remove equipment effects
+            applyEquipmentEffects(data.item, data.slot, false);
+        });
+    }
+    
+    // Setup realm listeners
+    function setupRealmListeners() {
+        if (!window.EventSystem) return;
+        
+        // Listen for realm change events
+        EventSystem.on('realm.change', (data) => {
+            if (data && data.realmIndex) {
+                changeRealm(data.realmIndex);
+            }
+        });
+        
+        // Listen for NPC interaction events
+        EventSystem.on('npc.interact', (data) => {
+            if (data && data.npcId) {
+                handleNPCInteraction(data.npcId);
+            }
+        });
+        
+        // Listen for foe/quiz interaction events
+        EventSystem.on('foe.interact', (data) => {
+            if (data && data.foeId) {
+                handleFoeInteraction(data.foeId);
+            }
+        });
     }
     
     // Change to a different realm
@@ -652,34 +778,7 @@ const App = (function() {
             state.scene.registerBeforeRender(() => {
                 try {
                     const deltaTime = state.engine.getDeltaTime() / 1000;
-                    
-                    // Update systems
-                    MovementSystem.update(state.systems.camera, state.gameState, deltaTime);
-                    
-                    if (state.systems.audio) {
-                        AudioSystem.update(state.gameState, state.systems.audio);
-                    }
-                    
-                    if (state.systems.hands) {
-                        HandsSystem.updateHands(state.systems.hands, state.gameState, deltaTime);
-                    }
-                    
-                    // Update animation time for other possible uses
-                    state.gameState.bobTime += deltaTime;
-                    
-                    // Update player position for NPCs and Foes
-                    if (state.systems.camera) {
-                        const camera = state.systems.camera;
-                        const position = camera.position;
-                        
-                        // Emit player position event for NPC and Foe proximity checks
-                        if (window.EventSystem) {
-                            EventSystem.emit('player.position', {
-                                position: { x: position.x, y: position.y, z: position.z },
-                                rotation: camera.rotation.y
-                            });
-                        }
-                    }
+                    updateGameState(deltaTime);
                 } catch (e) {
                     // Don't log every frame to avoid console spam
                     console.error("Update loop error:", e);
@@ -705,6 +804,40 @@ const App = (function() {
         }
     }
     
+    // Update game state
+    function updateGameState(deltaTime) {
+        // Update systems
+        MovementSystem.update(state.systems.camera, state.gameState, deltaTime);
+        
+        if (state.systems.audio) {
+            AudioSystem.update(state.gameState, state.systems.audio);
+        }
+        
+        if (state.systems.hands) {
+            HandsSystem.updateHands(state.systems.hands, state.gameState, deltaTime);
+        }
+        
+        // Update animation time for other possible uses
+        state.gameState.bobTime += deltaTime;
+        
+        // Update player position for NPCs and Foes
+        updatePlayerPositionForEntities();
+    }
+    
+    // Update player position for entities
+    function updatePlayerPositionForEntities() {
+        if (state.systems.camera && window.EventSystem) {
+            const camera = state.systems.camera;
+            const position = camera.position;
+            
+            // Emit player position event for NPC and Foe proximity checks
+            EventSystem.emit('player.position', {
+                position: { x: position.x, y: position.y, z: position.z },
+                rotation: camera.rotation.y
+            });
+        }
+    }
+    
     // Example function to damage the player (for testing)
     function damagePlayer(amount) {
         if (!state.systems.health) return;
@@ -713,31 +846,34 @@ const App = (function() {
         
         // Shake the camera to indicate damage
         if (state.systems.camera) {
-            const camera = state.systems.camera;
-            const originalPosition = camera.position.clone();
-            
-            let shakeTime = 0;
-            const shakeDuration = 0.5;
-            const shakeIntensity = 0.05;
-            
-            // Create a shake animation
-            const shakeInterval = setInterval(() => {
-                shakeTime += 0.05;
-                
-                if (shakeTime >= shakeDuration) {
-                    clearInterval(shakeInterval);
-                    camera.position.set(originalPosition.x, originalPosition.y, originalPosition.z);
-                    return;
-                }
-                
-                // Random offset
-                const offsetX = (Math.random() - 0.5) * shakeIntensity;
-                const offsetY = (Math.random() - 0.5) * shakeIntensity;
-                
-                camera.position.x = originalPosition.x + offsetX;
-                camera.position.y = originalPosition.y + offsetY;
-            }, 50);
+            shakeCamera(0.5, 0.05);
         }
+    }
+    
+    // Shake the camera
+    function shakeCamera(duration, intensity) {
+        const camera = state.systems.camera;
+        const originalPosition = camera.position.clone();
+        
+        let shakeTime = 0;
+        
+        // Create a shake animation
+        const shakeInterval = setInterval(() => {
+            shakeTime += 0.05;
+            
+            if (shakeTime >= duration) {
+                clearInterval(shakeInterval);
+                camera.position.set(originalPosition.x, originalPosition.y, originalPosition.z);
+                return;
+            }
+            
+            // Random offset
+            const offsetX = (Math.random() - 0.5) * intensity;
+            const offsetY = (Math.random() - 0.5) * intensity;
+            
+            camera.position.x = originalPosition.x + offsetX;
+            camera.position.y = originalPosition.y + offsetY;
+        }, 50);
     }
 
     // Emergency fallback mode
@@ -749,21 +885,7 @@ const App = (function() {
             state.scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
             
             // Basic grid
-            for(let i = -20; i <= 20; i += 2) {
-                BABYLON.MeshBuilder.CreateLines("grid", {
-                    points: [
-                        new BABYLON.Vector3(i, 0, -20),
-                        new BABYLON.Vector3(i, 0, 20)
-                    ]
-                }, state.scene).color = new BABYLON.Color3(0.5, 0, 1);
-                
-                BABYLON.MeshBuilder.CreateLines("grid", {
-                    points: [
-                        new BABYLON.Vector3(-20, 0, i),
-                        new BABYLON.Vector3(20, 0, i)
-                    ]
-                }, state.scene).color = new BABYLON.Color3(0.5, 0, 1);
-            }
+            createFallbackGrid();
             
             // Basic camera
             state.systems.camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, 0), state.scene);
@@ -773,6 +895,25 @@ const App = (function() {
             Logger.log("> EMERGENCY FALLBACK MODE ACTIVATED");
         } catch (fallbackError) {
             Logger.error("Emergency fallback also failed: " + fallbackError.message);
+        }
+    }
+    
+    // Create fallback grid
+    function createFallbackGrid() {
+        for(let i = -20; i <= 20; i += 2) {
+            BABYLON.MeshBuilder.CreateLines("grid", {
+                points: [
+                    new BABYLON.Vector3(i, 0, -20),
+                    new BABYLON.Vector3(i, 0, 20)
+                ]
+            }, state.scene).color = new BABYLON.Color3(0.5, 0, 1);
+            
+            BABYLON.MeshBuilder.CreateLines("grid", {
+                points: [
+                    new BABYLON.Vector3(-20, 0, i),
+                    new BABYLON.Vector3(20, 0, i)
+                ]
+            }, state.scene).color = new BABYLON.Color3(0.5, 0, 1);
         }
     }
 
