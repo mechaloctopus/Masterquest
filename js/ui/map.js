@@ -72,16 +72,16 @@ const MapSystem = (function() {
         // Make sure CoordinateSystem is initialized
         setTimeout(ensureCoordinateDisplay, 100);
         
-        // Connect to NPC and FOE systems right away
+        // Connect to Entity system right away
         connectToEntitySystems();
         
         console.log("[MAP] Map system initialized successfully");
         return true;
     }
     
-    // Connect to NPC and Foe systems to get entity data
+    // Connect to Entity system to get entity data
     function connectToEntitySystems() {
-        console.log("[MAP] Connecting to entity systems...");
+        console.log("[MAP] Connecting to entity system...");
         
         // First, directly fetch entities once
         updateEntities();
@@ -90,30 +90,56 @@ const MapSystem = (function() {
         setInterval(updateEntities, 500); // Check twice per second
     }
     
-    // Update NPC and Foe positions from their systems
+    // Update NPC and Foe positions from Entity system
     function updateEntities() {
-        // Update NPCs if system available
+        // Check if EntitySystem is available
+        if (window.EntitySystem) {
+            try {
+                // Update NPCs
+                const allNPCs = EntitySystem.getAllNPCs();
+                updateNPCsOnMap(allNPCs);
+                
+                // Update Foes
+                const allFoes = EntitySystem.getAllFoes();
+                updateFoesOnMap(allFoes);
+                
+                console.log(`[MAP] Updated ${allNPCs.length} NPCs and ${allFoes.length} foes from EntitySystem`);
+            } catch (e) {
+                console.warn("[MAP] Could not get entities from EntitySystem:", e);
+                // Try fallback methods
+                tryFallbackEntityMethods();
+            }
+        } else {
+            console.warn("[MAP] EntitySystem not available, trying legacy systems");
+            tryFallbackEntityMethods();
+        }
+    }
+    
+    // Fallback methods for getting entities if EntitySystem is not available
+    function tryFallbackEntityMethods() {
+        // Try legacy NPC system
         if (window.NPCSystem && typeof NPCSystem.getAllNPCs === 'function') {
             try {
                 const allNPCs = NPCSystem.getAllNPCs();
                 updateNPCsOnMap(allNPCs);
+                console.log(`[MAP] Found ${allNPCs.length} NPCs via NPCSystem (legacy)`);
             } catch (e) {
-                console.warn("[MAP] Could not get NPCs:", e);
+                console.warn("[MAP] Could not get NPCs from legacy system:", e);
             }
         }
         
-        // Update Foes using multiple approaches to ensure we get them
-        updateFoesFromSystem();
+        // Try legacy FOE system with multiple approaches
+        tryLegacyFoeMethods();
     }
     
-    // Enhanced foe update function - tries multiple methods
-    function updateFoesFromSystem() {
+    // Enhanced foe update function for legacy system - tries multiple methods
+    function tryLegacyFoeMethods() {
         // First try the standard FoeSystem approach
         if (window.FoeSystem && typeof FoeSystem.getAllFoes === 'function') {
             try {
                 const allFoes = FoeSystem.getAllFoes();
                 if (Array.isArray(allFoes) && allFoes.length > 0) {
-                    console.log(`[MAP] Found ${allFoes.length} foes via FoeSystem.getAllFoes`);
+                    console.log(`[MAP] Found ${allFoes.length} foes via FoeSystem.getAllFoes (legacy)`);
                     updateFoesOnMap(allFoes);
                     return; // Successfully updated
                 } else {
@@ -126,51 +152,17 @@ const MapSystem = (function() {
         
         // Try second approach - check if foes are directly accessible
         if (window.FoeSystem && Array.isArray(FoeSystem.foes)) {
-            console.log(`[MAP] Found ${FoeSystem.foes.length} foes via FoeSystem.foes property`);
+            console.log(`[MAP] Found ${FoeSystem.foes.length} foes via FoeSystem.foes property (legacy)`);
             updateFoesOnMap(FoeSystem.foes);
             return; // Successfully updated
         }
         
         // Final approach - check global state for foes
         if (window.state && state.foes) {
-            console.log(`[MAP] Found foes via global state.foes`);
+            console.log(`[MAP] Found foes via global state.foes (legacy)`);
             updateFoesOnMap(Array.isArray(state.foes) ? state.foes : [state.foes]);
             return; // Successfully updated
         }
-        
-        // If we get here, check if any foes are active in battle
-        if (window.state && state.activeFoe) {
-            console.log(`[MAP] Found active foe in battle`);
-            updateFoesOnMap([state.activeFoe]);
-            return; // Successfully updated  
-        }
-        
-        // Last resort - manually scan the scene for foe meshes
-        if (window.BABYLON && BABYLON.Engine.Instances.length > 0) {
-            try {
-                const scene = BABYLON.Engine.Instances[0].scenes[0];
-                if (scene) {
-                    const foeMeshes = scene.meshes.filter(mesh => 
-                        mesh.name && (mesh.name.includes('foe') || mesh.name.includes('Foe')));
-                    
-                    if (foeMeshes.length > 0) {
-                        console.log(`[MAP] Found ${foeMeshes.length} foe meshes in scene`);
-                        const foesFromMeshes = foeMeshes.map((mesh, i) => ({
-                            id: mesh.id || `foe-${i}`,
-                            mesh: mesh,
-                            position: mesh.position,
-                            name: mesh.name
-                        }));
-                        updateFoesOnMap(foesFromMeshes);
-                        return; // Successfully updated
-                    }
-                }
-            } catch (e) {
-                console.warn("[MAP] Error scanning scene for foes:", e);
-            }
-        }
-        
-        console.warn("[MAP] Could not find any foes using multiple methods");
     }
     
     // Process NPC data from the NPC system

@@ -240,7 +240,18 @@ const App = (function() {
                 Logger.error(`Performance monitor initialization failed: ${e.message}`);
             }
             
-            // Initialize dialogue system for NPC and Foe interactions
+            // Initialize Entity system (replacing NPC and Foe systems)
+            console.log("Initializing Entity system, checking window.EntitySystem:", typeof window.EntitySystem);
+            if (typeof window.EntitySystem !== 'undefined') {
+                EntitySystem.init(state.scene);
+                Logger.log("> ENTITY SYSTEM INITIALIZED");
+                state.systems.entity = true;
+            } else {
+                console.error("EntitySystem is not defined globally");
+                Logger.error("> ENTITY SYSTEM NOT FOUND");
+            }
+            
+            // Initialize fallback dialogue system
             try {
                 if (window.DialogueSystem) {
                     DialogueSystem.init();
@@ -249,40 +260,6 @@ const App = (function() {
                 }
             } catch (e) {
                 Logger.error(`Dialogue system initialization failed: ${e.message}`);
-            }
-            
-            // Initialize NPC system
-            try {
-                console.log("Initializing NPC system, checking window.NPCSystem:", typeof window.NPCSystem);
-                if (typeof window.NPCSystem !== 'undefined') {
-                    NPCSystem.init(state.scene);
-                    Logger.log("> NPC SYSTEM INITIALIZED");
-                    state.systems.npcs = true;
-                    console.log("NPC system initialized successfully");
-                } else {
-                    console.error("NPCSystem is not defined globally");
-                    Logger.error("> NPC SYSTEM NOT FOUND");
-                }
-            } catch (e) {
-                console.error("NPC system initialization failed:", e);
-                Logger.error(`NPC system initialization failed: ${e.message}`);
-            }
-            
-            // Initialize Foe system
-            try {
-                console.log("Initializing Foe system, checking window.FoeSystem:", typeof window.FoeSystem);
-                if (typeof window.FoeSystem !== 'undefined') {
-                    FoeSystem.init(state.scene);
-                    Logger.log("> FOE SYSTEM INITIALIZED");
-                    state.systems.foes = true;
-                    console.log("Foe system initialized successfully");
-                } else {
-                    console.error("FoeSystem is not defined globally");
-                    Logger.error("> FOE SYSTEM NOT FOUND");
-                }
-            } catch (e) {
-                console.error("Foe system initialization failed:", e);
-                Logger.error(`Foe system initialization failed: ${e.message}`);
             }
             
             // If asset loader is available, queue and load assets
@@ -328,6 +305,8 @@ const App = (function() {
             return true;
         } catch (e) {
             Logger.error(`System initialization failed: ${e.message}`);
+            console.error("Critical error in initializeAllSystems:", e);
+            activateEmergencyFallback();
             return false;
         }
     }
@@ -368,28 +347,15 @@ const App = (function() {
             
             Logger.log(`> CREATING SCENE OBJECTS`);
             
-            // Force ensure the systems are defined globally
-            console.log("Checking for NPC System:", typeof window.NPCSystem);
-            console.log("Checking for Foe System:", typeof window.FoeSystem);
-            
-            // Initialize NPCs for this realm
-            if (typeof window.NPCSystem !== 'undefined') {
-                console.log("Found NPCSystem, initializing...");
-                NPCSystem.loadNPCsForRealm(realmIndex);
-                Logger.log("> NPC SYSTEM LOADED SUCCESSFULLY");
+            // Initialize entities for current realm
+            console.log("Checking for Entity System:", typeof window.EntitySystem);
+            if (typeof window.EntitySystem !== 'undefined') {
+                console.log("Found EntitySystem, initializing...");
+                EntitySystem.loadEntitiesForRealm(realmIndex);
+                Logger.log(`> REALM ${realmIndex} ENTITIES LOADED`);
             } else {
-                console.error("NPCSystem not available globally");
-                Logger.error("> NPC SYSTEM NOT AVAILABLE");
-            }
-            
-            // Initialize Foes for this realm
-            if (typeof window.FoeSystem !== 'undefined') {
-                console.log("Found FoeSystem, initializing...");
-                FoeSystem.loadFoesForRealm(realmIndex);
-                Logger.log("> FOE SYSTEM LOADED SUCCESSFULLY");
-            } else {
-                console.error("FoeSystem not available globally");
-                Logger.error("> FOE SYSTEM NOT AVAILABLE");
+                console.error("EntitySystem not available globally");
+                Logger.error("> ENTITIES NOT LOADED: SYSTEM UNAVAILABLE");
             }
             
             Logger.log(`> REALM ${realmConfig.NAME} INITIALIZATION COMPLETE`);
@@ -530,21 +496,25 @@ const App = (function() {
     
     // Handle NPC interaction
     function handleNPCInteraction(npcId) {
-        Logger.log(`> INTERACTING WITH NPC ID: ${npcId}`);
+        Logger.log(`Initiating interaction with NPC: ${npcId}`);
         
-        // Use NPCSystem to start interaction with this NPC
-        if (window.NPCSystem) {
-            NPCSystem.startInteraction(npcId);
+        // Use EntitySystem to start interaction with this NPC
+        if (window.EntitySystem) {
+            EntitySystem.startInteraction(npcId);
+        } else {
+            Logger.error("> NPC INTERACTION FAILED: ENTITY SYSTEM NOT FOUND");
         }
     }
     
     // Handle foe/quiz interaction
     function handleFoeInteraction(foeId) {
-        Logger.log(`> INTERACTING WITH FOE ID: ${foeId}`);
+        Logger.log(`Initiating battle with foe: ${foeId}`);
         
-        // Use FoeSystem to start battle with this foe
-        if (window.FoeSystem) {
-            FoeSystem.startBattle(foeId);
+        // Use EntitySystem to start battle with this foe
+        if (window.EntitySystem) {
+            EntitySystem.startBattle(foeId);
+        } else {
+            Logger.error("> FOE BATTLE FAILED: ENTITY SYSTEM NOT FOUND");
         }
     }
     
