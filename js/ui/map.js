@@ -113,11 +113,11 @@ const MapSystem = (function() {
     function toggleMap(e) {
         if (e) e.preventDefault();
         
-        isCollapsed = !isCollapsed;
-        
-        if (isCollapsed) {
+            isCollapsed = !isCollapsed;
+            
+            if (isCollapsed) {
             mapContainer.classList.remove('expanded');
-        } else {
+            } else {
             mapContainer.classList.add('expanded');
         }
         
@@ -136,6 +136,11 @@ const MapSystem = (function() {
         mapCanvas.width = width;
         mapCanvas.height = height;
         needsRedraw = true;
+        
+        // Debug canvas size
+        if (DEBUG) {
+            console.log("Canvas size:", mapCanvas.width, mapCanvas.height);
+        }
     }
     
     // Main render loop
@@ -163,7 +168,7 @@ const MapSystem = (function() {
         ctx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
         
         // Draw grid
-        drawGrid();
+            drawGrid();
         
         // Draw points of interest
         drawPoints();
@@ -178,7 +183,6 @@ const MapSystem = (function() {
         
         const centerX = mapCanvas.width / 2;
         const centerY = mapCanvas.height / 2;
-        const gridSize = config.gridSize;
         
         // Set grid style
         ctx.strokeStyle = config.gridColor;
@@ -199,12 +203,14 @@ const MapSystem = (function() {
     
     // Draw grid in expanded mode
     function drawExpandedGrid(centerX, centerY) {
-        const gridSize = config.gridSize;
+        const gridSpacing = CONFIG.GRID.SPACING || 2; // World grid spacing (2 units)
+        const pixelSpacing = config.gridSize;         // Pixel grid spacing (20 pixels)
+        const scale = pixelSpacing / gridSpacing;     // 10 pixels per world unit
         const range = 50; // Number of grid lines to draw
         
         // Draw vertical lines
         for (let i = -range; i <= range; i++) {
-            const x = centerX + i * gridSize;
+            const x = centerX + i * pixelSpacing;
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, mapCanvas.height);
@@ -214,13 +220,13 @@ const MapSystem = (function() {
             if (i % 5 === 0) {
                 ctx.fillStyle = "#00ffcc";
                 ctx.font = "8px monospace";
-                ctx.fillText(i.toString(), x + 2, 10);
+                ctx.fillText((i * gridSpacing).toString(), x + 2, 10);
             }
         }
         
         // Draw horizontal lines
         for (let i = -range; i <= range; i++) {
-            const y = centerY + i * gridSize;
+            const y = centerY + i * pixelSpacing;
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(mapCanvas.width, y);
@@ -230,26 +236,29 @@ const MapSystem = (function() {
             if (i % 5 === 0) {
                 ctx.fillStyle = "#00ffcc";
                 ctx.font = "8px monospace";
-                ctx.fillText(i.toString(), 2, y - 2);
+                ctx.fillText((i * gridSpacing).toString(), 2, y - 2);
             }
         }
     }
     
-    // Draw grid in collapsed mode - SIMPLIFIED APPROACH
+    // Draw grid in collapsed mode - PROPERLY SCALED
     function drawCollapsedGrid(centerX, centerY) {
-        const gridSize = config.gridSize;
+        const gridSpacing = CONFIG.GRID.SPACING || 2;  // World grid spacing (2 units)
+        const pixelSpacing = config.gridSize;          // Pixel grid spacing (20 pixels)
+        const scale = pixelSpacing / gridSpacing;      // 10 pixels per world unit
         
-        // Calculate grid offsets based on player position
-        // Modulo operation ensures seamless grid movement
-        let offsetX = -(playerPos.x * gridSize) % gridSize;
-        let offsetZ = -(playerPos.z * gridSize) % gridSize;
+        // Calculate total offset in pixels based on player position
+        // Grid moves opposite to player movement (negative scale)
+        const totalOffsetX = -playerPos.x * scale;
+        const totalOffsetZ = -playerPos.z * scale;
         
-        // Ensure positive offsets for drawing
-        if (offsetX < 0) offsetX += gridSize;
-        if (offsetZ < 0) offsetZ += gridSize;
+        // Calculate starting positions for seamless grid looping
+        // Ensures the offset wraps between 0 and pixelSpacing
+        let startX = (totalOffsetX % pixelSpacing + pixelSpacing) % pixelSpacing;
+        let startY = (totalOffsetZ % pixelSpacing + pixelSpacing) % pixelSpacing;
         
         // Draw vertical grid lines
-        for (let x = offsetX; x < mapCanvas.width + gridSize; x += gridSize) {
+        for (let x = startX; x < mapCanvas.width + pixelSpacing; x += pixelSpacing) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, mapCanvas.height);
@@ -257,48 +266,54 @@ const MapSystem = (function() {
         }
         
         // Draw horizontal grid lines
-        for (let y = offsetZ; y < mapCanvas.height + gridSize; y += gridSize) {
+        for (let y = startY; y < mapCanvas.height + pixelSpacing; y += pixelSpacing) {
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(mapCanvas.width, y);
             ctx.stroke();
         }
+        
+        if (DEBUG && frameCounter % 60 === 0) {
+            console.log(`[MAP] Grid offset: X=${startX.toFixed(1)}, Z=${startY.toFixed(1)}`);
+        }
     }
     
-    // Draw points of interest - SIMPLIFIED
+    // Draw points of interest - PROPERLY SCALED
     function drawPoints() {
         if (!ctx || !mapCanvas) return;
         
         const centerX = mapCanvas.width / 2;
         const centerY = mapCanvas.height / 2;
-        const gridSize = config.gridSize;
+        const gridSpacing = CONFIG.GRID.SPACING || 2; // World grid spacing (2 units)
+        const pixelSpacing = config.gridSize;         // Pixel grid spacing (20 pixels)
+        const scale = pixelSpacing / gridSpacing;     // 10 pixels per world unit
         
         points.forEach(point => {
             let x, y;
             
             if (!isCollapsed) {
                 // In expanded mode, points have fixed positions on grid
-                x = centerX + point.x * gridSize;
-                y = centerY + point.z * gridSize;
+                x = centerX + point.x * scale;
+                y = centerY + point.z * scale;
             } else {
                 // In collapsed mode, points move relative to player
-                // This is key - the relative position calculation
-                x = centerX + (point.x - playerPos.x) * gridSize;
-                y = centerY + (point.z - playerPos.z) * gridSize;
+                // This is key - the relative position calculation with proper scaling
+                x = centerX + (point.x - playerPos.x) * scale;
+                y = centerY + (point.z - playerPos.z) * scale;
             }
             
             // Only draw if within view
             if (x > -20 && x < mapCanvas.width + 20 &&
                 y > -20 && y < mapCanvas.height + 20) {
-                
-                // Draw point
+            
+            // Draw point
                 ctx.fillStyle = point.color || "#ffffff";
                 ctx.beginPath();
                 ctx.arc(x, y, 3, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Draw label
-                if (point.label) {
+            if (point.label) {
                     ctx.fillStyle = "#ffffff";
                     ctx.font = "9px monospace";
                     ctx.fillText(point.label, x + 5, y + 3);
@@ -307,17 +322,20 @@ const MapSystem = (function() {
         });
     }
     
-    // Draw player marker - SIMPLIFIED
+    // Draw player marker - PROPERLY SCALED
     function drawPlayer() {
         if (!ctx || !mapCanvas) return;
         
         const centerX = mapCanvas.width / 2;
         const centerY = mapCanvas.height / 2;
+        const gridSpacing = CONFIG.GRID.SPACING || 2; // World grid spacing (2 units)
+        const pixelSpacing = config.gridSize;         // Pixel grid spacing (20 pixels)
+        const scale = pixelSpacing / gridSpacing;     // 10 pixels per world unit
         
         // In collapsed mode, player is always at center
-        // In expanded mode, player moves on the grid
-        const x = !isCollapsed ? centerX + playerPos.x * config.gridSize : centerX;
-        const y = !isCollapsed ? centerY + playerPos.z * config.gridSize : centerY;
+        // In expanded mode, player moves on the grid with proper scaling
+        const x = !isCollapsed ? centerX + playerPos.x * scale : centerX;
+        const y = !isCollapsed ? centerY + playerPos.z * scale : centerY;
         
         // Draw player triangle
         ctx.fillStyle = config.playerColor;
