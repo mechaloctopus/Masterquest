@@ -10,6 +10,7 @@ const CollisionSystem = (function() {
     
     // Configuration
     const COLLISION_RADIUS = 1.0; // Size of the player's collision sphere (reduced to 1 unit)
+    const RESET_DISTANCE = 2.0;   // Distance player needs to move away to allow for re-collision detection
     
     // Direct log message to the on-screen console
     function logToConsole(message) {
@@ -92,6 +93,9 @@ const CollisionSystem = (function() {
             return;
         }
         
+        // Create a set of currently colliding entity IDs for this frame
+        const currentlyColliding = new Set();
+        
         // Check collisions with each entity
         allEntities.forEach(entity => {
             if (!entity || !entity.mesh) return;
@@ -113,11 +117,15 @@ const CollisionSystem = (function() {
                 console.log(`Distance to ${entity.name || 'entity'}: ${distance.toFixed(2)} (ID: ${entity.id || 'unknown'})`);
             }
             
+            // Get a stable entity ID
+            const entityId = entity.id || `unknown-${Math.random()}`;
+            
             // Check if player is in collision range
             if (distance < COLLISION_RADIUS) {
-                // If we haven't already logged a collision with this entity
-                const entityId = entity.id || `unknown-${Math.random()}`;
+                // Track that we're currently colliding with this entity
+                currentlyColliding.add(entityId);
                 
+                // If we haven't already logged a collision with this entity
                 if (!collidedEntities.has(entityId)) {
                     // Create collision message
                     const entityName = entity.name || "Unknown Entity";
@@ -131,11 +139,13 @@ const CollisionSystem = (function() {
                     // Add to collided entities to avoid duplicate messages
                     collidedEntities.add(entityId);
                 }
-            } else {
-                // When player moves away, remove from collided set to allow future collisions
-                const entityId = entity.id || `unknown-${Math.random()}`;
-                if (collidedEntities.has(entityId) && distance > COLLISION_RADIUS + 0.5) {
+            } else if (distance > RESET_DISTANCE) {
+                // When player moves sufficiently away, remove from collided set to allow future collisions
+                if (collidedEntities.has(entityId)) {
                     collidedEntities.delete(entityId);
+                    if (Math.random() < 0.01) { // Occasionally log for debugging
+                        console.log(`Reset collision detection for entity: ${entityId} (Distance: ${distance.toFixed(2)}m)`);
+                    }
                 }
             }
         });
