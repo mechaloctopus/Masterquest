@@ -82,10 +82,21 @@ window.EntitySystem = (function() {
                         scene.actionManager = new BABYLON.ActionManager(scene);
                     }
                     
-                    // Verify logger is working
-                    if (window.Logger) {
-                        Logger.log(">>> ENTITY SYSTEM INITIALIZED - CLICK ENTITIES TO INTERACT <<<");
-                    }
+                    // Test on-screen console
+                    setTimeout(() => {
+                        // Direct test of on-screen console
+                        const logContent = document.getElementById('logContent');
+                        if (logContent) {
+                            const testMessage = document.createElement('div');
+                            testMessage.className = 'log-message';
+                            const textSpan = document.createElement('span');
+                            textSpan.className = 'log-text';
+                            textSpan.textContent = "ENTITY SYSTEM READY - CLICK ENTITIES TO SEE MESSAGES HERE";
+                            testMessage.appendChild(textSpan);
+                            logContent.appendChild(testMessage);
+                            logContent.scrollTop = logContent.scrollHeight;
+                        }
+                    }, 2000); // Wait 2 seconds to make sure DOM is ready
                     
                     return true;
                 },
@@ -106,10 +117,21 @@ window.EntitySystem = (function() {
                 scene.actionManager = new BABYLON.ActionManager(scene);
             }
             
-            // Verify logger is working
-            if (window.Logger) {
-                Logger.log(">>> ENTITY SYSTEM INITIALIZED - CLICK ENTITIES TO INTERACT <<<");
-            }
+            // Test on-screen console
+            setTimeout(() => {
+                // Direct test of on-screen console
+                const logContent = document.getElementById('logContent');
+                if (logContent) {
+                    const testMessage = document.createElement('div');
+                    testMessage.className = 'log-message';
+                    const textSpan = document.createElement('span');
+                    textSpan.className = 'log-text';
+                    textSpan.textContent = "ENTITY SYSTEM READY - CLICK ENTITIES TO SEE MESSAGES HERE";
+                    testMessage.appendChild(textSpan);
+                    logContent.appendChild(testMessage);
+                    logContent.scrollTop = logContent.scrollHeight;
+                }
+            }, 2000); // Wait 2 seconds to make sure DOM is ready
             
             // Initialize event handlers
             if (window.EventSystem) {
@@ -485,46 +507,43 @@ window.EntitySystem = (function() {
             entity.mesh.actionManager = new BABYLON.ActionManager(scene);
         }
         
-        // Make mesh slightly more responsive to clicks by increasing the bounding box for interaction
-        if (entity.mesh.getBoundingInfo) {
-            const boundingInfo = entity.mesh.getBoundingInfo();
-            if (boundingInfo) {
-                // Increase bounding box by 20% to make clicking easier
-                const min = boundingInfo.boundingBox.minimum.scale(1.2);
-                const max = boundingInfo.boundingBox.maximum.scale(1.2);
-                entity.mesh.setBoundingInfo(new BABYLON.BoundingInfo(min, max));
-            }
-        }
-        
         // Add click action
         entity.mesh.actionManager.registerAction(
             new BABYLON.ExecuteCodeAction(
                 BABYLON.ActionManager.OnPickTrigger,
                 function() {
-                    // Simple, direct message for the on-screen console
+                    // Create the message
                     const entityType = entity.type === ENTITY_TYPES.NPC ? 'NPC' : 'FOE';
                     const message = `${entityType} clicked: Hello, I am ${entity.name}`;
                     
-                    // Ensure the on-screen console is visible
-                    const logElement = document.getElementById('log');
-                    const logToggle = document.getElementById('logToggle');
-                    
-                    if (logElement && logElement.classList.contains('collapsed')) {
-                        logElement.classList.remove('collapsed');
-                        if (logToggle) {
-                            logToggle.textContent = '▼';
+                    // DIRECT APPROACH: Add message directly to the on-screen console
+                    const logContent = document.getElementById('logContent');
+                    if (logContent) {
+                        // Make sure the log is visible
+                        const logElement = document.getElementById('log');
+                        if (logElement && logElement.classList.contains('collapsed')) {
+                            logElement.classList.remove('collapsed');
+                            const logToggle = document.getElementById('logToggle');
+                            if (logToggle) {
+                                logToggle.textContent = '▼';
+                            }
                         }
-                    }
-                    
-                    // Use Logger to display message in the on-screen console
-                    if (window.Logger) {
-                        // Add message to the visible on-screen console
-                        Logger.log(message);
                         
-                        // Make sure it's scrolled into view
-                        if (Logger.forceScrollToBottom) {
-                            Logger.forceScrollToBottom();
-                        }
+                        // Create message element
+                        const messageElement = document.createElement('div');
+                        messageElement.className = 'log-message';
+                        
+                        // Create text span
+                        const textSpan = document.createElement('span');
+                        textSpan.className = 'log-text';
+                        textSpan.textContent = message;
+                        messageElement.appendChild(textSpan);
+                        
+                        // Add to log
+                        logContent.appendChild(messageElement);
+                        
+                        // Scroll to bottom
+                        logContent.scrollTop = logContent.scrollHeight;
                     }
                     
                     // If it's an NPC, also start interaction
