@@ -1,291 +1,214 @@
-// Map System - Simple Static Version
+// Minimal Map System - Built from scratch
 const MapSystem = (function() {
-    // Debug mode
-    const DEBUG = true;
-    
-    // DOM elements
-    let mapContainer = null;
+    // Essential DOM elements
     let mapCanvas = null;
     let ctx = null;
+    let mapContainer = null;
     
-    // Map state
-    let initialized = false;
-    let playerPos = { x: 0, z: 0 };
-    let playerRot = 0;
-    let frameCounter = 0;
-    let needsRedraw = true;
+    // Basic player position tracking
+    let playerX = 0;
+    let playerZ = 0;
+    let playerRotation = 0;
     
-    // Map configuration
-    const config = {
-        backgroundColor: "#001a33",
-        gridColor: "#00cc99",
-        gridSize: 20,       // Pixel size of grid cells
-        playerColor: "#ff00cc"
-    };
+    // Simple configuration
+    const MAP_SIZE = 200;
+    const GRID_CELL_SIZE = 20; // Pixels per grid cell
+    const WORLD_GRID_SIZE = 2; // World units per grid cell
+    const SCALE = GRID_CELL_SIZE / WORLD_GRID_SIZE; // Pixels per world unit
     
-    // Points of interest
-    let points = [];
-    
-    // Initialize the map
     function init() {
-        console.log("[MAP] Initializing simplified map system");
+        console.log("[MAP] Initializing minimal map system");
         
-        // Get required DOM elements
+        // Get the map container and create a fixed style for it
         mapContainer = document.getElementById('mapContainer');
-        mapCanvas = document.getElementById('mapCanvas');
-        
-        if (!mapContainer || !mapCanvas) {
-            console.error("[MAP] Failed to find map elements");
+        if (!mapContainer) {
+            console.error("[MAP] Could not find map container");
             return false;
         }
         
-        // Setup canvas and context
-        ctx = mapCanvas.getContext('2d');
-        if (!ctx) {
-            console.error("[MAP] Failed to get canvas context");
-            return false;
-        }
+        // Style the map container for a fixed appearance
+        mapContainer.style.position = 'fixed';
+        mapContainer.style.top = '10px';
+        mapContainer.style.right = '10px';
+        mapContainer.style.width = MAP_SIZE + 'px';
+        mapContainer.style.height = MAP_SIZE + 'px';
+        mapContainer.style.border = '2px solid #00cc99';
+        mapContainer.style.backgroundColor = 'rgba(0, 26, 51, 0.8)';
+        mapContainer.style.zIndex = '100';
         
-        // Remove the toggle button since we're making the map permanent
+        // Remove the toggle button if it exists
         const mapToggle = document.getElementById('mapToggle');
         if (mapToggle) {
             mapToggle.style.display = 'none';
         }
         
-        // Make map permanently visible
-        mapContainer.classList.add('permanent');
-        mapContainer.style.display = 'block';
+        // Get or create the canvas element
+        mapCanvas = document.getElementById('mapCanvas');
+        if (!mapCanvas) {
+            mapCanvas = document.createElement('canvas');
+            mapCanvas.id = 'mapCanvas';
+            mapContainer.appendChild(mapCanvas);
+        }
         
-        // Remove expanded/collapsed classes
-        mapContainer.classList.remove('expanded');
-        mapContainer.classList.remove('collapsed');
+        // Set canvas size
+        mapCanvas.width = MAP_SIZE;
+        mapCanvas.height = MAP_SIZE;
+        mapCanvas.style.display = 'block';
         
-        // Add custom CSS for permanent map
-        const style = document.createElement('style');
-        style.textContent = `
-            #mapContainer.permanent {
-                position: fixed;
-                top: 10px;
-                right: 10px;
-                width: 200px;
-                height: 200px;
-                border: 2px solid #00cc99;
-                background: rgba(0, 10, 30, 0.8);
-                z-index: 100;
-            }
-            #mapCanvas {
-                width: 100%;
-                height: calc(100% - 30px);
-                display: block;
-            }
-        `;
-        document.head.appendChild(style);
+        // Get the drawing context
+        ctx = mapCanvas.getContext('2d');
+        if (!ctx) {
+            console.error("[MAP] Could not get canvas context");
+            return false;
+        }
         
-        // Initial resize
-        resizeCanvas();
+        // Add origin marker
+        addOriginMarker();
         
-        // Add window resize listener
-        window.addEventListener('resize', resizeCanvas);
+        // Start the render loop
+        requestAnimationFrame(update);
         
-        // Add origin point for reference
-        addPoint(0, 0, { label: "Origin", color: "#00FFFF" });
-        
-        // Start render loop
-        requestAnimationFrame(renderLoop);
-        
-        initialized = true;
-        console.log("[MAP] Map system initialized");
-        console.log("[MAP] Initial player position:", playerPos);
-        
+        console.log("[MAP] Map system initialized successfully");
         return true;
     }
     
-    // Update player position
+    // Add a marker at the origin (0,0)
+    function addOriginMarker() {
+        const originMarker = {
+            x: 0,
+            z: 0,
+            color: "#00FFFF",
+            label: "Origin"
+        };
+        
+        // Store the origin in a global variable so we can access it
+        window.originMarker = originMarker;
+    }
+    
+    // Update player position - called by the game
     function updatePlayerPosition(position, rotation) {
-        // Ensure we're getting valid data
         if (!position || typeof position.x !== 'number' || typeof position.z !== 'number') {
-            console.error("[MAP] Invalid position data:", position);
             return;
         }
         
-        // Update player position and rotation
-        playerPos = { 
-            x: Number(position.x), 
-            z: Number(position.z) 
-        };
-        playerRot = Number(rotation);
+        // Store player position and rotation
+        playerX = position.x;
+        playerZ = position.z;
+        playerRotation = rotation;
         
-        // Always redraw when position updates
-        needsRedraw = true;
-        
-        // Debug logging
-        if (DEBUG && frameCounter % 30 === 0) {
-            console.log(`[MAP] Position updated: x=${playerPos.x.toFixed(2)}, z=${playerPos.z.toFixed(2)}, rot=${playerRot.toFixed(2)}`);
+        // Occasionally log position for debugging
+        if (Math.random() < 0.01) {
+            console.log(`[MAP] Player at: (${playerX.toFixed(2)}, ${playerZ.toFixed(2)}), rotation: ${playerRotation.toFixed(2)}`);
         }
     }
     
-    // Resize canvas to fit container
-    function resizeCanvas() {
-        if (!mapCanvas || !mapContainer) return;
-        
-        const width = mapContainer.clientWidth;
-        const height = mapContainer.clientHeight - 30; // Subtract header height
-        
-        mapCanvas.width = width;
-        mapCanvas.height = height;
-        
-        if (DEBUG) {
-            console.log("[MAP] Canvas resized to:", width, "×", height);
-        }
-        
-        needsRedraw = true;
-    }
-    
-    // Main render loop
-    function renderLoop() {
-        frameCounter++;
-        
-        // Only render when necessary or occasionally
-        if (needsRedraw || frameCounter % 15 === 0) {
-            render();
-            needsRedraw = false;
-        }
-        
-        requestAnimationFrame(renderLoop);
+    // Main update loop
+    function update() {
+        render();
+        requestAnimationFrame(update);
     }
     
     // Render the map
     function render() {
         if (!ctx || !mapCanvas) return;
         
-        // Clear canvas
-        ctx.fillStyle = config.backgroundColor;
+        // Clear the canvas
+        ctx.fillStyle = '#001a33'; // Dark blue background
         ctx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
         
-        // Draw grid
+        // Draw the grid with proper player-relative movement
         drawGrid();
         
-        // Draw points of interest
-        drawPoints();
+        // Draw the origin point
+        drawOrigin();
         
-        // Draw player
+        // Draw the player arrow in the center
         drawPlayer();
     }
     
-    // Draw grid - simplified to always be in "collapsed" mode
+    // Draw the grid with proper offsets based on player position
     function drawGrid() {
-        if (!ctx || !mapCanvas) return;
+        const center = MAP_SIZE / 2;
         
-        const centerX = mapCanvas.width / 2;
-        const centerY = mapCanvas.height / 2;
-        const gridSpacing = CONFIG.GRID.SPACING || 2;  // World grid spacing (2 units)
-        const pixelSpacing = config.gridSize;          // Pixel grid spacing (20 pixels)
-        const scale = pixelSpacing / gridSpacing;      // 10 pixels per world unit
+        // Calculate grid offsets based on player position
+        // The grid moves in the opposite direction of player movement
+        const offsetX = (-playerX * SCALE) % GRID_CELL_SIZE;
+        const offsetZ = (-playerZ * SCALE) % GRID_CELL_SIZE;
         
-        // Set grid style
-        ctx.strokeStyle = config.gridColor;
-        ctx.lineWidth = 0.5;
-        ctx.globalAlpha = 0.3;
-        
-        // Calculate total offset in pixels based on player position
-        // Grid moves opposite to player movement
-        const totalOffsetX = -playerPos.x * scale;
-        const totalOffsetZ = -playerPos.z * scale;
-        
-        // Calculate starting positions for grid lines
-        let startX = (totalOffsetX % pixelSpacing + pixelSpacing) % pixelSpacing;
-        let startY = (totalOffsetZ % pixelSpacing + pixelSpacing) % pixelSpacing;
+        // Make sure offsets wrap properly (positive values between 0 and GRID_CELL_SIZE)
+        const startX = (offsetX + GRID_CELL_SIZE) % GRID_CELL_SIZE;
+        const startZ = (offsetZ + GRID_CELL_SIZE) % GRID_CELL_SIZE;
         
         // Draw vertical grid lines
-        for (let x = startX; x < mapCanvas.width + pixelSpacing; x += pixelSpacing) {
+        ctx.strokeStyle = '#00cc99'; // Neon green grid
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.3; // Semi-transparent grid
+        
+        for (let x = startX; x < MAP_SIZE; x += GRID_CELL_SIZE) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
-            ctx.lineTo(x, mapCanvas.height);
+            ctx.lineTo(x, MAP_SIZE);
             ctx.stroke();
         }
         
         // Draw horizontal grid lines
-        for (let y = startY; y < mapCanvas.height + pixelSpacing; y += pixelSpacing) {
+        for (let z = startZ; z < MAP_SIZE; z += GRID_CELL_SIZE) {
             ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(mapCanvas.width, y);
+            ctx.moveTo(0, z);
+            ctx.lineTo(MAP_SIZE, z);
             ctx.stroke();
         }
         
-        // Reset alpha
-        ctx.globalAlpha = 1.0;
+        ctx.globalAlpha = 1.0; // Reset alpha
+    }
+    
+    // Draw the origin marker relative to player position
+    function drawOrigin() {
+        if (!window.originMarker) return;
         
-        // Debug logging of grid offsets
-        if (DEBUG && frameCounter % 60 === 0) {
-            console.log(`[MAP] Grid offset: X=${startX.toFixed(1)}, Z=${startY.toFixed(1)}`);
-            console.log(`[MAP] Player position: X=${playerPos.x.toFixed(1)}, Z=${playerPos.z.toFixed(1)}`);
+        const center = MAP_SIZE / 2;
+        const origin = window.originMarker;
+        
+        // Calculate origin position relative to player
+        // When player moves, origin moves in opposite direction
+        const x = center + (origin.x - playerX) * SCALE;
+        const y = center + (origin.z - playerZ) * SCALE;
+        
+        // Draw the origin point if it's in view
+        if (x >= -10 && x <= MAP_SIZE + 10 && y >= -10 && y <= MAP_SIZE + 10) {
+            // Draw point
+            ctx.fillStyle = origin.color;
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw label
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '10px monospace';
+            ctx.fillText(origin.label, x + 6, y + 4);
         }
     }
     
-    // Draw points of interest
-    function drawPoints() {
-        if (!ctx || !mapCanvas) return;
-        
-        const centerX = mapCanvas.width / 2;
-        const centerY = mapCanvas.height / 2;
-        const gridSpacing = CONFIG.GRID.SPACING || 2;
-        const pixelSpacing = config.gridSize;
-        const scale = pixelSpacing / gridSpacing;
-        
-        points.forEach(point => {
-            // Point position relative to player
-            const x = centerX + (point.x - playerPos.x) * scale;
-            const y = centerY + (point.z - playerPos.z) * scale;
-            
-            // Only draw if within view
-            if (x > -20 && x < mapCanvas.width + 20 &&
-                y > -20 && y < mapCanvas.height + 20) {
-                
-                // Draw point
-                ctx.fillStyle = point.color || "#ffffff";
-                ctx.beginPath();
-                ctx.arc(x, y, 3, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Draw label
-                if (point.label) {
-                    ctx.fillStyle = "#ffffff";
-                    ctx.font = "9px monospace";
-                    ctx.fillText(point.label, x + 5, y + 3);
-                }
-            }
-        });
-    }
-    
-    // Draw player marker
+    // Draw the player arrow (always in center)
     function drawPlayer() {
-        if (!ctx || !mapCanvas) return;
-        
-        const centerX = mapCanvas.width / 2;
-        const centerY = mapCanvas.height / 2;
-        
-        // Player is always at center in this simplified map
-        const x = centerX;
-        const y = centerY;
-        
-        // Draw player triangle
-        ctx.fillStyle = config.playerColor;
+        const center = MAP_SIZE / 2;
         
         // Save context for rotation
         ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(-playerRot); // Negative rotation due to Y-axis inversion
+        ctx.translate(center, center);
+        ctx.rotate(-playerRotation); // Negative for correct direction
         
-        // Draw triangle for direction
+        // Draw player triangle
+        ctx.fillStyle = '#ff00cc'; // Pink/purple player marker
         ctx.beginPath();
-        ctx.moveTo(0, -10);    // Tip of arrow
-        ctx.lineTo(-6, 6);     // Bottom left
-        ctx.lineTo(6, 6);      // Bottom right
+        ctx.moveTo(0, -10); // Tip of the arrow
+        ctx.lineTo(-6, 6);  // Bottom left
+        ctx.lineTo(6, 6);   // Bottom right
         ctx.closePath();
         ctx.fill();
         
-        // Add white outline
-        ctx.strokeStyle = "#ffffff";
+        // Draw white outline
+        ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1;
         ctx.stroke();
         
@@ -293,70 +216,11 @@ const MapSystem = (function() {
         ctx.restore();
     }
     
-    // Add a point to the map
-    function addPoint(x, z, options = {}) {
-        const point = {
-            x: parseFloat(x),
-            z: parseFloat(z),
-            color: options.color || "#ffffff",
-            label: options.label || null
-        };
-        
-        points.push(point);
-        needsRedraw = true;
-        return point;
-    }
-    
-    // Remove a point from the map
-    function removePoint(x, z) {
-        const initialLength = points.length;
-        points = points.filter(point => !(point.x === x && point.z === z));
-        needsRedraw = true;
-        return points.length < initialLength;
-    }
-    
-    // Clear all points
-    function clearPoints() {
-        points = [];
-        needsRedraw = true;
-    }
-    
-    // Test function - for debugging
-    function testMove() {
-        console.log("[MAP] Testing movement pattern");
-        
-        // Simulate player moving in a small pattern
-        const testPoints = [
-            { x: 1, z: 0 },
-            { x: 2, z: 0 },
-            { x: 2, z: 1 },
-            { x: 1, z: 1 },
-            { x: 0, z: 0 }
-        ];
-        
-        let i = 0;
-        const interval = setInterval(() => {
-            if (i >= testPoints.length) {
-                clearInterval(interval);
-                console.log("[MAP] Test movement complete");
-                return;
-            }
-            
-            updatePlayerPosition(testPoints[i], playerRot + 0.5);
-            i++;
-        }, 500);
-    }
-    
-    // Initialize when the DOM is ready
+    // Initialize the system once DOM is ready
     document.addEventListener('DOMContentLoaded', init);
     
-    // Public API
+    // Only expose what's absolutely needed
     return {
-        init,
-        updatePlayerPosition,
-        addPoint,
-        removePoint,
-        clearPoints,
-        test: testMove
+        updatePlayerPosition: updatePlayerPosition
     };
 })(); 
