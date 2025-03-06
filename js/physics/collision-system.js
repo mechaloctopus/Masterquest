@@ -12,6 +12,7 @@ const CollisionSystem = (function() {
     const COLLISION_RADIUS = 1.0; // Size of the player's collision sphere (reduced to 1 unit)
     const RESET_DISTANCE = 2.0;   // Distance player needs to move away to allow for re-collision detection
     const BOUNCE_DISTANCE = 1.0;  // How far to bounce the player away on collision
+    const BOUNCE_HEIGHT = 0.5;    // How high to bounce the player vertically
     
     // Direct log message to the on-screen console
     function logToConsole(message) {
@@ -34,21 +35,38 @@ const CollisionSystem = (function() {
         // Calculate direction vector from entity to player (this is the bounce direction)
         const bounceDirection = new BABYLON.Vector3(
             camera.position.x - entityPosition.x,
-            0, // Only bounce horizontally, not vertically
+            0, // Initially zero for horizontal calculation
             camera.position.z - entityPosition.z
         );
         
-        // Normalize the direction vector
+        // Normalize the direction vector (for horizontal movement)
         bounceDirection.normalize();
         
         // Scale by the bounce distance
         bounceDirection.scaleInPlace(BOUNCE_DISTANCE);
         
+        // Add vertical bounce component (small jump)
+        bounceDirection.y = BOUNCE_HEIGHT;
+        
         // Apply the bounce to the camera position
         camera.position.addInPlace(bounceDirection);
         
+        // If we have access to the movement system state, apply a small jump force
+        if (window.gameState && window.gameState.playerState) {
+            // Add a small jump force if the player state has this property
+            if (typeof window.gameState.playerState.jumpForce !== 'undefined') {
+                window.gameState.playerState.jumpForce = Math.max(
+                    window.gameState.playerState.jumpForce,
+                    BOUNCE_HEIGHT * 0.5  // Smaller force than manual jump
+                );
+                
+                // Set grounded to false to allow the jump
+                window.gameState.playerState.grounded = false;
+            }
+        }
+        
         // Log the bounce for debugging
-        console.log(`Bounce applied: ${bounceDirection.x.toFixed(2)}, ${bounceDirection.z.toFixed(2)}`);
+        console.log(`Bounce applied: ${bounceDirection.x.toFixed(2)}, ${bounceDirection.y.toFixed(2)}, ${bounceDirection.z.toFixed(2)}`);
     }
     
     /**
