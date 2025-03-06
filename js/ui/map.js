@@ -306,46 +306,42 @@ const MapSystem = (function() {
     function drawGrid() {
         const center = MAP_SIZE / 2;
         
-        // Calculate grid offsets based on player position
-        // FIXED: Corrected Z-axis interpretation - negative Z is North
-        // In Babylon, +Z is South and -Z is North, so we flip the Z coordinate for the map
-        const offsetX = (-playerX * SCALE) % GRID_CELL_SIZE;
-        const offsetZ = (playerZ * SCALE) % GRID_CELL_SIZE; // Reversed Z direction
+        // FIXED: Recalculated grid offset methods
+        // First determine how far the player is from the world origin in screen pixels
+        const playerOffsetX = playerX * SCALE;
+        const playerOffsetZ = playerZ * SCALE;
         
-        // Calculate where the grid boundaries are in pixels relative to the player
-        // FIXED: Adjusted boundary calculations for Z-axis reversal
-        const gridLeftEdge = center - (playerX + WORLD_GRID_LIMITS) * SCALE;
-        const gridRightEdge = center - (playerX - WORLD_GRID_LIMITS) * SCALE;
-        const gridTopEdge = center + (playerZ + WORLD_GRID_LIMITS) * SCALE; // Reversed
-        const gridBottomEdge = center + (playerZ - WORLD_GRID_LIMITS) * SCALE; // Reversed
+        // Calculate the grid edges in screen space
+        const gridLeftEdge = center - (WORLD_GRID_LIMITS * SCALE + playerOffsetX);
+        const gridRightEdge = center + (WORLD_GRID_LIMITS * SCALE - playerOffsetX);
+        const gridTopEdge = center - (WORLD_GRID_LIMITS * SCALE - playerOffsetZ);
+        const gridBottomEdge = center + (WORLD_GRID_LIMITS * SCALE + playerOffsetZ);
         
-        // Set grid style
-        ctx.strokeStyle = '#00cc99'; // Neon green
-        ctx.lineWidth = 0.5;
-        ctx.globalAlpha = 0.3;
-        
-        // Draw the grid boundary
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = '#ff00ff'; // Highlight the boundary
+        // Set grid style for the boundary
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ff00ff'; // Magenta boundary
         ctx.globalAlpha = 0.8;
+        
+        // Draw the grid boundary as a rectangle
         ctx.beginPath();
         ctx.rect(gridLeftEdge, gridTopEdge, gridRightEdge - gridLeftEdge, gridBottomEdge - gridTopEdge);
         ctx.stroke();
         
         // Reset styles for grid lines
-        ctx.strokeStyle = '#00cc99';
+        ctx.strokeStyle = '#00cc99'; // Neon green
         ctx.lineWidth = 0.5;
-        ctx.globalAlpha = 0.3;
+        ctx.globalAlpha = 0.4;
         
-        // Draw vertical grid lines
-        const firstLineX = Math.ceil(playerX - WORLD_GRID_LIMITS) * WORLD_GRID_SIZE;
-        const linesToDraw = Math.floor(WORLD_GRID_LIMITS * 2 / WORLD_GRID_SIZE) + 1;
+        // FIXED: Draw grid lines to exactly match the scene grid
+        // Calculate where the grid lines should be based on world coordinates
         
-        for (let i = 0; i < linesToDraw; i++) {
-            const worldX = firstLineX + i * WORLD_GRID_SIZE;
-            // Only draw if within grid boundaries
-            if (worldX >= -WORLD_GRID_LIMITS && worldX <= WORLD_GRID_LIMITS) {
-                const screenX = center + (worldX - playerX) * SCALE;
+        // Draw vertical grid lines (running north-south)
+        for (let worldX = -WORLD_GRID_LIMITS; worldX <= WORLD_GRID_LIMITS; worldX += WORLD_GRID_SIZE) {
+            // Convert world X to screen X
+            const screenX = center + (worldX - playerX) * SCALE;
+            
+            // Only draw if within view
+            if (screenX >= 0 && screenX <= MAP_SIZE) {
                 ctx.beginPath();
                 ctx.moveTo(screenX, gridTopEdge);
                 ctx.lineTo(screenX, gridBottomEdge);
@@ -353,34 +349,40 @@ const MapSystem = (function() {
             }
         }
         
-        // Draw horizontal grid lines
-        const firstLineZ = Math.ceil(playerZ - WORLD_GRID_LIMITS) * WORLD_GRID_SIZE;
-        
-        for (let i = 0; i < linesToDraw; i++) {
-            const worldZ = firstLineZ + i * WORLD_GRID_SIZE;
-            // Only draw if within grid boundaries
-            if (worldZ >= -WORLD_GRID_LIMITS && worldZ <= WORLD_GRID_LIMITS) {
-                // FIXED: Adjusted for Z-axis reversal
-                const screenZ = center - (worldZ - playerZ) * SCALE;
+        // Draw horizontal grid lines (running east-west)
+        for (let worldZ = -WORLD_GRID_LIMITS; worldZ <= WORLD_GRID_LIMITS; worldZ += WORLD_GRID_SIZE) {
+            // Convert world Z to screen Y (remember Z is inverted)
+            const screenY = center - (worldZ - playerZ) * SCALE;
+            
+            // Only draw if within view
+            if (screenY >= 0 && screenY <= MAP_SIZE) {
                 ctx.beginPath();
-                ctx.moveTo(gridLeftEdge, screenZ);
-                ctx.lineTo(gridRightEdge, screenZ);
+                ctx.moveTo(gridLeftEdge, screenY);
+                ctx.lineTo(gridRightEdge, screenY);
                 ctx.stroke();
             }
         }
         
-        // Draw outer space color for areas outside the grid
-        ctx.fillStyle = 'rgba(0, 0, 20, 0.6)'; // Dark blue with transparency
+        // Draw "void" in areas outside the grid
+        ctx.fillStyle = 'rgba(0, 0, 20, 0.7)'; // Dark blue with transparency
         
         // Fill the areas outside the grid
         // Top
-        ctx.fillRect(0, 0, MAP_SIZE, gridTopEdge);
+        if (gridTopEdge > 0) {
+            ctx.fillRect(0, 0, MAP_SIZE, gridTopEdge);
+        }
         // Bottom
-        ctx.fillRect(0, gridBottomEdge, MAP_SIZE, MAP_SIZE - gridBottomEdge);
+        if (gridBottomEdge < MAP_SIZE) {
+            ctx.fillRect(0, gridBottomEdge, MAP_SIZE, MAP_SIZE - gridBottomEdge);
+        }
         // Left
-        ctx.fillRect(0, gridTopEdge, gridLeftEdge, gridBottomEdge - gridTopEdge);
+        if (gridLeftEdge > 0) {
+            ctx.fillRect(0, gridTopEdge, gridLeftEdge, gridBottomEdge - gridTopEdge);
+        }
         // Right
-        ctx.fillRect(gridRightEdge, gridTopEdge, MAP_SIZE - gridRightEdge, gridBottomEdge - gridTopEdge);
+        if (gridRightEdge < MAP_SIZE) {
+            ctx.fillRect(gridRightEdge, gridTopEdge, MAP_SIZE - gridRightEdge, gridBottomEdge - gridTopEdge);
+        }
         
         // Reset alpha
         ctx.globalAlpha = 1.0;
@@ -432,9 +434,12 @@ const MapSystem = (function() {
         ctx.save();
         ctx.translate(center, center);
         
-        // FIXED: Correctly align with coordinate system
-        // In our game, 0 means facing north, Math.PI means facing south
-        ctx.rotate(-playerRotation - Math.PI/2); // Adjusted for arrow pointing up
+        // FIXED: Arrow rotation by adjusting offset
+        // In the game, 0 radians is North, Math.PI is South
+        // Our arrow points up by default, so we need to:
+        // 1. Flip the rotation direction (-playerRotation)
+        // 2. Add an offset to account for the coordinate system differences
+        ctx.rotate(-playerRotation + Math.PI); // Adjusted offset
         
         // Draw player arrow
         ctx.fillStyle = '#ff00cc'; // Pink/purple
@@ -461,20 +466,27 @@ const MapSystem = (function() {
             ctx.globalAlpha = 0.7;
             ctx.beginPath();
             ctx.moveTo(center, center);
-            // FIXED: Adjusted line calculation for correct rotation
-            const angle = playerRotation + Math.PI/2; // Adjusted angle
-            const dirX = center + Math.cos(angle) * 15;
-            const dirZ = center - Math.sin(angle) * 15; // Inverted Z
-            ctx.lineTo(dirX, dirZ);
+            
+            // FIXED: Calculate the correct direction line
+            // Convert playerRotation to degrees for easier debugging
+            const degrees = ((playerRotation * 180 / Math.PI) % 360 + 360) % 360;
+            
+            // Draw the direction line
+            const dirAngle = -playerRotation + Math.PI; // Match arrow rotation
+            const dirX = center + Math.sin(dirAngle) * 15;
+            const dirY = center - Math.cos(dirAngle) * 15;
+            ctx.lineTo(dirX, dirY);
             ctx.stroke();
             ctx.restore();
             
-            // Show rotation as debug text
+            // Show compass and rotation as debug text
             ctx.fillStyle = "#ffff00";
             ctx.font = "9px monospace";
             ctx.textAlign = "left";
-            const degrees = ((playerRotation * 180 / Math.PI) % 360 + 360) % 360;
-            ctx.fillText(`Angle: ${degrees.toFixed(0)}°`, 5, 40);
+            
+            // Get direction name for debugging
+            const dirName = getCardinalDirection(playerRotation);
+            ctx.fillText(`Angle: ${degrees.toFixed(0)}° (${dirName})`, 5, 40);
         }
     }
     
