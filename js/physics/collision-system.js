@@ -9,19 +9,13 @@ const CollisionSystem = (function() {
     const collidedEntities = new Set();
     
     // Configuration
-    const COLLISION_RADIUS = 3.0; // Increased size of the player's collision sphere
-    const DEBUG_MODE = true; // Enable detailed debug logging
+    const COLLISION_RADIUS = 1.0; // Size of the player's collision sphere (reduced to 1 unit)
     
-    // Force a log message to appear in the system
-    function forceLogMessage(message) {
-        console.log("FORCE LOG:", message);
+    // Direct log message to the on-screen console
+    function logToConsole(message) {
+        console.log(message);
         
-        // Try multiple ways to log the message
-        if (window.Logger && window.Logger.log) {
-            Logger.log(message);
-        }
-        
-        // Direct DOM manipulation as a fallback
+        // Log directly to the DOM if Logger isn't available
         const logContent = document.getElementById('logContent');
         if (logContent) {
             const logEntry = document.createElement('div');
@@ -29,6 +23,11 @@ const CollisionSystem = (function() {
             logEntry.innerHTML = `<span class="log-time">${new Date().toLocaleTimeString()}</span> ${message}`;
             logContent.appendChild(logEntry);
             logContent.scrollTop = logContent.scrollHeight;
+        }
+        
+        // Use Logger if available
+        if (window.Logger && window.Logger.log) {
+            Logger.log(message);
         }
     }
     
@@ -38,36 +37,17 @@ const CollisionSystem = (function() {
      * @param {Object} cameraInstance - The player camera
      */
     function init(sceneInstance, cameraInstance) {
-        console.log("CollisionSystem.init called with:", sceneInstance ? "scene provided" : "NO SCENE", cameraInstance ? "camera provided" : "NO CAMERA");
-        
         // Directly set the scene and camera
         scene = sceneInstance;
         camera = cameraInstance;
         
-        // Register for position updates
-        if (window.EventSystem) {
-            console.log("CollisionSystem registering for player.position events");
-            EventSystem.on('player.position', checkCollisions);
-            
-            // Also register for scene rendering to guarantee collision checks
-            if (scene) {
-                scene.onBeforeRenderObservable.add(checkCollisionsOnRender);
-                console.log("Added scene render observer for collision checks");
-            }
-        } else {
-            console.error("EventSystem not available, collision detection will not work");
+        // Register with scene rendering to guarantee collision checks
+        if (scene) {
+            scene.onBeforeRenderObservable.add(checkCollisionsOnRender);
         }
         
-        // Listen for realm changes to reset collision state
-        if (window.EventSystem) {
-            EventSystem.on('realm.change', () => {
-                console.log("CollisionSystem clearing on realm change");
-                collidedEntities.clear();
-            });
-        }
-        
-        // Force a log message to verify the logger is working
-        forceLogMessage("Collision detection system initialized");
+        // Notify of initialization
+        logToConsole("Collision detection system initialized");
         
         // Mark as initialized
         initialized = true;
@@ -86,7 +66,7 @@ const CollisionSystem = (function() {
         // Get camera position
         const position = camera.position;
         
-        // Call collision check with camera position
+        // Run collision detection with the camera position
         checkCollisions({
             position: { x: position.x, y: position.y, z: position.z },
             rotation: camera.rotation.y
@@ -137,11 +117,6 @@ const CollisionSystem = (function() {
             
             const distance = BABYLON.Vector3.Distance(playerPos, entityPosition);
             
-            // Occasionally log the distance for debugging
-            if (DEBUG_MODE && Math.random() < 0.01) {
-                console.log(`Distance to ${entity.id || 'unknown entity'}: ${distance.toFixed(2)}`);
-            }
-            
             // Check if player is in collision range
             if (distance < COLLISION_RADIUS) {
                 // If we haven't already logged a collision with this entity
@@ -151,25 +126,11 @@ const CollisionSystem = (function() {
                     // Create collision message
                     const entityName = entity.name || "Unknown Entity";
                     const entityType = entity.type === 'npc' ? 'NPC' : 'Foe';
-                    const message = `Collision detected with ${entityType}: ${entityName} (ID: ${entityId})`;
+                    const detectionMethod = "Scene Render Observer";
+                    const message = `Collision detected with ${entityType}: ${entityName} (ID: ${entityId}) [Method: ${detectionMethod}, Distance: ${distance.toFixed(2)}m]`;
                     
-                    // Log the collision to console
-                    console.log(`COLLISION DETECTED! Distance: ${distance.toFixed(2)}m, message: ${message}`);
-                    
-                    // Use forced logging to ensure it appears
-                    forceLogMessage(message);
-                    
-                    // Emit collision event
-                    if (window.EventSystem) {
-                        EventSystem.emit('collision.detected', {
-                            entityId: entityId,
-                            entityType: entity.type || 'unknown',
-                            entityName: entityName,
-                            playerPosition: playerPos,
-                            entityPosition: entityPosition,
-                            distance: distance
-                        });
-                    }
+                    // Log the collision
+                    logToConsole(message);
                     
                     // Add to collided entities to avoid duplicate messages
                     collidedEntities.add(entityId);
@@ -177,109 +138,11 @@ const CollisionSystem = (function() {
             } else {
                 // When player moves away, remove from collided set to allow future collisions
                 const entityId = entity.id || `unknown-${Math.random()}`;
-                if (collidedEntities.has(entityId) && distance > COLLISION_RADIUS + 1) {
+                if (collidedEntities.has(entityId) && distance > COLLISION_RADIUS + 0.5) {
                     collidedEntities.delete(entityId);
                 }
             }
         });
-    }
-    
-    /**
-     * Debug function to log entity data - can be called from console
-     */
-    function debugEntities() {
-        const npcs = window.EntitySystem?.getAllNPCs() || [];
-        const foes = window.EntitySystem?.getAllFoes() || [];
-        
-        console.log("--- COLLISION SYSTEM DEBUG ---");
-        console.log(`Found ${npcs.length} NPCs and ${foes.length} foes`);
-        
-        if (npcs.length > 0) {
-            console.log("First NPC:", npcs[0]);
-        }
-        
-        if (foes.length > 0) {
-            console.log("First Foe:", foes[0]);
-        }
-        
-        if (camera) {
-            console.log("Player position:", camera.position);
-        }
-        
-        // Force a message to the log to verify logger is working
-        forceLogMessage("Debug entities called - found " + (npcs.length + foes.length) + " entities");
-        
-        return {
-            npcs: npcs,
-            foes: foes,
-            playerPosition: camera ? camera.position : null
-        };
-    }
-    
-    /**
-     * Test function to manually trigger a collision detection
-     * Can be called from console: CollisionSystem.testCollision()
-     */
-    function testCollision() {
-        console.log("Testing collision detection manually");
-        
-        // Get camera position if possible
-        if (!camera) {
-            console.error("Camera not initialized");
-            forceLogMessage("Test collision failed - camera not initialized");
-            return false;
-        }
-        
-        // Log current position
-        console.log("Current camera position:", camera.position);
-        
-        // Force a collision detection with current position
-        checkCollisions({
-            position: camera.position,
-            rotation: camera.rotation.y
-        });
-        
-        // Also force a collision with ALL entities (ignoring distance)
-        forceCollisionWithAll();
-        
-        // Notify user
-        forceLogMessage("Manual collision test triggered");
-        
-        return true;
-    }
-    
-    /**
-     * Force a collision with all entities regardless of distance
-     */
-    function forceCollisionWithAll() {
-        console.log("Forcing collision with all entities");
-        
-        // Get all entities
-        const npcs = window.EntitySystem?.getAllNPCs() || [];
-        const foes = window.EntitySystem?.getAllFoes() || [];
-        const allEntities = [...npcs, ...foes];
-        
-        if (allEntities.length === 0) {
-            forceLogMessage("No entities found to force collision with");
-            return;
-        }
-        
-        // Log collision with each entity
-        allEntities.forEach(entity => {
-            if (!entity) return;
-            
-            const entityId = entity.id || `unknown-${Math.random()}`;
-            const entityName = entity.name || "Unknown Entity";
-            const entityType = entity.type === 'npc' ? 'NPC' : 'Foe';
-            
-            const message = `FORCED collision with ${entityType}: ${entityName} (ID: ${entityId})`;
-            forceLogMessage(message);
-            
-            // Add to collided set
-            collidedEntities.add(entityId);
-        });
-        
-        console.log(`Forced collision with ${allEntities.length} entities`);
     }
     
     /**
@@ -297,7 +160,7 @@ const CollisionSystem = (function() {
      */
     function resetAllCollisions() {
         collidedEntities.clear();
-        forceLogMessage("All collision detections reset");
+        logToConsole("All collision detections reset");
     }
     
     // Public API
@@ -305,10 +168,7 @@ const CollisionSystem = (function() {
         init,
         checkCollisions,
         resetEntityCollision,
-        resetAllCollisions,
-        debugEntities,
-        testCollision,
-        forceCollisionWithAll
+        resetAllCollisions
     };
 })();
 
