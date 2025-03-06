@@ -13,6 +13,7 @@ const CollisionSystem = (function() {
     const RESET_DISTANCE = 2.0;   // Distance player needs to move away to allow for re-collision detection
     const BOUNCE_FORCE = 1.0;     // Force applied when bouncing horizontally (impulse) - increased for visibility
     const BOUNCE_HEIGHT = 5.0;    // Vertical jump force for the bounce - increased for visibility
+    const COLLISION_DAMAGE = 5;   // Amount of health reduced on collision
     
     // Damage effect configuration
     const DAMAGE_FLASH_DURATION = 500; // How long the red flash lasts in milliseconds
@@ -86,6 +87,28 @@ const CollisionSystem = (function() {
     }
     
     /**
+     * Apply damage to player health
+     */
+    function applyDamage() {
+        // Check if the health system is available
+        if (window.HealthBarSystem && typeof window.HealthBarSystem.damage === 'function') {
+            // Apply the damage amount
+            const newHealth = window.HealthBarSystem.damage(COLLISION_DAMAGE);
+            
+            // Log the damage
+            logToConsole(`Player took ${COLLISION_DAMAGE} damage. Health: ${newHealth}/${window.HealthBarSystem.getHealth().max}`);
+            
+            // Check if player is dead (health <= 0)
+            if (newHealth <= 0) {
+                logToConsole("CRITICAL: Player health depleted!");
+                // Could trigger game over or respawn logic here
+            }
+        } else {
+            console.warn("HealthBarSystem not available, can't apply damage");
+        }
+    }
+    
+    /**
      * Apply a bounce effect away from an entity
      * @param {Object} entityPosition - The position of the entity to bounce away from
      */
@@ -99,6 +122,9 @@ const CollisionSystem = (function() {
         
         // Show damage indicator when bounce occurs
         showDamageIndicator();
+        
+        // Apply damage to player health
+        applyDamage();
         
         // Calculate direction vector from entity to player (this is the bounce direction)
         const bounceDirection = new BABYLON.Vector3(
@@ -181,6 +207,11 @@ const CollisionSystem = (function() {
         // Try to get reference to player state
         if (window.gameState && window.gameState.playerState) {
             playerState = window.gameState.playerState;
+        }
+        
+        // Make sure health system is initialized
+        if (window.HealthBarSystem && typeof window.HealthBarSystem.init === 'function') {
+            window.HealthBarSystem.init();
         }
         
         // Notify of initialization
