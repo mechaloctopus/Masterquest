@@ -310,9 +310,6 @@ window.EntitySystem = (function() {
         foeMaterial.emissiveColor = new BABYLON.Color3(0.5, 0, 0);
         foeMesh.material = foeMaterial;
         
-        // Add spikes to make foes look more dangerous
-        addSpikesToOrb(foeMesh, foeMaterial.diffuseColor);
-        
         // Add nametag
         const name = template.name || `Foe${index+1}`;
         addNametag(foeMesh, name);
@@ -349,60 +346,40 @@ window.EntitySystem = (function() {
         return foe;
     }
     
-    // Add spikes to foe orb for visual distinction
-    function addSpikesToOrb(foeMesh, color) {
-        const numSpikes = 8;
-        const spikeLength = 0.4;
-        const spikeWidth = 0.1;
+    // Generate quiz questions for a foe
+    function generateQuizQuestions(foeIndex, realmIndex) {
+        return [
+            {
+                question: `What is the sum of ${realmIndex} and ${foeIndex}?`,
+                options: [`${realmIndex + foeIndex - 1}`, `${realmIndex + foeIndex}`, `${realmIndex + foeIndex + 1}`, `${realmIndex * foeIndex}`],
+                correctAnswer: 1
+            },
+            {
+                question: 'Which key is typically used to jump in games?',
+                options: ['A', 'W', 'Space', 'Shift'],
+                correctAnswer: 2
+            }
+        ];
+    }
+    
+    // Setup hover animation for entity
+    function setupHoverAnimation(entity) {
+        if (!scene) return;
         
-        for (let i = 0; i < numSpikes; i++) {
-            const angle = (i / numSpikes) * Math.PI * 2;
-            const x = Math.cos(angle);
-            const z = Math.sin(angle);
-            
-            // Create spike cone
-            const spike = BABYLON.MeshBuilder.CreateCylinder(
-                `spike-${foeMesh.name}-${i}`,
-                { 
-                    height: spikeLength, 
-                    diameterTop: 0,
-                    diameterBottom: spikeWidth,
-                    tessellation: 4
-                },
-                scene
-            );
-            
-            // Position and rotate spike
-            spike.position = new BABYLON.Vector3(
-                foeMesh.position.x + x * 0.5,
-                foeMesh.position.y,
-                foeMesh.position.z + z * 0.5
-            );
-            
-            // Point spike outward
-            const direction = new BABYLON.Vector3(x, 0, z);
-            spike.rotationQuaternion = BABYLON.Quaternion.FromUnitVectorsToRef(
-                BABYLON.Vector3.Up(),
-                direction,
-                new BABYLON.Quaternion()
-            );
-            
-            // Rotate 90 degrees to point outward
-            const tempQuat = BABYLON.Quaternion.RotationAxis(
-                new BABYLON.Vector3(0, 0, 1), 
-                Math.PI / 2
-            );
-            spike.rotationQuaternion = spike.rotationQuaternion.multiply(tempQuat);
-            
-            // Apply material
-            const spikeMaterial = new BABYLON.StandardMaterial(`spikeMaterial-${foeMesh.name}-${i}`, scene);
-            spikeMaterial.diffuseColor = color;
-            spikeMaterial.emissiveColor = new BABYLON.Color3(0.3, 0, 0);
-            spike.material = spikeMaterial;
-            
-            // Parent to foe mesh
-            spike.parent = foeMesh;
-        }
+        // Create animation for bobbing up and down
+        const amplitude = 0.1;
+        const speed = 0.005;
+        
+        // Store original Y position
+        const originalY = entity.mesh.position.y;
+        
+        // Create animation
+        scene.registerBeforeRender(() => {
+            if (entity.mesh) {
+                const time = performance.now() * speed;
+                entity.mesh.position.y = originalY + Math.sin(time) * amplitude;
+            }
+        });
     }
     
     // Add nametag to an entity
@@ -497,48 +474,6 @@ window.EntitySystem = (function() {
         };
         
         return mesh.nametag;
-    }
-    
-    // Generate quiz questions for foes
-    function generateQuizQuestions(foeIndex, realmIndex) {
-        // Default questions - in a real game these would come from a database or config
-        return [
-            {
-                question: `What is the primary color of foes in realm ${realmIndex}?`,
-                options: ['Red', 'Blue', 'Green', 'Yellow'],
-                correctAnswer: 0
-            },
-            {
-                question: `What is the sum of ${realmIndex} + ${foeIndex}?`,
-                options: [`${realmIndex + foeIndex - 1}`, `${realmIndex + foeIndex}`, `${realmIndex + foeIndex + 1}`, `${realmIndex * foeIndex}`],
-                correctAnswer: 1
-            },
-            {
-                question: 'Which key is typically used to jump in games?',
-                options: ['A', 'W', 'Space', 'Shift'],
-                correctAnswer: 2
-            }
-        ];
-    }
-    
-    // Setup hover animation for entity
-    function setupHoverAnimation(entity) {
-        if (!scene) return;
-        
-        // Create animation for bobbing up and down
-        const amplitude = 0.1;
-        const speed = 0.005;
-        
-        // Store original Y position
-        const originalY = entity.mesh.position.y;
-        
-        // Create animation
-        scene.registerBeforeRender(() => {
-            if (entity.mesh) {
-                const time = performance.now() * speed;
-                entity.mesh.position.y = originalY + Math.sin(time) * amplitude;
-            }
-        });
     }
     
     // Setup click handler for entity
