@@ -434,12 +434,10 @@ const MapSystem = (function() {
         ctx.save();
         ctx.translate(center, center);
         
-        // FIXED: Arrow rotation by adjusting offset
-        // In the game, 0 radians is North, Math.PI is South
-        // Our arrow points up by default, so we need to:
-        // 1. Flip the rotation direction (-playerRotation)
-        // 2. Add an offset to account for the coordinate system differences
-        ctx.rotate(-playerRotation + Math.PI); // Adjusted offset
+        // FIXED: Arrow rotation by flipping it 180 degrees
+        // We found we need to use the direct rotation value without negating
+        // Our arrow should point where the player is facing, not the opposite direction
+        ctx.rotate(playerRotation); // Use direct rotation without flipping or offset
         
         // Draw player arrow
         ctx.fillStyle = '#ff00cc'; // Pink/purple
@@ -467,14 +465,13 @@ const MapSystem = (function() {
             ctx.beginPath();
             ctx.moveTo(center, center);
             
-            // FIXED: Calculate the correct direction line
+            // FIXED: Calculate the correct direction line - no need to flip rotation anymore
             // Convert playerRotation to degrees for easier debugging
             const degrees = ((playerRotation * 180 / Math.PI) % 360 + 360) % 360;
             
-            // Draw the direction line
-            const dirAngle = -playerRotation + Math.PI; // Match arrow rotation
-            const dirX = center + Math.sin(dirAngle) * 15;
-            const dirY = center - Math.cos(dirAngle) * 15;
+            // Draw the direction line using direct angle
+            const dirX = center + Math.sin(playerRotation) * 15;
+            const dirY = center - Math.cos(playerRotation) * 15;
             ctx.lineTo(dirX, dirY);
             ctx.stroke();
             ctx.restore();
@@ -484,7 +481,7 @@ const MapSystem = (function() {
             ctx.font = "9px monospace";
             ctx.textAlign = "left";
             
-            // Get direction name for debugging
+            // Get direction name for debugging - no need to adjust since we're using direct rotation
             const dirName = getCardinalDirection(playerRotation);
             ctx.fillText(`Angle: ${degrees.toFixed(0)}° (${dirName})`, 5, 40);
         }
@@ -532,22 +529,19 @@ const MapSystem = (function() {
         ctx.fillText(`Grid: ${inGrid ? 'ON' : 'OFF'}`, 5, 30);
     }
     
-    // Get cardinal direction name
+    // Helper to get cardinal direction based on rotation angle
     function getCardinalDirection(radians) {
-        // Convert to degrees and normalize to 0-360
-        const degrees = ((radians * 180 / Math.PI) % 360 + 360) % 360;
+        // Normalize the angle to 0-2π
+        const angle = ((radians % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
         
-        // Map to cardinal directions
-        if (degrees >= 337.5 || degrees < 22.5) return 'N';
-        if (degrees >= 22.5 && degrees < 67.5) return 'NE';
-        if (degrees >= 67.5 && degrees < 112.5) return 'E';
-        if (degrees >= 112.5 && degrees < 157.5) return 'SE';
-        if (degrees >= 157.5 && degrees < 202.5) return 'S';
-        if (degrees >= 202.5 && degrees < 247.5) return 'SW';
-        if (degrees >= 247.5 && degrees < 292.5) return 'W';
-        if (degrees >= 292.5 && degrees < 337.5) return 'NW';
+        // We no longer need to flip the direction since we're using direct rotation
+        // Define direction ranges - North is at 0, East at π/2, etc.
+        if (angle < Math.PI * 0.25 || angle >= Math.PI * 1.75) return "North";
+        if (angle >= Math.PI * 0.25 && angle < Math.PI * 0.75) return "East";
+        if (angle >= Math.PI * 0.75 && angle < Math.PI * 1.25) return "South";
+        if (angle >= Math.PI * 1.25 && angle < Math.PI * 1.75) return "West";
         
-        return 'N'; // fallback
+        return "Unknown";
     }
     
     // Clean up when unloading
