@@ -413,6 +413,11 @@ const App = (function() {
                     // Update map with player position
                     MapSystem.updatePlayerPosition({ x: position.x, z: position.z }, rotation);
                     
+                    // Add debug logging to verify position updates are being sent properly
+                    if (Math.random() < 0.05) { // Log occasionally
+                        console.warn("[APP] Sent position to map:", position.x.toFixed(2), position.z.toFixed(2), "rotation:", rotation.toFixed(2));
+                    }
+                    
                     // Emit player position for NPC and Foe proximity checks
                     if (window.EventSystem) {
                         EventSystem.emit('player.position', {
