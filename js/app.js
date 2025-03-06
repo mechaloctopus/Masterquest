@@ -188,6 +188,9 @@ const App = (function() {
         // Initialize controls - CRITICAL for joysticks and buttons
         initializeControlSystem();
         
+        // Initialize collision system
+        initializeCollisionSystem();
+        
         // Setup performance monitoring
         initializePerformanceMonitoring();
     }
@@ -261,6 +264,22 @@ const App = (function() {
             state.systems.controls = true;
         } catch (e) {
             Logger.error(`Controls initialization failed: ${e.message}`);
+        }
+    }
+    
+    // Initialize collision system
+    function initializeCollisionSystem() {
+        try {
+            if (window.CollisionSystem) {
+                CollisionSystem.init(state.scene, state.systems.camera);
+                Logger.log("> COLLISION SYSTEM INITIALIZED");
+                state.systems.collision = true;
+            } else {
+                console.error("CollisionSystem is not defined globally");
+                Logger.error("> COLLISION SYSTEM NOT FOUND");
+            }
+        } catch (e) {
+            Logger.error(`Collision system initialization failed: ${e.message}`);
         }
     }
     
