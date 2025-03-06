@@ -253,9 +253,6 @@ window.EntitySystem = (function() {
         foeMaterial.emissiveColor = new BABYLON.Color3(0.5, 0, 0);
         foeMesh.material = foeMaterial;
         
-        // Add spikes to make it look more threatening
-        addSpikesToOrb(foeMesh, new BABYLON.Color3(1, 0, 0));
-        
         // Add nametag
         const name = template.name || `Foe-${index}`;
         addNametag(foeMesh, name);
