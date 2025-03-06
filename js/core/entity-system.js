@@ -82,6 +82,11 @@ window.EntitySystem = (function() {
                         scene.actionManager = new BABYLON.ActionManager(scene);
                     }
                     
+                    // Verify logger is working
+                    if (window.Logger) {
+                        Logger.log(">>> ENTITY SYSTEM INITIALIZED - CLICK ENTITIES TO INTERACT <<<");
+                    }
+                    
                     return true;
                 },
                 {
@@ -99,6 +104,11 @@ window.EntitySystem = (function() {
             // Setup action manager for entity clicks
             if (scene) {
                 scene.actionManager = new BABYLON.ActionManager(scene);
+            }
+            
+            // Verify logger is working
+            if (window.Logger) {
+                Logger.log(">>> ENTITY SYSTEM INITIALIZED - CLICK ENTITIES TO INTERACT <<<");
             }
             
             // Initialize event handlers
@@ -168,8 +178,8 @@ window.EntitySystem = (function() {
     function loadFoesForRealm(realmIndex) {
         safeLog(`Loading foes for realm ${realmIndex}`);
         
-        // Create 5 foes for this realm
-        for (let i = 0; i < 5; i++) {
+        // Create 10 foes for this realm (5 in each row)
+        for (let i = 0; i < 10; i++) {
             createFoe(i, realmIndex);
         }
         
@@ -300,12 +310,15 @@ window.EntitySystem = (function() {
         foeMaterial.emissiveColor = new BABYLON.Color3(0.5, 0, 0);
         foeMesh.material = foeMaterial;
         
+        // Add spikes to make foes look more dangerous
+        addSpikesToOrb(foeMesh, foeMaterial.diffuseColor);
+        
         // Add nametag
         const name = template.name || `Foe${index+1}`;
         addNametag(foeMesh, name);
         
-        // Create quiz questions for this foe
-        const quizQuestions = generateQuizQuestions(index, realmIndex);
+        // Generate quiz questions for this foe
+        const quizQuestions = template.quizQuestions || generateQuizQuestions(index, realmIndex);
         
         // Create foe object
         const foe = {
@@ -537,21 +550,51 @@ window.EntitySystem = (function() {
             entity.mesh.actionManager = new BABYLON.ActionManager(scene);
         }
         
+        // Make mesh slightly more responsive to clicks by increasing the bounding box for interaction
+        if (entity.mesh.getBoundingInfo) {
+            const boundingInfo = entity.mesh.getBoundingInfo();
+            if (boundingInfo) {
+                // Increase bounding box by 20% to make clicking easier
+                const min = boundingInfo.boundingBox.minimum.scale(1.2);
+                const max = boundingInfo.boundingBox.maximum.scale(1.2);
+                entity.mesh.setBoundingInfo(new BABYLON.BoundingInfo(min, max));
+            }
+        }
+        
         // Add click action
         entity.mesh.actionManager.registerAction(
             new BABYLON.ExecuteCodeAction(
                 BABYLON.ActionManager.OnPickTrigger,
                 function() {
-                    // Log entity click to console
-                    const message = `${entity.type === ENTITY_TYPES.NPC ? 'NPC' : 'FOE'} clicked: Hello, I am ${entity.name}`;
+                    // Create a distinctive message that stands out in the console
+                    const entityType = entity.type === ENTITY_TYPES.NPC ? 'NPC' : 'FOE';
+                    const message = `>>> ${entityType} INTERACTION: Hello, I am ${entity.name} <<<`;
                     
-                    // Use the Logger to display the message in the UI
+                    // Make sure the Logger is initialized
                     if (window.Logger) {
+                        // Force display of message in the on-screen console
                         Logger.log(message);
+                        
+                        // Also log a debug message in case the Logger isn't working properly
+                        console.log("[ENTITY CLICK]", message);
+                        
+                        // Ensure the log is scrolled to show this new message
+                        if (Logger.forceScrollToBottom) {
+                            Logger.forceScrollToBottom();
+                        }
+                        
+                        // Highlight the entity when clicked
+                        highlightEntity(entity, true);
+                        setTimeout(() => {
+                            // Remove highlight after a short delay unless player is still nearby
+                            if (!entity.isNearby) {
+                                highlightEntity(entity, false);
+                            }
+                        }, 2000);
+                    } else {
+                        // Fallback to console if Logger not available
+                        console.log("[ENTITY SYSTEM] Logger not available, using console:", message);
                     }
-                    
-                    // Also log to browser console
-                    safeLog(message);
                     
                     // If it's an NPC, also start interaction
                     if (entity.type === ENTITY_TYPES.NPC) {
