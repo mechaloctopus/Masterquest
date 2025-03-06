@@ -75,13 +75,8 @@ const MapSystem = (function() {
         // Add the keyboard listener for map fullscreen toggle
         document.addEventListener('keydown', handleKeyPress);
         
-        // Initialize coordinate display right away
-        if (window.CoordinateSystem && typeof window.CoordinateSystem.init === 'function') {
-            window.CoordinateSystem.init();
-        } else {
-            // If not available immediately, try again after a delay
-            setTimeout(ensureCoordinateDisplay, 300);
-        }
+        // Make sure coordinate display is initialized and visible
+        setTimeout(ensureCoordinateDisplay, 300);
         
         console.log("[MAP] Map system initialized successfully");
         return true;
@@ -272,27 +267,19 @@ const MapSystem = (function() {
                 position: absolute;
                 width: ${MAP_SIZE}px;
                 height: ${MAP_SIZE}px;
-                top: 20px;
-                right: 20px;
+                bottom: 10px;
+                right: 10px;
                 border: 2px solid #00FFFF;
                 background-color: rgba(0,0,0,0.5);
                 border-radius: 4px;
                 overflow: hidden;
+                pointer-events: none;
                 z-index: 1000;
             }
             
             #mapCanvas {
                 width: 100%;
                 height: 100%;
-            }
-            
-            /* Make sure coordinate display is positioned correctly */
-            .map-coordinates {
-                position: absolute;
-                top: ${MAP_SIZE + 25}px;
-                right: 20px;
-                width: ${MAP_SIZE}px;
-                z-index: 999;
             }
         `;
         document.head.appendChild(style);
@@ -427,10 +414,10 @@ const MapSystem = (function() {
             const gridSize = WORLD_GRID_LIMITS * 2;
             
             // Ensure we can see the entire grid with some padding
-            // Use a much smaller percentage to zoom out further
-            const cellSize = Math.min(mapCanvas.width, mapCanvas.height) * 0.6 / gridSize;
+            // Use 85% of canvas size to leave some margin around the grid
+            const cellSize = Math.min(mapCanvas.width, mapCanvas.height) * 0.85 / gridSize;
             
-            // Center the grid in the canvas with more space on all sides
+            // Center the grid in the canvas
             const offsetX = (mapCanvas.width - (cellSize * gridSize)) / 2;
             const offsetY = (mapCanvas.height - (cellSize * gridSize)) / 2;
             
@@ -476,15 +463,12 @@ const MapSystem = (function() {
             // Reset alpha
             ctx.globalAlpha = 1.0;
         } else {
-            // Original grid drawing for normal mode - draw zoomed in view
-            // Define visible grid area in world units (smaller means more zoomed in)
-            const visibleGridArea = 20; // How many world units to show around player
-            
+            // Original grid drawing for normal mode
             // Calculate the grid edges in screen space
-            const gridLeftEdge = center - visibleGridArea * SCALE;
-            const gridRightEdge = center + visibleGridArea * SCALE;
-            const gridTopEdge = center - visibleGridArea * SCALE;
-            const gridBottomEdge = center + visibleGridArea * SCALE;
+            const gridLeftEdge = center - (WORLD_GRID_LIMITS * SCALE + playerOffsetX);
+            const gridRightEdge = center + (WORLD_GRID_LIMITS * SCALE - playerOffsetX);
+            const gridTopEdge = center - (WORLD_GRID_LIMITS * SCALE - playerOffsetZ);
+            const gridBottomEdge = center + (WORLD_GRID_LIMITS * SCALE + playerOffsetZ);
             
             // Draw the grid boundary
             ctx.lineWidth = 2;
@@ -500,7 +484,7 @@ const MapSystem = (function() {
             ctx.globalAlpha = 0.3;
             
             // Draw vertical grid lines
-            for (let x = Math.floor(playerX - visibleGridArea); x <= Math.ceil(playerX + visibleGridArea); x += WORLD_GRID_SIZE) {
+            for (let x = -WORLD_GRID_LIMITS; x <= WORLD_GRID_LIMITS; x += WORLD_GRID_SIZE) {
                 const screenX = center + (x - playerX) * SCALE;
                 ctx.beginPath();
                 ctx.moveTo(screenX, 0);
@@ -509,7 +493,7 @@ const MapSystem = (function() {
             }
             
             // Draw horizontal grid lines
-            for (let z = Math.floor(playerZ - visibleGridArea); z <= Math.ceil(playerZ + visibleGridArea); z += WORLD_GRID_SIZE) {
+            for (let z = -WORLD_GRID_LIMITS; z <= WORLD_GRID_LIMITS; z += WORLD_GRID_SIZE) {
                 const screenZ = center + (z - playerZ) * SCALE;
                 ctx.beginPath();
                 ctx.moveTo(0, screenZ);
@@ -549,8 +533,8 @@ const MapSystem = (function() {
         ctx.save();
         ctx.translate(playerDrawX, playerDrawY);
         
-        // Rotate to player direction - add Math.PI (180 degrees) to correct orientation
-        ctx.rotate(playerRotation + Math.PI);
+        // Rotate to player direction
+        ctx.rotate(playerRotation);
         
         // Draw player arrow (slightly larger in fullscreen mode)
         const arrowSize = isFullscreen ? 12 : 8;
@@ -605,13 +589,11 @@ const MapSystem = (function() {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        // Because we rotated the player arrow 180 degrees,
-        // we need to swap the cardinal directions to match
-        // Draw the letters at the edges (swapped N/S and E/W to match the rotation)
-        ctx.fillText('S', size/2, margin + 6);  // North is now South
-        ctx.fillText('N', size/2, size - margin - 6);  // South is now North
-        ctx.fillText('W', size - margin - 6, size/2);  // East is now West
-        ctx.fillText('E', margin + 6, size/2);  // West is now East
+        // Draw the letters at the edges
+        ctx.fillText('N', size/2, margin + 6);
+        ctx.fillText('S', size/2, size - margin - 6);
+        ctx.fillText('E', size - margin - 6, size/2);
+        ctx.fillText('W', margin + 6, size/2);
     }
     
     // Draw debug information - simplified to empty function
@@ -754,11 +736,6 @@ const MapSystem = (function() {
     
     // Ensure coordinate display is visible
     function ensureCoordinateDisplay() {
-        // Only ensure coordinate display if not in fullscreen mode
-        if (isFullscreen) {
-            return;
-        }
-        
         if (window.CoordinateSystem && typeof window.CoordinateSystem.init === 'function') {
             // Initialize if not already done
             if (!document.getElementById('coordinateDisplay')) {
@@ -785,16 +762,13 @@ const MapSystem = (function() {
     function toggleFullscreenMap() {
         isFullscreen = !isFullscreen;
         
-        // Get coordinate display element
-        const coordDisplay = document.getElementById('coordinateDisplay');
-        
         if (isFullscreen) {
             // Expand the map
             mapContainer.classList.add('expanded');
             
             // Hide coordinate display in fullscreen mode
-            if (coordDisplay) {
-                coordDisplay.style.display = 'none';
+            if (window.CoordinateSystem && typeof window.CoordinateSystem.hide === 'function') {
+                window.CoordinateSystem.hide();
             }
             
             // Resize canvas to match new container size
@@ -807,8 +781,8 @@ const MapSystem = (function() {
             mapContainer.classList.remove('expanded');
             
             // Show coordinate display in normal mode
-            if (coordDisplay) {
-                coordDisplay.style.display = '';
+            if (window.CoordinateSystem && typeof window.CoordinateSystem.show === 'function') {
+                window.CoordinateSystem.show();
             } else {
                 // If not available, try to initialize it
                 setTimeout(ensureCoordinateDisplay, 100);
