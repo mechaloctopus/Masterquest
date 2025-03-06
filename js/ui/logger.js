@@ -4,7 +4,10 @@ window.Logger = (function() {
     let logContentElement = null;
     let logElement = null;
     let logToggle = null;
+    let terminalForm = null;
+    let terminalInput = null;
     let initialized = false;
+    let inputActive = false;
     const SYSTEM_NAME = 'LOGGER';
     
     // Message types
@@ -12,7 +15,8 @@ window.Logger = (function() {
         INFO: 'info',
         ERROR: 'error',
         WARNING: 'warning',
-        DEBUG: 'debug'
+        DEBUG: 'debug',
+        SYSTEM: 'system'
     };
     
     // Initialize logger
@@ -36,10 +40,22 @@ window.Logger = (function() {
                 system: SYSTEM_NAME,
                 required: true
             });
+            
+            terminalForm = Utils.dom.getElement('terminalForm', {
+                system: SYSTEM_NAME,
+                required: true
+            });
+            
+            terminalInput = Utils.dom.getElement('terminalInput', {
+                system: SYSTEM_NAME,
+                required: true
+            });
         } else {
             logContentElement = document.getElementById('logContent');
             logElement = document.getElementById('log');
             logToggle = document.getElementById('logToggle');
+            terminalForm = document.getElementById('terminalForm');
+            terminalInput = document.getElementById('terminalInput');
             
             if (!logContentElement) {
                 console.error("Log content element not found!");
@@ -72,6 +88,35 @@ window.Logger = (function() {
             logToggle.addEventListener('click', toggleLogger);
         }
         
+        // Set up terminal input handlers
+        if (terminalForm) {
+            terminalForm.addEventListener('submit', handleTerminalSubmit);
+            
+            // Add event to focus terminal on keyboard shortcut (backtick/tilde key)
+            document.addEventListener('keydown', handleTerminalHotkey);
+            
+            // Add focus/blur events to handle keyboard input switching
+            if (terminalInput) {
+                terminalInput.addEventListener('focus', () => {
+                    inputActive = true;
+                    
+                    // Add active class to the terminal for styling
+                    if (logElement) {
+                        logElement.classList.add('terminal-active');
+                    }
+                });
+                
+                terminalInput.addEventListener('blur', () => {
+                    inputActive = false;
+                    
+                    // Remove active class from the terminal
+                    if (logElement) {
+                        logElement.classList.remove('terminal-active');
+                    }
+                });
+            }
+        }
+        
         // Subscribe to log events using Utils.events if available
         if (window.Utils && window.Utils.events) {
             Utils.events.listen('log', handleLogEvent, { system: SYSTEM_NAME });
@@ -96,6 +141,11 @@ window.Logger = (function() {
             // When opening the console, force scroll to the latest entry
             if (!isCollapsed) {
                 forceScrollToBottom();
+                
+                // Focus the input when opening
+                if (terminalInput) {
+                    setTimeout(() => terminalInput.focus(), 100);
+                }
             }
         } else {
             // Fallback to original code
@@ -106,7 +156,54 @@ window.Logger = (function() {
             } else {
                 logToggle.textContent = '▼';
                 forceScrollToBottom();
+                
+                // Focus the input when opening
+                if (terminalInput) {
+                    setTimeout(() => terminalInput.focus(), 100);
+                }
             }
+        }
+    }
+    
+    // Handle keyboard shortcut to open terminal (backtick/tilde key)
+    function handleTerminalHotkey(event) {
+        // Use backtick key (`) as a shortcut to open the terminal - keyCode 192
+        if (event.keyCode === 192 && !inputActive) {
+            event.preventDefault();
+            
+            // Ensure logger is open
+            if (logElement && logElement.classList.contains('collapsed')) {
+                toggleLogger();
+            }
+            
+            // Focus the input
+            if (terminalInput) {
+                terminalInput.focus();
+            }
+        }
+        
+        // Escape key should blur the terminal input if it's focused
+        if (event.key === 'Escape' && inputActive && document.activeElement === terminalInput) {
+            terminalInput.blur();
+        }
+    }
+    
+    // Handle terminal input submission
+    function handleTerminalSubmit(event) {
+        event.preventDefault();
+        
+        if (!terminalInput) return;
+        
+        const command = terminalInput.value.trim();
+        if (command) {
+            // Log the command with user prefix
+            logMessage(`> ${command}`, MESSAGE_TYPES.SYSTEM);
+            
+            // Process command (for now, just say invalid command)
+            logMessage("Invalid command. Try again.", MESSAGE_TYPES.SYSTEM);
+            
+            // Clear the input
+            terminalInput.value = '';
         }
     }
     
@@ -123,6 +220,9 @@ window.Logger = (function() {
                 break;
             case MESSAGE_TYPES.DEBUG:
                 debug(message);
+                break;
+            case MESSAGE_TYPES.SYSTEM:
+                system(message);
                 break;
             default:
                 log(message);
@@ -165,6 +265,8 @@ window.Logger = (function() {
             messageElement.classList.add('log-warning');
         } else if (type === MESSAGE_TYPES.DEBUG) {
             messageElement.classList.add('log-debug');
+        } else if (type === MESSAGE_TYPES.SYSTEM) {
+            messageElement.classList.add('log-system');
         }
         
         // Create a span for the text that will be animated
@@ -186,6 +288,10 @@ window.Logger = (function() {
                 break;
             case MESSAGE_TYPES.DEBUG:
                 prefix = 'DEBUG: ';
+                break;
+            case MESSAGE_TYPES.SYSTEM:
+                // No prefix for system messages
+                prefix = '';
                 break;
         }
         
@@ -288,6 +394,12 @@ window.Logger = (function() {
         console.debug(message);
     }
     
+    // Log a system message (for terminal responses)
+    function system(message) {
+        logMessage(message, MESSAGE_TYPES.SYSTEM);
+        console.log(`[SYSTEM] ${message}`);
+    }
+    
     // Clear the log
     function clear() {
         if (!initialized && !init()) return;
@@ -297,6 +409,21 @@ window.Logger = (function() {
         // Emit clear event
         if (window.EventSystem) {
             EventSystem.emit('logCleared');
+        }
+    }
+    
+    // Focus the terminal input field
+    function focusTerminal() {
+        if (!initialized && !init()) return;
+        
+        // Ensure the logger is visible
+        if (logElement.classList.contains('collapsed')) {
+            toggleLogger();
+        }
+        
+        // Focus the input field
+        if (terminalInput) {
+            setTimeout(() => terminalInput.focus(), 100);
         }
     }
     
@@ -310,9 +437,11 @@ window.Logger = (function() {
         error,
         warning,
         debug,
+        system,
         clear,
         toggleLogger,
         forceScrollToBottom,
+        focusTerminal,
         types: MESSAGE_TYPES
     };
 })();

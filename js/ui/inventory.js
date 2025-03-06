@@ -39,6 +39,12 @@ const InventorySystem = (function() {
             
             // Key event listener for 'I' key to toggle inventory
             window.addEventListener('keydown', (e) => {
+                // Skip if user is typing in terminal
+                const terminalInput = document.getElementById('terminalInput');
+                if (terminalInput && document.activeElement === terminalInput) {
+                    return; // Don't process inventory shortcuts when typing in terminal
+                }
+                
                 if (e.key === 'i' || e.key === 'I') {
                     toggleExpandedInventory();
                 }

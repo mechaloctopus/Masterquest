@@ -122,6 +122,21 @@ canvas { width: 100%; height: 100%; }
     background-color: rgba(102, 255, 204, 0.15);
 }
 
+.log-message.log-debug::before {
+    content: "D";
+    color: #66FFCC;
+}
+
+.log-message.log-system {
+    border-left-color: #CCCCFF;
+    background-color: rgba(204, 204, 255, 0.15);
+}
+
+.log-message.log-system::before {
+    content: "$";
+    color: #CCCCFF;
+}
+
 .log-text {
     display: inline-block;
     position: relative;
@@ -1609,4 +1624,77 @@ body.mobile-detected .radio-player {
    font-size: inherit;
    cursor: inherit;
    z-index: inherit;
+}
+
+/* Terminal Input Styles */
+.terminal-input-container {
+    display: flex;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    border-top: 1px solid #00ffff;
+}
+
+#terminalForm {
+    display: flex;
+    width: 100%;
+}
+
+#terminalInput {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #00ffff;
+    color: #00ffff;
+    padding: 8px;
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    outline: none;
+}
+
+#terminalInput:focus {
+    box-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+}
+
+#terminalSubmit {
+    background: transparent;
+    color: #00ffff;
+    border: 1px solid #00ffff;
+    border-left: none;
+    padding: 0 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#terminalSubmit:hover {
+    background: rgba(0, 255, 255, 0.2);
+}
+
+/* Hide terminal input when logger is collapsed */
+#log.collapsed .terminal-input-container {
+    display: none;
+}
+
+/* Special styling when terminal is active/focused */
+#log.terminal-active {
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    border-color: #00ffff;
+    z-index: 100 !important; /* Ensure it's above other UI elements */
+}
+
+#log.terminal-active .log-header {
+    background: rgba(0, 0, 0, 1);
+    border-bottom: 1px solid #00ffff;
+}
+
+#log.terminal-active .log-title {
+    color: #ffffff;
+    text-shadow: 0 0 8px #00ffff;
+}
+
+#log.terminal-active .terminal-input-container {
+    background: rgba(0, 0, 0, 1);
+    border-top: 1px solid #00ffff;
+}
+
+#log.terminal-active #terminalInput {
+    background: rgba(0, 20, 40, 0.8);
 } 

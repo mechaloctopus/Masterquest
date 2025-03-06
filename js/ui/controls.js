@@ -124,7 +124,14 @@ const ControlSystem = {
         
         // Set up keyboard controls
         document.addEventListener('keydown', (e) => {
+            // Skip keyboard handling if controls are disabled or if typing in terminal
             if (!this._controls.enabled || !this._controls.keyboard.enabled) return;
+            
+            // Check if terminal input is active and focused
+            const terminalInput = document.getElementById('terminalInput');
+            if (terminalInput && document.activeElement === terminalInput) {
+                return; // Don't process game controls when typing in terminal
+            }
             
             this._controls.keyboard.keysDown[e.key.toLowerCase()] = true;
             

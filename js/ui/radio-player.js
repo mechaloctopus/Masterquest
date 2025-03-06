@@ -58,6 +58,12 @@ window.RadioPlayerSystem = (function() {
             
             // Key event listener for 'M' key to toggle radio
             window.addEventListener('keydown', (e) => {
+                // Skip if user is typing in terminal
+                const terminalInput = document.getElementById('terminalInput');
+                if (terminalInput && document.activeElement === terminalInput) {
+                    return; // Don't process radio shortcuts when typing in terminal
+                }
+                
                 if (e.key === 'm' || e.key === 'M') {
                     const radioPlayer = document.getElementById('radioPlayer');
                     const radioToggle = document.getElementById('radioToggle');
@@ -181,7 +187,7 @@ window.RadioPlayerSystem = (function() {
         
         // Setup for user interaction - any click on document will attempt to start audio
         if (trackList.length > 0) {
-            const startAudioOnInteraction = function() {
+            const startAudioOnInteraction = function(e) {
                 // Only attach this once - remove after first interaction
                 document.removeEventListener('click', startAudioOnInteraction);
                 document.removeEventListener('keydown', startAudioOnInteraction);
@@ -195,7 +201,12 @@ window.RadioPlayerSystem = (function() {
             
             // Listen for any user interaction
             document.addEventListener('click', startAudioOnInteraction);
-            document.addEventListener('keydown', startAudioOnInteraction);
+            document.addEventListener('keydown', (e) => {
+                // Always allow audio to start even when typing in terminal
+                // This is a user experience choice - first interaction with the page
+                // should always be able to start audio regardless of where the focus is
+                startAudioOnInteraction(e);
+            });
         }
     }
     
