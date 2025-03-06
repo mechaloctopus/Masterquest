@@ -60,9 +60,6 @@ const MapSystem = (function() {
             return false;
         }
         
-        // Create origin marker
-        addOrigin();
-        
         // Start the update loop
         requestAnimationFrame(updateLoop);
         
@@ -257,74 +254,29 @@ const MapSystem = (function() {
     }
     
     function styleMapContainer() {
-        // Make map permanently visible
-        mapContainer.style.position = 'fixed';
-        mapContainer.style.top = '10px';
-        mapContainer.style.right = '10px';
-        mapContainer.style.width = MAP_SIZE + 'px';
-        mapContainer.style.height = MAP_SIZE + 'px';
-        mapContainer.style.border = '2px solid #00cc99';
-        mapContainer.style.backgroundColor = 'rgba(0, 26, 51, 0.8)';
-        mapContainer.style.zIndex = '100';
-        
-        // Hide any toggle button
-        const mapToggle = document.getElementById('mapToggle');
-        if (mapToggle) {
-            mapToggle.style.display = 'none';
-        }
-        
-        // Make sure canvas fills the container
+        // Create and inject CSS for map
         const style = document.createElement('style');
         style.textContent = `
+            #mapContainer {
+                position: absolute;
+                width: ${MAP_SIZE}px;
+                height: ${MAP_SIZE}px;
+                bottom: 10px;
+                right: 10px;
+                border: 2px solid #00FFFF;
+                background-color: rgba(0,0,0,0.5);
+                border-radius: 4px;
+                overflow: hidden;
+                pointer-events: none;
+                z-index: 1000;
+            }
+            
             #mapCanvas {
                 width: 100%;
                 height: 100%;
-                display: block;
-            }
-            #mapContainer {
-                overflow: visible !important;
-                display: flex;
-                flex-direction: column;
-                padding-bottom: 0;
-            }
-            
-            /* Fix coordinate display styling */
-            .map-coordinates {
-                display: flex !important;
-                flex-direction: column;
-                justify-content: center;
-                width: 100%;
-                margin-top: ${MAP_SIZE}px; /* Position below map */
-                background-color: rgba(0, 26, 51, 0.95);
-                border: 1px solid #00cc99;
-                color: #00cc99;
-                padding: 5px;
-            }
-            .coord-position, .coord-grid {
-                display: flex;
-                justify-content: space-between;
-                padding: 2px 5px;
-            }
-            .coord-compass {
-                font-weight: bold;
-                color: #ff00cc;
-                text-align: center;
-            }
-            .coord-label {
-                font-weight: bold;
             }
         `;
         document.head.appendChild(style);
-    }
-    
-    function addOrigin() {
-        // Store origin info for drawing
-        window.mapOrigin = {
-            x: 0,
-            z: 0,
-            color: "#00FFFF",
-            label: "Origin"
-        };
     }
     
     function setupDirectCoordinateConnection() {
@@ -423,9 +375,6 @@ const MapSystem = (function() {
         // Draw grid
         drawGrid();
         
-        // Draw origin point
-        drawOrigin();
-        
         // Draw NPCs and Foes
         drawNPCs();
         drawFoes();
@@ -513,32 +462,6 @@ const MapSystem = (function() {
         
         // Reset alpha
         ctx.globalAlpha = 1.0;
-    }
-    
-    // Draw the origin point
-    function drawOrigin() {
-        const origin = window.mapOrigin;
-        if (!origin) return;
-        
-        const center = MAP_SIZE / 2;
-        
-        // Calculate origin position relative to player
-        const x = center + (origin.x - playerX) * SCALE;
-        const y = center - (origin.z - playerZ) * SCALE; // Reversed Z
-        
-        // Check if within view (with small margin)
-        if (x >= -10 && x <= MAP_SIZE + 10 && y >= -10 && y <= MAP_SIZE + 10) {
-            // Draw the point
-            ctx.fillStyle = origin.color;
-            ctx.beginPath();
-            ctx.arc(x, y, 3, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Draw the label
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '9px monospace';
-            ctx.fillText(origin.label, x + 5, y + 3);
-        }
     }
     
     // Draw the player arrow
