@@ -597,14 +597,8 @@ const MapSystem = (function() {
         ctx.stroke();
         ctx.restore();
         
-        // Show compass and rotation as debug text
-        ctx.fillStyle = "#ffff00";
-        ctx.font = "9px monospace";
-        ctx.textAlign = "left";
-        
-        // Get direction name for debugging
-        const dirName = getCardinalDirection(playerRotation);
-        ctx.fillText(`${dirName}`, 5, 40);
+        // Direction name is still calculated for other uses, but we don't display it
+        getCardinalDirection(playerRotation);
     }
     
     // Draw cardinal direction indicators (N, S, E, W)
