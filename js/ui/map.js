@@ -25,12 +25,21 @@ const MapSystem = (function() {
     
     // Direct coordinate check timer
     let coordinateCheckTimer = null;
+    let entityUpdateTimer = null;
     
-    // Debug mode - set to true to troubleshoot foe tracking
-    const DEBUG = true;
+    // Debug mode - set to false to improve performance
+    const DEBUG = false;
+    
+    // Performance throttling
+    const COORDINATE_CHECK_INTERVAL = 250; // ms (reduced from 100ms)
+    const ENTITY_UPDATE_INTERVAL = 1000; // ms (reduced from 500ms)
+    
+    // Track last update time for throttling
+    let lastRenderTime = 0;
+    const RENDER_THROTTLE = 50; // ms, limits to ~20fps max
     
     function init() {
-        console.log("[MAP] Initializing map system");
+        if (DEBUG) console.log("[MAP] Initializing map system");
         
         // Get the map container
         mapContainer = document.getElementById('mapContainer');
@@ -72,19 +81,19 @@ const MapSystem = (function() {
         // Connect to Entity system right away
         connectToEntitySystems();
         
-        console.log("[MAP] Map system initialized successfully");
+        if (DEBUG) console.log("[MAP] Map system initialized successfully");
         return true;
     }
     
     // Connect to Entity system to get entity data
     function connectToEntitySystems() {
-        console.log("[MAP] Connecting to entity system...");
+        if (DEBUG) console.log("[MAP] Connecting to entity system...");
         
         // First, directly fetch entities once
         updateEntities();
         
-        // Then set up polling for updates
-        setInterval(updateEntities, 500); // Check twice per second
+        // Then set up polling for updates with reduced frequency
+        entityUpdateTimer = setInterval(updateEntities, ENTITY_UPDATE_INTERVAL);
     }
     
     // Update NPC and Foe positions from Entity system
@@ -100,34 +109,30 @@ const MapSystem = (function() {
                 const allFoes = EntitySystem.getAllFoes();
                 updateFoesOnMap(allFoes);
                 
-                console.log(`[MAP] Updated ${allNPCs.length} NPCs and ${allFoes.length} foes from EntitySystem`);
+                if (DEBUG) console.log(`[MAP] Updated ${allNPCs.length} NPCs and ${allFoes.length} foes from EntitySystem`);
+                return; // Successfully updated
             } catch (e) {
-                console.warn("[MAP] Could not get entities from EntitySystem:", e);
+                if (DEBUG) console.warn("[MAP] Could not get entities from EntitySystem, trying fallbacks");
                 // Try fallback methods
                 tryFallbackEntityMethods();
             }
         } else {
-            console.warn("[MAP] EntitySystem not available, trying legacy systems");
+            // Only try fallbacks if primary method not available
             tryFallbackEntityMethods();
         }
     }
     
     // Fallback methods for getting entities if EntitySystem is not available
     function tryFallbackEntityMethods() {
-        // Log that we're trying legacy systems
-        console.log("[MAP] EntitySystem not available or returned no entities, trying legacy systems");
-        
         // Try legacy NPC system
         if (window.NPCSystem && typeof NPCSystem.getAllNPCs === 'function') {
             try {
                 const allNPCs = NPCSystem.getAllNPCs();
                 updateNPCsOnMap(allNPCs);
-                console.log(`[MAP] FALLBACK: Found ${allNPCs.length} NPCs via legacy NPCSystem`);
+                if (DEBUG) console.log(`[MAP] FALLBACK: Found NPCs via legacy NPCSystem`);
             } catch (e) {
-                console.warn("[MAP] Legacy NPCSystem failed:", e);
+                if (DEBUG) console.warn("[MAP] Legacy NPCSystem failed");
             }
-        } else {
-            console.log("[MAP] Legacy NPCSystem not available");
         }
         
         // Try legacy FOE system
@@ -136,34 +141,23 @@ const MapSystem = (function() {
     
     // Enhanced foe update function for legacy system - tries multiple methods
     function tryLegacyFoeMethods() {
-        console.log("[MAP] Attempting to use legacy FoeSystem as fallback");
-        
         // First try the standard FoeSystem approach
         if (window.FoeSystem && typeof FoeSystem.getAllFoes === 'function') {
             try {
                 const allFoes = FoeSystem.getAllFoes();
                 if (Array.isArray(allFoes) && allFoes.length > 0) {
-                    console.log(`[MAP] FALLBACK: Found ${allFoes.length} foes via legacy FoeSystem.getAllFoes`);
                     updateFoesOnMap(allFoes);
                     return; // Successfully updated
-                } else {
-                    console.log("[MAP] Legacy FoeSystem.getAllFoes returned empty array");
                 }
             } catch (e) {
-                console.warn("[MAP] Legacy FoeSystem.getAllFoes failed:", e);
+                // Continue to next method
             }
         }
         
         // Try second approach - check if foes are directly accessible
         if (window.FoeSystem && Array.isArray(FoeSystem.foes)) {
-            console.log(`[MAP] FALLBACK: Found ${FoeSystem.foes.length} foes via legacy FoeSystem.foes property`);
             updateFoesOnMap(FoeSystem.foes);
-            return; // Successfully updated
-        } else {
-            console.log("[MAP] Legacy FoeSystem.foes not available");
         }
-        
-        console.log("[MAP] All fallback methods for foes failed");
     }
     
     // Process NPC data from the NPC system
@@ -190,16 +184,8 @@ const MapSystem = (function() {
                         z: npcPosition.z,
                         label: npc.name || `NPC ${index + 1}`
                     });
-                    
-                    if (DEBUG) {
-                        console.log(`[MAP] Added NPC '${npc.name || "unnamed"}' at (${npcPosition.x.toFixed(1)}, ${npcPosition.z.toFixed(1)})`);
-                    }
                 }
             });
-        }
-        
-        if (DEBUG) {
-            console.log(`[MAP] Updated ${npcs.length} NPCs on map`);
         }
     }
     
@@ -236,9 +222,7 @@ const MapSystem = (function() {
                         z: foePosition.z,
                         label: foeName
                     });
-                    
-                    console.log(`[MAP] Added foe '${foeName}' at position (${foePosition.x.toFixed(1)}, ${foePosition.z.toFixed(1)})`);
-                } else {
+                } else if (DEBUG) {
                     console.warn(`[MAP] Could not determine position for foe '${foeName}'`);
                 }
             });
@@ -246,11 +230,8 @@ const MapSystem = (function() {
         
         if (foes.length === 0 && oldFoes.length > 0) {
             // If we lost foes, it might be a temporary error, restore the old ones
-            console.warn("[MAP] Lost foe tracking, maintaining last known positions");
             foes = oldFoes;
         }
-        
-        console.log(`[MAP] Updated ${foes.length} Foes on map`);
     }
     
     function styleMapContainer() {
@@ -280,7 +261,7 @@ const MapSystem = (function() {
     }
     
     function setupDirectCoordinateConnection() {
-        // Poll the coordinate display DOM elements
+        // Poll the coordinate display DOM elements less frequently
         coordinateCheckTimer = setInterval(function() {
             const coordPos = document.getElementById('coordPos');
             const compassElem = document.getElementById('coordCompass');
@@ -314,7 +295,7 @@ const MapSystem = (function() {
                     updatePlayerPosition({x, z}, newRotation);
                 }
             }
-        }, 100); // Check 10 times per second
+        }, COORDINATE_CHECK_INTERVAL);
         
         // Backup method: Connect to Babylon camera if available
         if (window.BABYLON && BABYLON.Engine.Instances.length > 0) {
@@ -322,13 +303,18 @@ const MapSystem = (function() {
                 const engine = BABYLON.Engine.Instances[0];
                 if (engine?.scenes?.length > 0) {
                     const scene = engine.scenes[0];
-                    scene.onBeforeRenderObservable.add(() => {
-                        if (scene.activeCamera?.position) {
+                    // Use onAfterRenderObservable instead of onBeforeRenderObservable
+                    // and throttle the updates to reduce performance impact
+                    let lastCameraUpdate = 0;
+                    scene.onAfterRenderObservable.add(() => {
+                        const now = performance.now();
+                        if (now - lastCameraUpdate > COORDINATE_CHECK_INTERVAL && scene.activeCamera?.position) {
                             const camera = scene.activeCamera;
                             updatePlayerPosition({
                                 x: camera.position.x,
                                 z: camera.position.z
                             }, camera.rotation.y);
+                            lastCameraUpdate = now;
                         }
                     });
                 }
@@ -348,17 +334,18 @@ const MapSystem = (function() {
         // Only update rotation if provided and different
         if (typeof rotation === 'number' && Math.abs(rotation - playerRotation) > 0.01) {
             playerRotation = rotation;
-            
-            if (DEBUG) {
-                console.log(`[MAP] Rotation updated: ${playerRotation.toFixed(2)}`);
-            }
         }
     }
     
-    // Main render loop
+    // Main render loop with throttling
     function updateLoop() {
-        // Render the map
-        renderMap();
+        const now = performance.now();
+        
+        // Only render if enough time has passed since last render
+        if (now - lastRenderTime >= RENDER_THROTTLE) {
+            renderMap();
+            lastRenderTime = now;
+        }
         
         // Continue loop
         requestAnimationFrame(updateLoop);
@@ -381,11 +368,6 @@ const MapSystem = (function() {
         
         // Draw player arrow
         drawPlayer();
-        
-        // Add debug info if enabled
-        if (DEBUG) {
-            drawDebugInfo();
-        }
     }
     
     // Draw the grid with proper scaling and boundaries
@@ -510,18 +492,12 @@ const MapSystem = (function() {
         ctx.beginPath();
         ctx.moveTo(center, center);
         
-        // Convert playerRotation to degrees for debugging
-        const degrees = ((playerRotation * 180 / Math.PI) % 360 + 360) % 360;
-        
         // Draw the direction line
         const dirX = center + Math.sin(playerRotation) * 15;
         const dirY = center - Math.cos(playerRotation) * 15;
         ctx.lineTo(dirX, dirY);
         ctx.stroke();
         ctx.restore();
-        
-        // Direction name is still calculated for other uses, but we don't display it
-        getCardinalDirection(playerRotation);
     }
     
     // Draw cardinal direction indicators (N, S, E, W)
@@ -540,11 +516,6 @@ const MapSystem = (function() {
         ctx.fillText('S', size/2, size - margin - 6);
         ctx.fillText('E', size - margin - 6, size/2);
         ctx.fillText('W', margin + 6, size/2);
-    }
-    
-    // Draw debug information - simplified to empty function
-    function drawDebugInfo() {
-        // Removed all debug text as requested
     }
     
     // Get cardinal direction based on rotation angle
@@ -582,12 +553,8 @@ const MapSystem = (function() {
                 ctx.fill();
                 ctx.lineWidth = 1;
                 ctx.stroke();
-                
-                // Removed labels for NPCs
             }
         });
-        
-        // Removed debug count
     }
     
     // Draw Foes as red dots
@@ -613,18 +580,88 @@ const MapSystem = (function() {
                 ctx.fill();
                 ctx.lineWidth = 1;
                 ctx.stroke();
-                
-                // Removed labels for foes
             }
         });
+    }
+    
+    // Adding the missing functions that were referenced in the return object
+    
+    // Update a single NPC's position
+    function updateNPC(id, position) {
+        if (!position || typeof position.x !== 'number' || typeof position.z !== 'number') {
+            return false;
+        }
         
-        // Removed debug count
+        // Find NPC by ID
+        const npcIndex = npcs.findIndex(npc => npc.id === id);
+        
+        if (npcIndex >= 0) {
+            // Update existing NPC
+            npcs[npcIndex].x = position.x;
+            npcs[npcIndex].z = position.z;
+        } else {
+            // Add new NPC
+            npcs.push({
+                id: id,
+                x: position.x,
+                z: position.z,
+                label: id
+            });
+        }
+        
+        return true;
+    }
+    
+    // Update a single Foe's position
+    function updateFoe(id, position) {
+        if (!position || typeof position.x !== 'number' || typeof position.z !== 'number') {
+            return false;
+        }
+        
+        // Find Foe by ID
+        const foeIndex = foes.findIndex(foe => foe.id === id);
+        
+        if (foeIndex >= 0) {
+            // Update existing Foe
+            foes[foeIndex].x = position.x;
+            foes[foeIndex].z = position.z;
+        } else {
+            // Add new Foe
+            foes.push({
+                id: id,
+                x: position.x,
+                z: position.z,
+                label: id
+            });
+        }
+        
+        return true;
+    }
+    
+    // Force refresh of foes from system
+    function updateFoesFromSystem() {
+        if (window.EntitySystem && typeof EntitySystem.getAllFoes === 'function') {
+            try {
+                const allFoes = EntitySystem.getAllFoes();
+                updateFoesOnMap(allFoes);
+                return true;
+            } catch (e) {
+                if (DEBUG) console.warn("[MAP] Error refreshing foes:", e);
+            }
+        }
+        
+        // Try fallback methods
+        tryLegacyFoeMethods();
+        return true;
     }
     
     // Clean up when unloading
     function cleanup() {
         if (coordinateCheckTimer) {
             clearInterval(coordinateCheckTimer);
+        }
+        if (entityUpdateTimer) {
+            clearInterval(entityUpdateTimer);
         }
     }
     
@@ -633,7 +670,7 @@ const MapSystem = (function() {
         if (window.CoordinateSystem && typeof window.CoordinateSystem.init === 'function') {
             // Initialize if not already done
             if (!document.getElementById('coordinateDisplay')) {
-                console.log("[MAP] Initializing CoordinateSystem");
+                if (DEBUG) console.log("[MAP] Initializing CoordinateSystem");
                 window.CoordinateSystem.init();
             }
             
