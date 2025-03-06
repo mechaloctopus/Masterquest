@@ -133,6 +133,12 @@ const ControlSystem = {
                 return; // Don't process game controls when typing in terminal
             }
             
+            // Skip WASD keys - disabled for movement as per requirements
+            if (e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' ||
+                e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+                return; // Movement keys are ignored - joysticks only
+            }
+            
             this._controls.keyboard.keysDown[e.key.toLowerCase()] = true;
             
             if (e.code === 'Space' && state.grounded) {
@@ -148,7 +154,12 @@ const ControlSystem = {
             
             this._controls.keyboard.keysDown[e.key.toLowerCase()] = false;
             
-            // Handle keyboard movement for desktop
+            // Handle keyboard movement for desktop - DISABLED as per requirements
+            // WASD movement has been removed to prevent interference with terminal input
+            // Joysticks are now the only way to move
+            
+            // OLD WASD Movement Code (commented out)
+            /*
             let xMove = 0, zMove = 0;
             if (e.code === 'KeyW' || e.code === 'ArrowUp') zMove += 1;
             if (e.code === 'KeyS' || e.code === 'ArrowDown') zMove -= 1;
@@ -165,11 +176,16 @@ const ControlSystem = {
                 }
                 updateMovementVector(xMove, zMove);
             }
+            */
         });
 
         // Process keyboard movement
         scene.registerBeforeRender(() => {
-            // Handle keyboard movement for desktop
+            // Handle keyboard movement for desktop - DISABLED as per requirements
+            // Using joysticks only for movement now
+            
+            // OLD WASD Movement Code (commented out)
+            /*
             let xMove = 0, zMove = 0;
             if (this._controls.keyboard.keysDown['w'] || this._controls.keyboard.keysDown['ArrowUp']) zMove += 1;
             if (this._controls.keyboard.keysDown['s'] || this._controls.keyboard.keysDown['ArrowDown']) zMove -= 1;
@@ -186,6 +202,7 @@ const ControlSystem = {
                 }
                 updateMovementVector(xMove, zMove);
             }
+            */
         });
     },
     
