@@ -621,7 +621,7 @@ const Utils = (function() {
             }
             
             // Emit event for error tracking
-            if (window.EventSystem) {
+            if (window.EventSystem && EventSystem.isInitialized()) {
                 window.EventSystem.emit('system.error', {
                     system,
                     message,
@@ -648,8 +648,11 @@ const Utils = (function() {
             listen: function(eventName, handler, options = {}) {
                 const { once = false, system = 'UNKNOWN' } = options;
                 
-                if (!window.EventSystem) {
-                    handleError(system, `Cannot subscribe to event '${eventName}': EventSystem not available`);
+                if (!window.EventSystem || !EventSystem.isInitialized()) {
+                    // Don't log errors for common expected events when the app is starting up
+                    if (!['log', 'logger.message'].includes(eventName)) {
+                        handleError(system, `Cannot subscribe to event '${eventName}': EventSystem not available`);
+                    }
                     return () => {}; // No-op unsubscribe
                 }
                 
@@ -683,8 +686,11 @@ const Utils = (function() {
             emit: function(eventName, data = {}, options = {}) {
                 const { system = 'UNKNOWN' } = options;
                 
-                if (!window.EventSystem) {
-                    handleError(system, `Cannot emit event '${eventName}': EventSystem not available`);
+                if (!window.EventSystem || !EventSystem.isInitialized()) {
+                    // Don't log errors for common expected events when the app is starting up
+                    if (!['log', 'logger.message'].includes(eventName)) {
+                        handleError(system, `Cannot emit event '${eventName}': EventSystem not available`);
+                    }
                     return;
                 }
                 

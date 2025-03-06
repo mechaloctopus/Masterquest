@@ -35,7 +35,7 @@ const Logger = (function() {
         // Subscribe to log events using Utils.events if available
         if (window.Utils && window.Utils.events) {
             Utils.events.listen('log', handleLogEvent, { system: SYSTEM_NAME });
-        } else if (window.EventSystem) {
+        } else if (window.EventSystem && EventSystem.isInitialized()) {
             EventSystem.on('log', handleLogEvent);
         }
         
@@ -149,7 +149,7 @@ const Logger = (function() {
         // Emit event if needed
         if (window.Utils && window.Utils.events) {
             Utils.events.emit('logger.message', { type, message }, { system: SYSTEM_NAME });
-        } else if (window.EventSystem) {
+        } else if (window.EventSystem && EventSystem.isInitialized()) {
             EventSystem.emit('logger.message', { type, message });
         }
     }

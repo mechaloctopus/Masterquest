@@ -23,10 +23,18 @@ const CollisionSystem = (function() {
             logEntry.innerHTML = `<span class="log-time">${new Date().toLocaleTimeString()}</span> ${message}`;
             logContent.appendChild(logEntry);
             logContent.scrollTop = logContent.scrollHeight;
+            
+            // Make sure it's visually noticeable by adding a brief highlight effect
+            setTimeout(() => {
+                logEntry.style.backgroundColor = '#334433';
+                setTimeout(() => {
+                    logEntry.style.backgroundColor = '';
+                }, 300);
+            }, 10);
         }
         
         // Use Logger if available
-        if (window.Logger && window.Logger.log) {
+        if (window.Logger && typeof Logger.log === 'function') {
             Logger.log(message);
         }
     }
@@ -89,8 +97,8 @@ const CollisionSystem = (function() {
         let foes = [];
         
         if (window.EntitySystem) {
-            npcs = window.EntitySystem.getAllNPCs() || [];
-            foes = window.EntitySystem.getAllFoes() || [];
+            npcs = window.EntitySystem.getAllNPCs ? window.EntitySystem.getAllNPCs() : [];
+            foes = window.EntitySystem.getAllFoes ? window.EntitySystem.getAllFoes() : [];
         }
         
         // Combine all entities to check
@@ -116,6 +124,11 @@ const CollisionSystem = (function() {
             );
             
             const distance = BABYLON.Vector3.Distance(playerPos, entityPosition);
+            
+            // Occasionally log distance for debugging
+            if (Math.random() < 0.001) {
+                console.log(`Distance to ${entity.name || 'entity'}: ${distance.toFixed(2)} (ID: ${entity.id || 'unknown'})`);
+            }
             
             // Check if player is in collision range
             if (distance < COLLISION_RADIUS) {
