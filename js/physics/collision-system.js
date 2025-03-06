@@ -13,29 +13,12 @@ const CollisionSystem = (function() {
     
     // Direct log message to the on-screen console
     function logToConsole(message) {
-        console.log(message);
-        
-        // Log directly to the DOM if Logger isn't available
-        const logContent = document.getElementById('logContent');
-        if (logContent) {
-            const logEntry = document.createElement('div');
-            logEntry.className = 'log-entry info';
-            logEntry.innerHTML = `<span class="log-time">${new Date().toLocaleTimeString()}</span> ${message}`;
-            logContent.appendChild(logEntry);
-            logContent.scrollTop = logContent.scrollHeight;
-            
-            // Make sure it's visually noticeable by adding a brief highlight effect
-            setTimeout(() => {
-                logEntry.style.backgroundColor = '#334433';
-                setTimeout(() => {
-                    logEntry.style.backgroundColor = '';
-                }, 300);
-            }, 10);
-        }
-        
-        // Use Logger if available
-        if (window.Logger && typeof Logger.log === 'function') {
-            Logger.log(message);
+        // Use the Logger if available
+        if (window.Logger && typeof window.Logger.log === 'function') {
+            window.Logger.log(message);
+        } else {
+            // Fallback to console.log if Logger isn't available
+            console.log(message);
         }
     }
     
