@@ -200,13 +200,6 @@ window.EntitySystem = (function() {
         for (let i = 0; i < 10; i++) {
             createNPC(i, realmIndex);
         }
-        
-        // Ensure all NPCs have click handlers
-        entities.npcs.forEach(npc => {
-            if (npc.realmIndex === realmIndex) {
-                setupClickHandler(npc);
-            }
-        });
     }
     
     // Load foes for a specific realm
@@ -217,13 +210,6 @@ window.EntitySystem = (function() {
         for (let i = 0; i < 10; i++) {
             createFoe(i, realmIndex);
         }
-        
-        // Ensure all foes have click handlers
-        entities.foes.forEach(foe => {
-            if (foe.realmIndex === realmIndex) {
-                setupClickHandler(foe);
-            }
-        });
     }
     
     // Create a visible NPC entity
