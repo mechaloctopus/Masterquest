@@ -1,7 +1,9 @@
-// Enhanced Logging System
-const Logger = (function() {
+// Enhanced Logging System with Toggle Controls
+window.Logger = (function() {
     // Private variables
     let logContentElement = null;
+    let logElement = null;
+    let logToggle = null;
     let initialized = false;
     const SYSTEM_NAME = 'LOGGER';
     
@@ -17,19 +19,51 @@ const Logger = (function() {
     function init() {
         if (initialized) return true;
         
-        // Use Utils.dom if available, fallback to direct DOM access
+        // Obtain DOM elements
         if (window.Utils && window.Utils.dom) {
             logContentElement = Utils.dom.getElement('logContent', {
                 system: SYSTEM_NAME,
                 required: true,
                 errorMessage: "Log content element not found! Logger will not function."
             });
+            
+            logElement = Utils.dom.getElement('log', {
+                system: SYSTEM_NAME,
+                required: true
+            });
+            
+            logToggle = Utils.dom.getElement('logToggle', {
+                system: SYSTEM_NAME,
+                required: true
+            });
         } else {
             logContentElement = document.getElementById('logContent');
+            logElement = document.getElementById('log');
+            logToggle = document.getElementById('logToggle');
+            
             if (!logContentElement) {
                 console.error("Log content element not found!");
                 return false;
             }
+        }
+        
+        // Set initial state based on config
+        if (logElement && logToggle) {
+            const defaultCollapsed = window.CONFIG && 
+                                    window.CONFIG.UI && 
+                                    window.CONFIG.UI.LOGGER && 
+                                    window.CONFIG.UI.LOGGER.COLLAPSED_BY_DEFAULT;
+            
+            if (defaultCollapsed) {
+                logElement.classList.add('collapsed');
+                logToggle.textContent = '▶ CONSOLE';
+            } else {
+                logElement.classList.remove('collapsed');
+                logToggle.textContent = '▼';
+            }
+            
+            // Add toggle event listener
+            logToggle.addEventListener('click', toggleLogger);
         }
         
         // Subscribe to log events using Utils.events if available
@@ -41,6 +75,30 @@ const Logger = (function() {
         
         initialized = true;
         return true;
+    }
+    
+    // Toggle logger visibility
+    function toggleLogger() {
+        if (!logElement || !logToggle) return;
+        
+        if (window.togglePanelCollapse) {
+            const isCollapsed = window.togglePanelCollapse(logElement, logToggle);
+            
+            // When opening the console, force scroll to the latest entry
+            if (!isCollapsed) {
+                forceScrollToBottom();
+            }
+        } else {
+            // Fallback to original code
+            logElement.classList.toggle('collapsed');
+            
+            if (logElement.classList.contains('collapsed')) {
+                logToggle.textContent = '▶ CONSOLE';
+            } else {
+                logToggle.textContent = '▼';
+                forceScrollToBottom();
+            }
+        }
     }
     
     // Handle log events from the event system
@@ -146,6 +204,12 @@ const Logger = (function() {
         // Scroll to bottom
         forceScrollToBottom();
         
+        // Show log for important messages
+        if ((type === MESSAGE_TYPES.ERROR || type === MESSAGE_TYPES.WARNING) && logElement) {
+            logElement.classList.remove('collapsed');
+            if (logToggle) logToggle.textContent = '▼';
+        }
+        
         // Emit event if needed
         if (window.Utils && window.Utils.events) {
             Utils.events.emit('logger.message', { type, message }, { system: SYSTEM_NAME });
@@ -238,6 +302,7 @@ const Logger = (function() {
         warning,
         debug,
         clear,
+        toggleLogger,
         forceScrollToBottom,
         types: MESSAGE_TYPES
     };
