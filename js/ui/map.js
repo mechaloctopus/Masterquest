@@ -97,9 +97,49 @@ const MapSystem = (function() {
             }
             #mapContainer {
                 overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                padding-bottom: 45px; /* Space for coordinate display */
+            }
+            #coordinateDisplay {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 45px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                background-color: rgba(0, 26, 51, 0.95);
+                color: #00cc99;
+                font-family: monospace;
+                font-size: 12px;
+                padding: 3px;
+                box-sizing: border-box;
+                border-top: 1px solid #00cc99;
+            }
+            .map-coordinates {
+                display: flex !important;
+                flex-direction: column;
+                justify-content: center;
+                width: 100%;
+            }
+            .coord-position, .coord-grid {
+                display: flex;
+                justify-content: space-between;
+                width: 100%;
+                padding: 0 5px;
+            }
+            .coord-compass {
+                font-weight: bold;
+                color: #ff00cc;
             }
         `;
         document.head.appendChild(style);
+        
+        // Ensure coordinate system is initialized
+        ensureCoordinateDisplay();
     }
     
     function addOrigin() {
@@ -196,6 +236,9 @@ const MapSystem = (function() {
         
         // Render the map
         renderMap();
+        
+        // Update coordinate display
+        updateCoordinateDisplay();
         
         // Debug output occasionally
         if (DEBUG && frameCount % 300 === 0) {
@@ -333,3 +376,103 @@ const MapSystem = (function() {
         updatePlayerPosition: updatePlayerPosition
     };
 })(); 
+
+// Ensure coordinate display is visible
+function ensureCoordinateDisplay() {
+    // Check if CoordinateSystem exists but isn't initialized yet
+    if (window.CoordinateSystem && typeof window.CoordinateSystem.init === 'function') {
+        setTimeout(() => {
+            // Initialize if not already done
+            window.CoordinateSystem.init();
+            
+            // Make sure it's visible
+            if (typeof window.CoordinateSystem.show === 'function') {
+                window.CoordinateSystem.show();
+            }
+            
+            // Verify the display element exists
+            const coordDisplay = document.getElementById('coordinateDisplay');
+            if (!coordDisplay) {
+                console.warn("[MAP] Coordinate display element not found, recreating it");
+                createCoordinateDisplay();
+            }
+        }, 100);
+    } else {
+        console.warn("[MAP] CoordinateSystem not available, creating fallback display");
+        createCoordinateDisplay();
+    }
+}
+
+// Create a basic coordinate display if the main one isn't available
+function createCoordinateDisplay() {
+    let coordDisplay = document.getElementById('coordinateDisplay');
+    
+    // Only create if it doesn't exist
+    if (!coordDisplay) {
+        coordDisplay = document.createElement('div');
+        coordDisplay.id = 'coordinateDisplay';
+        coordDisplay.className = 'map-coordinates';
+        
+        coordDisplay.innerHTML = `
+            <div class="coord-position">
+                <span class="coord-label">POS:</span> 
+                <span id="coordPos" class="coord-value">X:0 Z:0</span>
+            </div>
+            <div class="coord-grid">
+                <span class="coord-label">GRID:</span> 
+                <span id="coordGrid" class="coord-value">(0, 0)</span>
+            </div>
+            <div id="coordCompass" class="coord-compass">N</div>
+        `;
+        
+        mapContainer.appendChild(coordDisplay);
+    }
+}
+
+// Update the display elements during our render loop too
+function updateCoordinateDisplay() {
+    // Only update if we have position data and our own display
+    try {
+        const posElem = document.getElementById('coordPos');
+        const gridElem = document.getElementById('coordGrid');
+        const compassElem = document.getElementById('coordCompass');
+        
+        if (posElem && gridElem && compassElem) {
+            // Format position data
+            const rawX = Math.round(playerX);
+            const rawZ = Math.round(playerZ);
+            
+            // Calculate grid coordinates
+            const gridX = Math.round(playerX / WORLD_GRID_SIZE);
+            const gridZ = Math.round(playerZ / WORLD_GRID_SIZE);
+            
+            // Get compass direction
+            const compassDir = getCompassDirection(playerRotation);
+            
+            // Update elements
+            posElem.textContent = `X:${rawX} Z:${rawZ}`;
+            gridElem.textContent = `(${gridX}, ${gridZ})`;
+            compassElem.textContent = compassDir;
+        }
+    } catch (e) {
+        // Ignore errors in display updates
+    }
+}
+
+// Get compass direction (copied from CoordinateSystem)
+function getCompassDirection(radians) {
+    // Convert to degrees and normalize to 0-360
+    const degrees = ((radians * 180 / Math.PI) % 360 + 360) % 360;
+    
+    // Map to compass directions
+    if (degrees >= 337.5 || degrees < 22.5) return 'N';
+    if (degrees >= 22.5 && degrees < 67.5) return 'NE';
+    if (degrees >= 67.5 && degrees < 112.5) return 'E';
+    if (degrees >= 112.5 && degrees < 157.5) return 'SE';
+    if (degrees >= 157.5 && degrees < 202.5) return 'S';
+    if (degrees >= 202.5 && degrees < 247.5) return 'SW';
+    if (degrees >= 247.5 && degrees < 292.5) return 'W';
+    if (degrees >= 292.5 && degrees < 337.5) return 'NW';
+    
+    return 'N'; // fallback
+} 
