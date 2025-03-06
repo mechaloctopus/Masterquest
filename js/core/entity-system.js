@@ -141,7 +141,7 @@ window.EntitySystem = (function() {
     function loadNPCsForRealm(realmIndex) {
         safeLog(`Loading NPCs for realm ${realmIndex}`);
         
-        // Create 10 NPCs as requested
+        // Create 10 NPCs as requested, arranged in two rows
         for (let i = 0; i < 10; i++) {
             createNPC(i, realmIndex);
         }
@@ -151,7 +151,7 @@ window.EntitySystem = (function() {
     function loadFoesForRealm(realmIndex) {
         safeLog(`Loading foes for realm ${realmIndex}`);
         
-        // Create 10 foes as requested
+        // Create 10 foes as requested, arranged in two rows
         for (let i = 0; i < 10; i++) {
             createFoe(i, realmIndex);
         }
@@ -166,10 +166,20 @@ window.EntitySystem = (function() {
         
         // Create a blue orb for NPCs
         const size = template.size || 0.5;
+        
+        // Position NPCs in rows
+        // First row: 5 NPCs side by side at z = 5
+        // Second row: 5 NPCs side by side at z = 7
+        const row = Math.floor(index / 5);
+        const col = index % 5;
+        const startX = -8; // Start position of the first NPC
+        const spacingX = 4; // Space between NPCs in a row
+        const positionZ = 5 + (row * 2); // First row at z=5, second row at z=7
+        
         const position = template.position || new BABYLON.Vector3(
-            (Math.random() * 20) - 10, 
-            1, 
-            (Math.random() * 20) - 10
+            startX + (col * spacingX),
+            1,
+            positionZ
         );
         
         // Create mesh for NPC
@@ -188,7 +198,7 @@ window.EntitySystem = (function() {
         npcMesh.material = npcMaterial;
         
         // Add nametag
-        const name = template.name || `NPC-${index}`;
+        const name = template.name || `NPC${index+1}`;
         addNametag(npcMesh, name);
         
         // Create NPC object
@@ -232,10 +242,20 @@ window.EntitySystem = (function() {
         
         // Create a red orb for foes
         const size = template.size || 0.5;
+        
+        // Position foes in rows
+        // First row: 5 foes side by side at z = -5
+        // Second row: 5 foes side by side at z = -7
+        const row = Math.floor(index / 5);
+        const col = index % 5;
+        const startX = -8; // Start position of the first foe
+        const spacingX = 4; // Space between foes in a row
+        const positionZ = -5 - (row * 2); // First row at z=-5, second row at z=-7
+        
         const position = template.position || new BABYLON.Vector3(
-            (Math.random() * 20) - 10, 
-            1, 
-            (Math.random() * 20) - 10
+            startX + (col * spacingX),
+            1,
+            positionZ
         );
         
         // Create mesh for foe
@@ -254,7 +274,7 @@ window.EntitySystem = (function() {
         foeMesh.material = foeMaterial;
         
         // Add nametag
-        const name = template.name || `Foe-${index}`;
+        const name = template.name || `Foe${index+1}`;
         addNametag(foeMesh, name);
         
         // Create quiz questions for this foe
@@ -354,19 +374,24 @@ window.EntitySystem = (function() {
             false
         );
         
+        // Set background color (black semi-transparent background for better visibility)
+        const ctx = dynamicTexture.getContext();
+        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+        ctx.fillRect(0, 0, textureWidth, textureHeight);
+        
         // Set text
         const font = "bold 40px Arial";
-        dynamicTexture.drawText(name, null, null, font, "#ffffff", "#00000000", true);
+        dynamicTexture.drawText(name, null, 48, font, "#ffffff", "#00000000", true, true);
         
         // Create plane for nametag
         const nametagPlane = BABYLON.MeshBuilder.CreatePlane(
             `nametag-${mesh.name}`,
-            { width: 1, height: 0.25 },
+            { width: 1.5, height: 0.5 },
             scene
         );
         
         // Position nametag above entity
-        nametagPlane.position = new BABYLON.Vector3(0, 1.5, 0);
+        nametagPlane.position = new BABYLON.Vector3(0, 1.2, 0);
         nametagPlane.parent = mesh;
         
         // Ensure nametag always faces camera
