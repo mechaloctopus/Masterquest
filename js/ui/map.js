@@ -410,142 +410,226 @@ const MapSystem = (function() {
     
     // Render the map
     function renderMap() {
-        if (!ctx) return;
+        if (!ctx || !mapCanvas) return;
         
-        // Clear the canvas
-        ctx.clearRect(0, 0, MAP_SIZE, MAP_SIZE);
+        // Clear canvas
+        ctx.fillStyle = '#001a33'; // Dark blue background
+        ctx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
         
-        // Draw a simplified grid
+        // Draw grid
         drawGrid();
         
-        // Draw player position
-        drawPlayer();
+        // Draw origin point
+        drawOrigin();
         
-        // Draw NPCs
+        // Draw NPCs and Foes
         drawNPCs();
-        
-        // Draw foes
         drawFoes();
         
-        // No longer draw debug info, detailed rotation, etc.
+        // Draw player arrow
+        drawPlayer();
     }
     
-    // Simplified grid drawing
+    // Draw the grid with proper scaling and boundaries
     function drawGrid() {
-        if (!ctx) return;
+        const center = MAP_SIZE / 2;
         
-        // Draw a simple grid with fewer lines
-        ctx.strokeStyle = '#303030'; // Dark gray grid
+        // Calculate player offset in screen pixels
+        const playerOffsetX = playerX * SCALE;
+        const playerOffsetZ = playerZ * SCALE;
+        
+        // Calculate the grid edges in screen space
+        const gridLeftEdge = center - (WORLD_GRID_LIMITS * SCALE + playerOffsetX);
+        const gridRightEdge = center + (WORLD_GRID_LIMITS * SCALE - playerOffsetX);
+        const gridTopEdge = center - (WORLD_GRID_LIMITS * SCALE - playerOffsetZ);
+        const gridBottomEdge = center + (WORLD_GRID_LIMITS * SCALE + playerOffsetZ);
+        
+        // Draw the grid boundary
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ff00ff'; // Magenta boundary
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.rect(gridLeftEdge, gridTopEdge, gridRightEdge - gridLeftEdge, gridBottomEdge - gridTopEdge);
+        ctx.stroke();
+        
+        // Reset styles for grid lines
+        ctx.strokeStyle = '#00cc99'; // Neon green
         ctx.lineWidth = 0.5;
+        ctx.globalAlpha = 0.4;
         
-        // Draw fewer grid lines for a cleaner look
-        const gridStep = GRID_CELL_SIZE * 2; // Double the spacing
-        
-        for (let i = 0; i <= MAP_SIZE; i += gridStep) {
-            // Vertical lines
-            ctx.beginPath();
-            ctx.moveTo(i, 0);
-            ctx.lineTo(i, MAP_SIZE);
-            ctx.stroke();
+        // Draw vertical grid lines (running north-south)
+        for (let worldX = -WORLD_GRID_LIMITS; worldX <= WORLD_GRID_LIMITS; worldX += WORLD_GRID_SIZE) {
+            // Convert world X to screen X
+            const screenX = center + (worldX - playerX) * SCALE;
             
-            // Horizontal lines
-            ctx.beginPath();
-            ctx.moveTo(0, i);
-            ctx.lineTo(MAP_SIZE, i);
-            ctx.stroke();
+            // Only draw if within view
+            if (screenX >= 0 && screenX <= MAP_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(screenX, gridTopEdge);
+                ctx.lineTo(screenX, gridBottomEdge);
+                ctx.stroke();
+            }
+        }
+            
+        // Draw horizontal grid lines (running east-west)
+        for (let worldZ = -WORLD_GRID_LIMITS; worldZ <= WORLD_GRID_LIMITS; worldZ += WORLD_GRID_SIZE) {
+            // Convert world Z to screen Y (remember Z is inverted)
+            const screenY = center - (worldZ - playerZ) * SCALE;
+            
+            // Only draw if within view
+            if (screenY >= 0 && screenY <= MAP_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(gridLeftEdge, screenY);
+                ctx.lineTo(gridRightEdge, screenY);
+                ctx.stroke();
+            }
         }
         
-        // Draw center lines more prominently
-        ctx.strokeStyle = '#404040';
-        ctx.lineWidth = 1;
+        // Draw "void" in areas outside the grid
+        ctx.fillStyle = 'rgba(0, 0, 20, 0.7)'; // Dark blue with transparency
         
-        // Vertical center line
-        ctx.beginPath();
-        ctx.moveTo(MAP_SIZE/2, 0);
-        ctx.lineTo(MAP_SIZE/2, MAP_SIZE);
-        ctx.stroke();
+        // Fill the areas outside the grid (only if needed)
+        if (gridTopEdge > 0) {
+            ctx.fillRect(0, 0, MAP_SIZE, gridTopEdge);
+        }
+        if (gridBottomEdge < MAP_SIZE) {
+            ctx.fillRect(0, gridBottomEdge, MAP_SIZE, MAP_SIZE - gridBottomEdge);
+        }
+        if (gridLeftEdge > 0) {
+            ctx.fillRect(0, gridTopEdge, gridLeftEdge, gridBottomEdge - gridTopEdge);
+        }
+        if (gridRightEdge < MAP_SIZE) {
+            ctx.fillRect(gridRightEdge, gridTopEdge, MAP_SIZE - gridRightEdge, gridBottomEdge - gridTopEdge);
+        }
         
-        // Horizontal center line
-        ctx.beginPath();
-        ctx.moveTo(0, MAP_SIZE/2);
-        ctx.lineTo(MAP_SIZE, MAP_SIZE/2);
-        ctx.stroke();
+        // Reset alpha
+        ctx.globalAlpha = 1.0;
     }
     
-    // Simplified player drawing - just an arrow, no text
+    // Draw the origin point
+    function drawOrigin() {
+        const origin = window.mapOrigin;
+        if (!origin) return;
+        
+        const center = MAP_SIZE / 2;
+        
+        // Calculate origin position relative to player
+        const x = center + (origin.x - playerX) * SCALE;
+        const y = center - (origin.z - playerZ) * SCALE; // Reversed Z
+        
+        // Check if within view (with small margin)
+        if (x >= -10 && x <= MAP_SIZE + 10 && y >= -10 && y <= MAP_SIZE + 10) {
+            // Draw the point
+            ctx.fillStyle = origin.color;
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    
+    // Draw the player arrow
     function drawPlayer() {
-        if (!ctx) return;
+        const center = MAP_SIZE / 2;
         
-        const center = {
-            x: (MAP_SIZE / 2) + (playerX * SCALE),
-            y: (MAP_SIZE / 2) + (playerZ * SCALE)
-        };
+        // Draw cardinal direction indicators
+        drawCardinalDirections();
         
-        // Draw player as a circle with direction arrow
-        const radius = 6;
+        // Save context for rotation
+        ctx.save();
+        ctx.translate(center, center);
         
-        // Player circle
-        ctx.fillStyle = '#FFFF00'; // Yellow
+        // Rotate to player direction
+        ctx.rotate(playerRotation);
+        
+        // Draw player arrow
+        ctx.fillStyle = '#ff00cc'; // Pink/purple
         ctx.beginPath();
-        ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+        ctx.moveTo(0, -8);  // Arrow tip
+        ctx.lineTo(-5, 5);  // Bottom left
+        ctx.lineTo(5, 5);   // Bottom right
+        ctx.closePath();
         ctx.fill();
         
-        // Direction arrow
-        const arrowLength = radius * 2;
-        const dx = Math.sin(playerRotation) * arrowLength;
-        const dy = Math.cos(playerRotation) * arrowLength;
-        
-        ctx.strokeStyle = '#FFFFFF'; // White arrow
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(center.x, center.y);
-        ctx.lineTo(center.x + dx, center.y - dy); // Note the negative for dy (z)
+        // Add white outline
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
         ctx.stroke();
         
-        // No longer draw text information
+        // Restore context
+        ctx.restore();
     }
     
-    // Draw NPCs on the map
-    function drawNPCs() {
-        if (!ctx || npcs.length === 0) return;
+    // Draw cardinal direction indicators (N, S, E, W)
+    function drawCardinalDirections() {
+        const margin = 5;
+        const size = MAP_SIZE;
         
-        // Draw each NPC as a blue dot
-        ctx.fillStyle = '#00AAFF';
+        // Set text style
+        ctx.font = '12px monospace';
+        ctx.fillStyle = '#00cc99'; // Neon green
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Draw the letters at the edges
+        ctx.fillText('N', size/2, margin + 6);
+        ctx.fillText('S', size/2, size - margin - 6);
+        ctx.fillText('E', size - margin - 6, size/2);
+        ctx.fillText('W', margin + 6, size/2);
+    }
+    
+    // Draw NPCs as blue dots
+    function drawNPCs() {
+        if (!npcs.length) return;
+        
+        const center = MAP_SIZE / 2;
+        ctx.fillStyle = '#0088ff'; // Blue color for NPCs
+        ctx.strokeStyle = '#ffffff'; // White outline
         
         npcs.forEach(npc => {
-            if (typeof npc.x !== 'number' || typeof npc.z !== 'number') return;
+            // Calculate position relative to player
+            const x = center + (npc.x - playerX) * SCALE;
+            const y = center - (npc.z - playerZ) * SCALE; // Reversed Z
             
-            // Draw a simple blue dot for the NPC
-            const x = (MAP_SIZE / 2) + (npc.x * SCALE);
-            const z = (MAP_SIZE / 2) + (npc.z * SCALE);
-            
-            ctx.beginPath();
-            ctx.arc(x, z, 4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // No longer draw the label
+            // Only draw if within map boundaries (with margin)
+            if (x >= -5 && x <= MAP_SIZE + 5 && y >= -5 && y <= MAP_SIZE + 5) {
+                // Draw dot
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2); // Larger size for visibility
+                ctx.fill();
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                // No labels as requested
+            }
         });
     }
     
-    // Draw foes on the map
+    // Draw Foes as red dots
     function drawFoes() {
-        if (!ctx || foes.length === 0) return;
+        if (!foes.length) return;
         
-        // Draw each foe as a red dot
-        ctx.fillStyle = '#FF3300';
+        const center = MAP_SIZE / 2;
+        
+        // Use a bright red for maximum visibility
+        ctx.fillStyle = '#ff0000'; // Bright red color for Foes
+        ctx.strokeStyle = '#ffffff'; // White outline
         
         foes.forEach(foe => {
-            if (typeof foe.x !== 'number' || typeof foe.z !== 'number') return;
+            // Calculate position relative to player
+            const x = center + (foe.x - playerX) * SCALE;
+            const y = center - (foe.z - playerZ) * SCALE; // Reversed Z
             
-            // Draw a simple red dot for the foe
-            const x = (MAP_SIZE / 2) + (foe.x * SCALE);
-            const z = (MAP_SIZE / 2) + (foe.z * SCALE);
-            
-            ctx.beginPath();
-            ctx.arc(x, z, 4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // No longer draw the label
+            // Only draw if within map boundaries (with margin)
+            if (x >= -5 && x <= MAP_SIZE + 5 && y >= -5 && y <= MAP_SIZE + 5) {
+                // Draw dot
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                // No labels as requested
+            }
         });
     }
     
