@@ -14,6 +14,73 @@
  * - Use createEnvironmentObject() for non-interactive scenery
  */
 window.EntitySystem = (function() {
+    // CONSTANTS - "Sealed" configurations for entity components
+    // These values are fixed and should not be changed to ensure consistent appearance
+    const CONSTANTS = {
+        NAMETAG: {
+            CONTAINER: {
+                WIDTH: "150px",
+                HEIGHT: "60px",
+                BACKGROUND: "transparent",
+                LINK_OFFSET_Y: -60
+            },
+            TEXT: {
+                FONT_SIZE: 16,
+                FONT_FAMILY: "Orbitron",
+                OUTLINE_WIDTH: 3,
+                TOP: "5px",
+                SHADOW_BLUR: 15,
+                SHADOW_OFFSET_X: 0,
+                SHADOW_OFFSET_Y: 0,
+                COLORS: {
+                    NPC: {
+                        COLOR: "#00FFCC",
+                        OUTLINE: "#009977",
+                        SHADOW: "#00FFAA"
+                    },
+                    FOE: {
+                        COLOR: "#FF5555",
+                        OUTLINE: "#AA0000",
+                        SHADOW: "#FF0000"
+                    },
+                    DEFAULT: {
+                        COLOR: "#55FF55",
+                        OUTLINE: "#00AA00",
+                        SHADOW: "#00FF00"
+                    }
+                },
+                MIN_SCALE: 0.7,
+                DISTANCE_FACTOR: 100
+            }
+        },
+        HEALTHBAR: {
+            BACKGROUND: {
+                WIDTH: "120px",
+                HEIGHT: "10px",
+                COLOR: "#444444",
+                CORNER_RADIUS: 5,
+                TOP: "-15px"
+            },
+            FILL: {
+                HEIGHT: "8px",
+                CORNER_RADIUS: 4,
+                LEFT: "1px",
+                WIDTH: 120,
+                COLORS: {
+                    GOOD: "#22FF22",    // Green (> 60%)
+                    MEDIUM: "#FFFF22",  // Yellow (30-60%)
+                    LOW: "#FF2222"      // Red (< 30%)
+                }
+            },
+            TEXT: {
+                FONT_SIZE: 10,
+                FONT_FAMILY: "Orbitron",
+                COLOR: "white",
+                TOP: "-15px"
+            }
+        }
+    };
+    
     // Private properties
     const entities = {
         npcs: [],
@@ -432,38 +499,38 @@ window.EntitySystem = (function() {
         
         // Create container to link to the 3D position
         const container = new BABYLON.GUI.Container();
-        container.width = "150px";
-        container.height = "60px"; // Increased height to accommodate health bar
-        container.background = "transparent";
+        container.width = CONSTANTS.NAMETAG.CONTAINER.WIDTH;
+        container.height = CONSTANTS.NAMETAG.CONTAINER.HEIGHT;
+        container.background = CONSTANTS.NAMETAG.CONTAINER.BACKGROUND;
         
         // Create health bar if entity has health data
         if (mesh.metadata && (mesh.metadata.currentHealth !== undefined && mesh.metadata.maxHealth !== undefined)) {
             // Create health bar background (gray)
             const healthBarBackground = new BABYLON.GUI.Rectangle();
-            healthBarBackground.width = "120px";
-            healthBarBackground.height = "10px";
-            healthBarBackground.background = "#444444";
-            healthBarBackground.color = "#444444";
-            healthBarBackground.cornerRadius = 5;
-            healthBarBackground.top = "-15px"; // Position above the name text
+            healthBarBackground.width = CONSTANTS.HEALTHBAR.BACKGROUND.WIDTH;
+            healthBarBackground.height = CONSTANTS.HEALTHBAR.BACKGROUND.HEIGHT;
+            healthBarBackground.background = CONSTANTS.HEALTHBAR.BACKGROUND.COLOR;
+            healthBarBackground.color = CONSTANTS.HEALTHBAR.BACKGROUND.COLOR;
+            healthBarBackground.cornerRadius = CONSTANTS.HEALTHBAR.BACKGROUND.CORNER_RADIUS;
+            healthBarBackground.top = CONSTANTS.HEALTHBAR.BACKGROUND.TOP;
             
             // Create health bar fill (green)
             const healthBarFill = new BABYLON.GUI.Rectangle();
-            healthBarFill.width = (mesh.metadata.currentHealth / mesh.metadata.maxHealth) * 120 + "px";
-            healthBarFill.height = "8px";
-            healthBarFill.background = "#22FF22";
-            healthBarFill.color = "#22FF22";
-            healthBarFill.cornerRadius = 4;
+            healthBarFill.width = (mesh.metadata.currentHealth / mesh.metadata.maxHealth) * CONSTANTS.HEALTHBAR.FILL.WIDTH + "px";
+            healthBarFill.height = CONSTANTS.HEALTHBAR.FILL.HEIGHT;
+            healthBarFill.background = CONSTANTS.HEALTHBAR.FILL.COLORS.GOOD;
+            healthBarFill.color = CONSTANTS.HEALTHBAR.FILL.COLORS.GOOD;
+            healthBarFill.cornerRadius = CONSTANTS.HEALTHBAR.FILL.CORNER_RADIUS;
             healthBarFill.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
-            healthBarFill.left = "1px";
+            healthBarFill.left = CONSTANTS.HEALTHBAR.FILL.LEFT;
             
             // Create health text
             const healthText = new BABYLON.GUI.TextBlock();
             healthText.text = `${mesh.metadata.currentHealth}/${mesh.metadata.maxHealth} HP`;
-            healthText.fontSize = 10;
-            healthText.fontFamily = "Orbitron";
-            healthText.color = "white";
-            healthText.top = "-15px";
+            healthText.fontSize = CONSTANTS.HEALTHBAR.TEXT.FONT_SIZE;
+            healthText.fontFamily = CONSTANTS.HEALTHBAR.TEXT.FONT_FAMILY;
+            healthText.color = CONSTANTS.HEALTHBAR.TEXT.COLOR;
+            healthText.top = CONSTANTS.HEALTHBAR.TEXT.TOP;
             
             // Add health elements to container
             healthBarBackground.addControl(healthBarFill);
@@ -483,32 +550,32 @@ window.EntitySystem = (function() {
         
         const nameText = new BABYLON.GUI.TextBlock();
         nameText.text = name; // Just display the name without brackets or entity type
-        nameText.fontSize = 16;
-        nameText.fontFamily = "Orbitron";
-        nameText.outlineWidth = 3;
-        nameText.top = "5px"; // Move name text down to make room for health bar
+        nameText.fontSize = CONSTANTS.NAMETAG.TEXT.FONT_SIZE;
+        nameText.fontFamily = CONSTANTS.NAMETAG.TEXT.FONT_FAMILY;
+        nameText.outlineWidth = CONSTANTS.NAMETAG.TEXT.OUTLINE_WIDTH;
+        nameText.top = CONSTANTS.NAMETAG.TEXT.TOP;
         
         // Enhanced glow effect
-        nameText.shadowBlur = 15;
-        nameText.shadowOffsetX = 0;
-        nameText.shadowOffsetY = 0;
+        nameText.shadowBlur = CONSTANTS.NAMETAG.TEXT.SHADOW_BLUR;
+        nameText.shadowOffsetX = CONSTANTS.NAMETAG.TEXT.SHADOW_OFFSET_X;
+        nameText.shadowOffsetY = CONSTANTS.NAMETAG.TEXT.SHADOW_OFFSET_Y;
         
         // Choose color based on entity type
         if (entityType.toLowerCase().includes('npc')) {
             // Cyan/teal for NPCs
-            nameText.color = "#00FFCC";
-            nameText.outlineColor = "#009977";
-            nameText.shadowColor = "#00FFAA";
+            nameText.color = CONSTANTS.NAMETAG.TEXT.COLORS.NPC.COLOR;
+            nameText.outlineColor = CONSTANTS.NAMETAG.TEXT.COLORS.NPC.OUTLINE;
+            nameText.shadowColor = CONSTANTS.NAMETAG.TEXT.COLORS.NPC.SHADOW;
         } else if (entityType.toLowerCase().includes('foe')) {
             // Red for foes
-            nameText.color = "#FF5555";
-            nameText.outlineColor = "#AA0000";
-            nameText.shadowColor = "#FF0000";
+            nameText.color = CONSTANTS.NAMETAG.TEXT.COLORS.FOE.COLOR;
+            nameText.outlineColor = CONSTANTS.NAMETAG.TEXT.COLORS.FOE.OUTLINE;
+            nameText.shadowColor = CONSTANTS.NAMETAG.TEXT.COLORS.FOE.SHADOW;
         } else {
             // Default neon green
-            nameText.color = "#55FF55";
-            nameText.outlineColor = "#00AA00";
-            nameText.shadowColor = "#00FF00";
+            nameText.color = CONSTANTS.NAMETAG.TEXT.COLORS.DEFAULT.COLOR;
+            nameText.outlineColor = CONSTANTS.NAMETAG.TEXT.COLORS.DEFAULT.OUTLINE;
+            nameText.shadowColor = CONSTANTS.NAMETAG.TEXT.COLORS.DEFAULT.SHADOW;
         }
         
         // Add text to container
@@ -519,7 +586,7 @@ window.EntitySystem = (function() {
         container.linkWithMesh(mesh);
         
         // Position above the entity with a smaller offset
-        container.linkOffsetY = -60; // Increased offset to accommodate health bar
+        container.linkOffsetY = CONSTANTS.NAMETAG.CONTAINER.LINK_OFFSET_Y;
         
         // Set scaling options to keep text readable at any distance
         // This uses a different approach that should be more compatible
@@ -543,22 +610,22 @@ window.EntitySystem = (function() {
                 
                 // Adjust size slightly based on distance for better readability
                 // But keep a minimum size to avoid text becoming too small
-                const scale = Math.max(0.7, 1 - (distance / 100));
-                nameText.fontSize = 16 * scale;
+                const scale = Math.max(CONSTANTS.NAMETAG.TEXT.MIN_SCALE, 1 - (distance / CONSTANTS.NAMETAG.TEXT.DISTANCE_FACTOR));
+                nameText.fontSize = CONSTANTS.NAMETAG.TEXT.FONT_SIZE * scale;
                 
                 // Update health bar if it exists and health changed
                 if (mesh.healthBar && mesh.metadata) {
                     const healthPercentage = mesh.metadata.currentHealth / mesh.metadata.maxHealth;
-                    mesh.healthBar.fill.width = healthPercentage * 120 + "px";
+                    mesh.healthBar.fill.width = healthPercentage * CONSTANTS.HEALTHBAR.FILL.WIDTH + "px";
                     mesh.healthBar.text.text = `${mesh.metadata.currentHealth}/${mesh.metadata.maxHealth} HP`;
                     
                     // Change color based on health percentage
                     if (healthPercentage > 0.6) {
-                        mesh.healthBar.fill.background = "#22FF22"; // Green
+                        mesh.healthBar.fill.background = CONSTANTS.HEALTHBAR.FILL.COLORS.GOOD;
                     } else if (healthPercentage > 0.3) {
-                        mesh.healthBar.fill.background = "#FFFF22"; // Yellow
+                        mesh.healthBar.fill.background = CONSTANTS.HEALTHBAR.FILL.COLORS.MEDIUM;
                     } else {
-                        mesh.healthBar.fill.background = "#FF2222"; // Red
+                        mesh.healthBar.fill.background = CONSTANTS.HEALTHBAR.FILL.COLORS.LOW;
                     }
                 }
             }
