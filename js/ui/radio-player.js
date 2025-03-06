@@ -51,11 +51,9 @@ window.RadioPlayerSystem = (function() {
             initialized = true;
             console.log("[Radio] Player initialized successfully");
             
-            // Load the initial track
-            if (trackList.length > 0) {
-                setTimeout(() => {
-                    playTrack(0); // Play the first track
-                }, 1000); // Slight delay to ensure everything is loaded
+            // Set initial status in the UI
+            if (nowPlayingText) {
+                nowPlayingText.textContent = "Click anywhere to start audio";
             }
             
             // Key event listener for 'M' key to toggle radio
@@ -174,6 +172,30 @@ window.RadioPlayerSystem = (function() {
                     radioToggle.textContent = player.classList.contains('collapsed') ? '▲' : '▼';
                 }
             });
+        }
+        
+        // Listen for track end to automatically play the next track
+        audioElement.addEventListener('ended', function() {
+            playNextTrack();
+        });
+        
+        // Setup for user interaction - any click on document will attempt to start audio
+        if (trackList.length > 0) {
+            const startAudioOnInteraction = function() {
+                // Only attach this once - remove after first interaction
+                document.removeEventListener('click', startAudioOnInteraction);
+                document.removeEventListener('keydown', startAudioOnInteraction);
+                
+                // If not already playing, start the first track
+                if (!isPlaying && currentTrack === null) {
+                    console.log("[Radio] Starting audio after user interaction");
+                    playTrack(0);
+                }
+            };
+            
+            // Listen for any user interaction
+            document.addEventListener('click', startAudioOnInteraction);
+            document.addEventListener('keydown', startAudioOnInteraction);
         }
     }
     
