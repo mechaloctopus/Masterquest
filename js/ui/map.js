@@ -1,7 +1,7 @@
 // Map System - Complete Rewrite
 const MapSystem = (function() {
     // Debug
-    const DEBUG = false; // Turn off debug by default for cleaner UI
+    const DEBUG = true; // Enable debugging temporarily
     
     // DOM elements
     let mapContainer = null;
@@ -18,14 +18,13 @@ const MapSystem = (function() {
     let frameCounter = 0;
     let needsRedraw = true;
     
-    // Map configuration
+    // Map configuration - SIMPLIFIED
     const config = {
         backgroundColor: "#001a33",
         gridColor: "#00cc99",
         gridSize: 20,       // Size of grid cells in pixels
         playerColor: "#ff00cc",
-        originColor: "#ffcc00",
-        scaleFactor: 1      // How much to scale world coordinates
+        originColor: "#ffcc00"
     };
     
     // Map points - the important locations
@@ -59,14 +58,20 @@ const MapSystem = (function() {
         mapToggle.addEventListener('click', toggleMap);
         window.addEventListener('resize', resizeCanvas);
         
-        // Add some basic points
+        // Add origin point
         addPoint(0, 0, { label: "Origin", color: "#00FFFF" });
         
         // Start render loop
         requestAnimationFrame(renderLoop);
         
         initialized = true;
-        console.log("[MAP] Map system initialized successfully");
+        console.log("[MAP] Map system initialized");
+        
+        // Log the initial state
+        if (DEBUG) {
+            console.log("[MAP] Initial player position:", playerPos);
+        }
+        
         return true;
     }
     
@@ -138,7 +143,7 @@ const MapSystem = (function() {
         frameCounter++;
         
         // Only render when necessary
-        if (needsRedraw || frameCounter % 60 === 0) {
+        if (needsRedraw || frameCounter % 30 === 0) {
             render();
             needsRedraw = false;
         }
@@ -171,7 +176,6 @@ const MapSystem = (function() {
     function drawGrid() {
         if (!ctx || !mapCanvas) return;
         
-        const expanded = !isCollapsed;
         const centerX = mapCanvas.width / 2;
         const centerY = mapCanvas.height / 2;
         const gridSize = config.gridSize;
@@ -181,7 +185,7 @@ const MapSystem = (function() {
         ctx.lineWidth = 0.5;
         ctx.globalAlpha = 0.3;
         
-        if (expanded) {
+        if (!isCollapsed) {
             // Expanded mode - fixed grid, player moves
             drawExpandedGrid(centerX, centerY);
         } else {
@@ -231,32 +235,20 @@ const MapSystem = (function() {
         }
     }
     
-    // Draw grid in collapsed mode
+    // Draw grid in collapsed mode - SIMPLIFIED APPROACH
     function drawCollapsedGrid(centerX, centerY) {
         const gridSize = config.gridSize;
-        const scaleFactor = config.scaleFactor;
         
-        // IMPROVED GRID LOGIC:
-        // 1. Scale player position by grid size
-        // 2. Calculate remainder for fine-grained movement
-        // 3. Ensure we always have positive offsets
+        // Calculate grid offsets based on player position
+        // Modulo operation ensures seamless grid movement
+        let offsetX = -(playerPos.x * gridSize) % gridSize;
+        let offsetZ = -(playerPos.z * gridSize) % gridSize;
         
-        // Calculate offset with correct direction (grid moves opposite to player)
-        // This is a key part that needed fixing - the grid offset must move
-        // in the OPPOSITE direction of player movement to create the illusion
-        // of the player moving across the grid
-        const scaledX = playerPos.x * gridSize * scaleFactor;
-        const scaledZ = playerPos.z * gridSize * scaleFactor;
-        
-        // Calculate pixel offsets with proper direction (-playerPos to move grid opposite)
-        let offsetX = -scaledX % gridSize;
-        let offsetZ = -scaledZ % gridSize;
-        
-        // Ensure offsets are positive for rendering (avoid negative offsets)
+        // Ensure positive offsets for drawing
         if (offsetX < 0) offsetX += gridSize;
         if (offsetZ < 0) offsetZ += gridSize;
         
-        // Draw vertical lines
+        // Draw vertical grid lines
         for (let x = offsetX; x < mapCanvas.width + gridSize; x += gridSize) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
@@ -264,68 +256,38 @@ const MapSystem = (function() {
             ctx.stroke();
         }
         
-        // Draw horizontal lines
+        // Draw horizontal grid lines
         for (let y = offsetZ; y < mapCanvas.height + gridSize; y += gridSize) {
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(mapCanvas.width, y);
             ctx.stroke();
         }
-        
-        // Draw origin marker if in view
-        const originX = centerX - (playerPos.x * gridSize * scaleFactor);
-        const originY = centerY - (playerPos.z * gridSize * scaleFactor);
-        
-        if (originX > -50 && originX < mapCanvas.width + 50 &&
-            originY > -50 && originY < mapCanvas.height + 50) {
-            
-            // Draw origin marker
-            ctx.globalAlpha = 1.0;
-            ctx.strokeStyle = config.originColor;
-            ctx.lineWidth = 1;
-            
-            // Cross
-            ctx.beginPath();
-            ctx.moveTo(originX - 5, originY);
-            ctx.lineTo(originX + 5, originY);
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.moveTo(originX, originY - 5);
-            ctx.lineTo(originX, originY + 5);
-            ctx.stroke();
-            
-            // Reset
-            ctx.strokeStyle = config.gridColor;
-            ctx.lineWidth = 0.5;
-            ctx.globalAlpha = 0.3;
-        }
     }
     
-    // Draw points of interest
+    // Draw points of interest - SIMPLIFIED
     function drawPoints() {
         if (!ctx || !mapCanvas) return;
         
-        const expanded = !isCollapsed;
         const centerX = mapCanvas.width / 2;
         const centerY = mapCanvas.height / 2;
         const gridSize = config.gridSize;
-        const scaleFactor = config.scaleFactor;
         
         points.forEach(point => {
             let x, y;
             
-            if (expanded) {
-                // In expanded mode, points move relative to fixed grid
-                x = centerX + point.x * gridSize * scaleFactor;
-                y = centerY + point.z * gridSize * scaleFactor;
+            if (!isCollapsed) {
+                // In expanded mode, points have fixed positions on grid
+                x = centerX + point.x * gridSize;
+                y = centerY + point.z * gridSize;
             } else {
-                // In collapsed mode, calculate position relative to player
-                x = centerX + (point.x - playerPos.x) * gridSize * scaleFactor;
-                y = centerY + (point.z - playerPos.z) * gridSize * scaleFactor;
+                // In collapsed mode, points move relative to player
+                // This is key - the relative position calculation
+                x = centerX + (point.x - playerPos.x) * gridSize;
+                y = centerY + (point.z - playerPos.z) * gridSize;
             }
             
-            // Only draw if within view with some padding
+            // Only draw if within view
             if (x > -20 && x < mapCanvas.width + 20 &&
                 y > -20 && y < mapCanvas.height + 20) {
                 
@@ -345,28 +307,17 @@ const MapSystem = (function() {
         });
     }
     
-    // Draw player marker
+    // Draw player marker - SIMPLIFIED
     function drawPlayer() {
         if (!ctx || !mapCanvas) return;
         
         const centerX = mapCanvas.width / 2;
         const centerY = mapCanvas.height / 2;
-        const expanded = !isCollapsed;
-        const gridSize = config.gridSize;
-        const scaleFactor = config.scaleFactor;
         
-        // Calculate player position based on mode
-        let x, y;
-        
-        if (expanded) {
-            // In expanded mode, player position is based on map coordinates
-            x = centerX + playerPos.x * gridSize * scaleFactor;
-            y = centerY + playerPos.z * gridSize * scaleFactor;
-        } else {
-            // In collapsed mode, player is always centered
-            x = centerX;
-            y = centerY;
-        }
+        // In collapsed mode, player is always at center
+        // In expanded mode, player moves on the grid
+        const x = !isCollapsed ? centerX + playerPos.x * config.gridSize : centerX;
+        const y = !isCollapsed ? centerY + playerPos.z * config.gridSize : centerY;
         
         // Draw player triangle
         ctx.fillStyle = config.playerColor;
@@ -374,9 +325,9 @@ const MapSystem = (function() {
         // Save context for rotation
         ctx.save();
         ctx.translate(x, y);
-        ctx.rotate(-playerRot); // Negative because Canvas Y is inverted
+        ctx.rotate(-playerRot); // Negative rotation due to Y-axis inversion
         
-        // Draw triangle for direction - just a simple arrow
+        // Draw triangle for direction
         ctx.beginPath();
         ctx.moveTo(0, -10);    // Tip of arrow
         ctx.lineTo(-6, 6);     // Bottom left
@@ -384,7 +335,7 @@ const MapSystem = (function() {
         ctx.closePath();
         ctx.fill();
         
-        // Add glow outline
+        // Add white outline
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 1;
         ctx.stroke();
@@ -403,6 +354,7 @@ const MapSystem = (function() {
         };
         
         points.push(point);
+        needsRedraw = true;
         return point;
     }
     
@@ -414,12 +366,14 @@ const MapSystem = (function() {
             !(point.x === x && point.z === z)
         );
         
+        needsRedraw = true;
         return points.length < initialLength;
     }
     
     // Clear all points
     function clearPoints() {
         points = [];
+        needsRedraw = true;
     }
     
     // Show map
