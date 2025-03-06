@@ -364,85 +364,93 @@ window.EntitySystem = (function() {
     
     // Add nametag to an entity
     function addNametag(mesh, name) {
-        // Create a ScreenSpacePanel for the nametag - this will remain fixed relative to mesh position
-        // regardless of distance from camera
-        const nametagPlane = BABYLON.MeshBuilder.CreatePlane(
-            `nametag-${mesh.name}`,
-            { width: 2, height: 0.5 },
+        // Create a Babylon GUI AdvancedDynamicTexture for the nametag
+        const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI(
+            `nametagUI-${mesh.name}`,
+            true,
             scene
         );
         
-        // Position nametag above entity and parent it to the entity mesh
-        nametagPlane.position = new BABYLON.Vector3(0, 1.7, 0);
-        nametagPlane.parent = mesh;
-        
-        // Ensure nametag always faces camera
-        nametagPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
-        
-        // Create dynamic texture for nametag
-        const textureWidth = 256;
-        const textureHeight = 64;
-        const dynamicTexture = new BABYLON.DynamicTexture(
-            `nametagTexture-${mesh.name}`,
-            { width: textureWidth, height: textureHeight },
-            scene
-        );
-        
-        // Clear the texture (transparent background)
-        const ctx = dynamicTexture.getContext();
-        ctx.clearRect(0, 0, textureWidth, textureHeight);
-        
-        // Create material for nametag
-        const nametagMaterial = new BABYLON.StandardMaterial(`nametagMaterial-${mesh.name}`, scene);
-        nametagMaterial.backFaceCulling = false;
-        nametagMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-        nametagMaterial.disableLighting = true;
-        nametagMaterial.useAlphaFromDiffuseTexture = true;
-        nametagMaterial.diffuseTexture = dynamicTexture;
-        
-        // Set entity type and color
+        // Create text block for the nametag - simplify to just show the name without entity type
         const entityType = mesh.metadata && mesh.metadata.type ? mesh.metadata.type : "";
         
+        const nameText = new BABYLON.GUI.TextBlock();
+        nameText.text = name; // Just display the name without brackets or entity type
+        nameText.fontSize = 16;
+        nameText.fontFamily = "Orbitron";
+        nameText.outlineWidth = 3;
+        
+        // Enhanced glow effect
+        nameText.shadowBlur = 15;
+        nameText.shadowOffsetX = 0;
+        nameText.shadowOffsetY = 0;
+        
         // Choose color based on entity type
-        let textColor;
         if (entityType.toLowerCase().includes('npc')) {
             // Cyan/teal for NPCs
-            textColor = "#00FFCC";
-            nametagMaterial.emissiveColor = new BABYLON.Color3(0, 1, 0.8);
+            nameText.color = "#00FFCC";
+            nameText.outlineColor = "#009977";
+            nameText.shadowColor = "#00FFAA";
         } else if (entityType.toLowerCase().includes('foe')) {
             // Red for foes
-            textColor = "#FF5555";
-            nametagMaterial.emissiveColor = new BABYLON.Color3(1, 0.3, 0.3);
+            nameText.color = "#FF5555";
+            nameText.outlineColor = "#AA0000";
+            nameText.shadowColor = "#FF0000";
         } else {
             // Default neon green
-            textColor = "#55FF55";
-            nametagMaterial.emissiveColor = new BABYLON.Color3(0.3, 1, 0.3);
+            nameText.color = "#55FF55";
+            nameText.outlineColor = "#00AA00";
+            nameText.shadowColor = "#00FF00";
         }
         
-        // Draw text with neon glow effect - only using the name without type designation
-        dynamicTexture.hasAlpha = true;
+        // Create container to link the nametag to the 3D position
+        const nameContainer = new BABYLON.GUI.Container();
+        nameContainer.width = "150px";
+        nameContainer.height = "40px";
+        nameContainer.background = "transparent";
         
-        // First draw the glow
-        ctx.font = "bold 32px Orbitron";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
+        // Add text to container
+        nameContainer.addControl(nameText);
+        advancedTexture.addControl(nameContainer);
         
-        // Draw glow
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = textColor;
-        ctx.fillStyle = textColor;
-        ctx.fillText(name, textureWidth/2, textureHeight/2);
+        // Link the container to the mesh using a better positioning approach
+        nameContainer.linkWithMesh(mesh);
         
-        // Draw the text a second time to increase intensity
-        ctx.shadowBlur = 5;
-        ctx.fillText(name, textureWidth/2, textureHeight/2);
+        // Position above the entity with a smaller offset
+        nameContainer.linkOffsetY = -50;
         
-        nametagPlane.material = nametagMaterial;
+        // Set scaling options to keep text readable at any distance
+        // This uses a different approach that should be more compatible
+        nameContainer.ignoreAdaptivePositioning = true;
+        
+        // Adjust additional positioning options
+        nameContainer.transformCenterY = 1.0;
+        
+        // Store a reference to the scene's onBeforeRenderObservable
+        // This will help us adjust the positioning if needed
+        const observer = scene.onBeforeRenderObservable.add(() => {
+            // If the mesh is too far away, hide the nametag
+            if (mesh && scene.activeCamera) {
+                const distance = BABYLON.Vector3.Distance(
+                    mesh.position,
+                    scene.activeCamera.position
+                );
+                
+                // Show/hide based on distance
+                nameContainer.alpha = distance > 50 ? 0 : 1;
+                
+                // Adjust size slightly based on distance for better readability
+                // But keep a minimum size to avoid text becoming too small
+                const scale = Math.max(0.7, 1 - (distance / 100));
+                nameText.fontSize = 16 * scale;
+            }
+        });
         
         // Store a reference to allow removal later
         mesh.nametag = {
-            plane: nametagPlane,
-            texture: dynamicTexture
+            container: nameContainer,
+            texture: advancedTexture,
+            observer: observer
         };
         
         return mesh.nametag;
@@ -497,7 +505,11 @@ window.EntitySystem = (function() {
             if (npc.mesh) {
                 // Clean up nametag if it exists
                 if (npc.mesh.nametag) {
-                    npc.mesh.nametag.plane.dispose();
+                    // Remove observer first
+                    if (npc.mesh.nametag.observer) {
+                        scene.onBeforeRenderObservable.remove(npc.mesh.nametag.observer);
+                    }
+                    npc.mesh.nametag.container.dispose();
                     npc.mesh.nametag.texture.dispose();
                 }
                 npc.mesh.dispose();
@@ -510,7 +522,11 @@ window.EntitySystem = (function() {
             if (foe.mesh) {
                 // Clean up nametag if it exists
                 if (foe.mesh.nametag) {
-                    foe.mesh.nametag.plane.dispose();
+                    // Remove observer first
+                    if (foe.mesh.nametag.observer) {
+                        scene.onBeforeRenderObservable.remove(foe.mesh.nametag.observer);
+                    }
+                    foe.mesh.nametag.container.dispose();
                     foe.mesh.nametag.texture.dispose();
                 }
                 foe.mesh.dispose();
@@ -523,7 +539,11 @@ window.EntitySystem = (function() {
             if (obj.mesh) {
                 // Clean up nametag if it exists
                 if (obj.mesh.nametag) {
-                    obj.mesh.nametag.plane.dispose();
+                    // Remove observer first
+                    if (obj.mesh.nametag.observer) {
+                        scene.onBeforeRenderObservable.remove(obj.mesh.nametag.observer);
+                    }
+                    obj.mesh.nametag.container.dispose();
                     obj.mesh.nametag.texture.dispose();
                 }
                 obj.mesh.dispose();
