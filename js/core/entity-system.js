@@ -77,6 +77,11 @@ window.EntitySystem = (function() {
                     // Create talk button for NPC interactions
                     createTalkButton();
                     
+                    // Setup action manager for entity clicks
+                    if (scene) {
+                        scene.actionManager = new BABYLON.ActionManager(scene);
+                    }
+                    
                     return true;
                 },
                 {
@@ -90,6 +95,11 @@ window.EntitySystem = (function() {
             
             // Create talk button
             createTalkButton();
+            
+            // Setup action manager for entity clicks
+            if (scene) {
+                scene.actionManager = new BABYLON.ActionManager(scene);
+            }
             
             // Initialize event handlers
             if (window.EventSystem) {
@@ -145,16 +155,30 @@ window.EntitySystem = (function() {
         for (let i = 0; i < 10; i++) {
             createNPC(i, realmIndex);
         }
+        
+        // Ensure all NPCs have click handlers
+        entities.npcs.forEach(npc => {
+            if (npc.realmIndex === realmIndex) {
+                setupClickHandler(npc);
+            }
+        });
     }
     
     // Load foes for a specific realm
     function loadFoesForRealm(realmIndex) {
         safeLog(`Loading foes for realm ${realmIndex}`);
         
-        // Create 10 foes as requested, arranged in two rows
-        for (let i = 0; i < 10; i++) {
+        // Create 5 foes for this realm
+        for (let i = 0; i < 5; i++) {
             createFoe(i, realmIndex);
         }
+        
+        // Ensure all foes have click handlers
+        entities.foes.forEach(foe => {
+            if (foe.realmIndex === realmIndex) {
+                setupClickHandler(foe);
+            }
+        });
     }
     
     // Create a visible NPC entity
@@ -225,6 +249,9 @@ window.EntitySystem = (function() {
         
         // Add hover animation
         setupHoverAnimation(npc);
+        
+        // Add click handler to mesh
+        setupClickHandler(npc);
         
         // Store NPC in array
         entities.npcs.push(npc);
@@ -298,6 +325,9 @@ window.EntitySystem = (function() {
         
         // Add hover animation
         setupHoverAnimation(foe);
+        
+        // Add click handler to mesh
+        setupClickHandler(foe);
         
         // Store foe in array
         entities.foes.push(foe);
@@ -496,6 +526,43 @@ window.EntitySystem = (function() {
                 entity.mesh.position.y = originalY + Math.sin(time) * amplitude;
             }
         });
+    }
+    
+    // Setup click handler for entity
+    function setupClickHandler(entity) {
+        if (!entity || !entity.mesh || !scene) return;
+        
+        // Create action manager if not exists
+        if (!entity.mesh.actionManager) {
+            entity.mesh.actionManager = new BABYLON.ActionManager(scene);
+        }
+        
+        // Add click action
+        entity.mesh.actionManager.registerAction(
+            new BABYLON.ExecuteCodeAction(
+                BABYLON.ActionManager.OnPickTrigger,
+                function() {
+                    // Log entity click to console
+                    const message = `${entity.type === ENTITY_TYPES.NPC ? 'NPC' : 'FOE'} clicked: Hello, I am ${entity.name}`;
+                    
+                    // Use the Logger to display the message in the UI
+                    if (window.Logger) {
+                        Logger.log(message);
+                    }
+                    
+                    // Also log to browser console
+                    safeLog(message);
+                    
+                    // If it's an NPC, also start interaction
+                    if (entity.type === ENTITY_TYPES.NPC) {
+                        startInteraction(entity.id);
+                    } else if (entity.type === ENTITY_TYPES.FOE && !entity.defeated) {
+                        // If it's a foe, start battle
+                        startBattle(entity.id);
+                    }
+                }
+            )
+        );
     }
     
     // Clear all entities
@@ -913,6 +980,7 @@ window.EntitySystem = (function() {
         clearEntities,
         
         // For debugging
-        entities
+        entities,
+        setupClickHandler
     };
 })(); 
