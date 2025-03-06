@@ -428,6 +428,11 @@ const MapSystem = (function() {
         
         // Draw player arrow
         drawPlayer();
+        
+        // Add debug info if enabled
+        if (DEBUG) {
+            drawDebugInfo();
+        }
     }
     
     // Draw the grid with proper scaling and boundaries
@@ -470,7 +475,7 @@ const MapSystem = (function() {
                 ctx.stroke();
             }
         }
-            
+        
         // Draw horizontal grid lines (running east-west)
         for (let worldZ = -WORLD_GRID_LIMITS; worldZ <= WORLD_GRID_LIMITS; worldZ += WORLD_GRID_SIZE) {
             // Convert world Z to screen Y (remember Z is inverted)
@@ -524,6 +529,11 @@ const MapSystem = (function() {
             ctx.beginPath();
             ctx.arc(x, y, 3, 0, Math.PI * 2);
             ctx.fill();
+            
+            // Draw the label
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '9px monospace';
+            ctx.fillText(origin.label, x + 5, y + 3);
         }
     }
     
@@ -557,6 +567,40 @@ const MapSystem = (function() {
         
         // Restore context
         ctx.restore();
+        
+        // Draw debug direction line if needed
+        if (DEBUG) {
+            drawDirectionDebug(center);
+        }
+    }
+    
+    // Separate function for direction debug drawing
+    function drawDirectionDebug(center) {
+        ctx.save();
+        ctx.strokeStyle = '#ffff00'; // Yellow
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(center, center);
+        
+        // Convert playerRotation to degrees for debugging
+        const degrees = ((playerRotation * 180 / Math.PI) % 360 + 360) % 360;
+        
+        // Draw the direction line
+        const dirX = center + Math.sin(playerRotation) * 15;
+        const dirY = center - Math.cos(playerRotation) * 15;
+        ctx.lineTo(dirX, dirY);
+        ctx.stroke();
+        ctx.restore();
+        
+        // Show compass and rotation as debug text
+        ctx.fillStyle = "#ffff00";
+        ctx.font = "9px monospace";
+        ctx.textAlign = "left";
+        
+        // Get direction name for debugging
+        const dirName = getCardinalDirection(playerRotation);
+        ctx.fillText(`Angle: ${degrees.toFixed(0)}° (${dirName})`, 5, 40);
     }
     
     // Draw cardinal direction indicators (N, S, E, W)
@@ -575,6 +619,25 @@ const MapSystem = (function() {
         ctx.fillText('S', size/2, size - margin - 6);
         ctx.fillText('E', size - margin - 6, size/2);
         ctx.fillText('W', margin + 6, size/2);
+    }
+    
+    // Draw debug information - simplified to empty function
+    function drawDebugInfo() {
+        // Removed all debug text as requested
+    }
+    
+    // Get cardinal direction based on rotation angle
+    function getCardinalDirection(radians) {
+        // Normalize the angle to 0-2π
+        const angle = ((radians % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+        
+        // Define direction ranges
+        if (angle < Math.PI * 0.25 || angle >= Math.PI * 1.75) return "North";
+        if (angle >= Math.PI * 0.25 && angle < Math.PI * 0.75) return "East";
+        if (angle >= Math.PI * 0.75 && angle < Math.PI * 1.25) return "South";
+        if (angle >= Math.PI * 1.25 && angle < Math.PI * 1.75) return "West";
+        
+        return "Unknown";
     }
     
     // Draw NPCs as blue dots
@@ -599,9 +662,11 @@ const MapSystem = (function() {
                 ctx.lineWidth = 1;
                 ctx.stroke();
                 
-                // No labels as requested
+                // Removed labels for NPCs
             }
         });
+        
+        // Removed debug count
     }
     
     // Draw Foes as red dots
@@ -628,9 +693,11 @@ const MapSystem = (function() {
                 ctx.lineWidth = 1;
                 ctx.stroke();
                 
-                // No labels as requested
+                // Removed labels for foes
             }
         });
+        
+        // Removed debug count
     }
     
     // Clean up when unloading

@@ -374,29 +374,19 @@ window.EntitySystem = (function() {
             false
         );
         
-        // Get the context to manually draw the text on a black background
+        // Set background color (black semi-transparent background for better visibility)
         const ctx = dynamicTexture.getContext();
-        
-        // Fill with solid black background for maximum contrast
-        ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
         ctx.fillRect(0, 0, textureWidth, textureHeight);
         
-        // Set up text properties
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.font = "bold 36px Arial";
-        ctx.fillStyle = "#FFFFFF";
-        
-        // Draw text manually at the center of the texture
-        ctx.fillText(name, textureWidth / 2, textureHeight / 2);
-        
-        // Update the texture
-        dynamicTexture.update();
+        // Set text
+        const font = "bold 40px Arial";
+        dynamicTexture.drawText(name, null, 48, font, "#ffffff", "#00000000", true, true);
         
         // Create plane for nametag
         const nametagPlane = BABYLON.MeshBuilder.CreatePlane(
             `nametag-${mesh.name}`,
-            { width: 2, height: 0.5 },
+            { width: 1.5, height: 0.5 },
             scene
         );
         
@@ -410,8 +400,8 @@ window.EntitySystem = (function() {
         // Apply material with dynamic texture
         const nametagMaterial = new BABYLON.StandardMaterial(`nametagMaterial-${mesh.name}`, scene);
         nametagMaterial.diffuseTexture = dynamicTexture;
-        nametagMaterial.specularColor = new BABYLON.Color3(0, 0, 0); // No specular highlight
-        nametagMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1); // Full emissive for better visibility
+        nametagMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+        nametagMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
         nametagMaterial.disableLighting = true;
         
         // Enable transparency
