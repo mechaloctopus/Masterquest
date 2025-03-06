@@ -11,8 +11,11 @@ const CollisionSystem = (function() {
     // Configuration
     const COLLISION_RADIUS = 1.0; // Size of the player's collision sphere (reduced to 1 unit)
     const RESET_DISTANCE = 2.0;   // Distance player needs to move away to allow for re-collision detection
-    const BOUNCE_DISTANCE = 1.0;  // How far to bounce the player away on collision
-    const BOUNCE_HEIGHT = 0.5;    // How high to bounce the player vertically
+    const BOUNCE_FORCE = 0.15;    // Force applied when bouncing horizontally (impulse)
+    const BOUNCE_HEIGHT = 0.15;   // Vertical jump force for the bounce
+    
+    // Reference to player state for smooth physics
+    let playerState = null;
     
     // Direct log message to the on-screen console
     function logToConsole(message) {
@@ -32,41 +35,79 @@ const CollisionSystem = (function() {
     function applyBounceEffect(entityPosition) {
         if (!camera) return;
         
+        // Get reference to player state if available
+        if (window.gameState && window.gameState.playerState) {
+            playerState = window.gameState.playerState;
+        }
+        
         // Calculate direction vector from entity to player (this is the bounce direction)
         const bounceDirection = new BABYLON.Vector3(
             camera.position.x - entityPosition.x,
-            0, // Initially zero for horizontal calculation
+            0, // Keep horizontal for direction calculation
             camera.position.z - entityPosition.z
         );
         
         // Normalize the direction vector (for horizontal movement)
         bounceDirection.normalize();
         
-        // Scale by the bounce distance
-        bounceDirection.scaleInPlace(BOUNCE_DISTANCE);
-        
-        // Add vertical bounce component (small jump)
-        bounceDirection.y = BOUNCE_HEIGHT;
-        
-        // Apply the bounce to the camera position
-        camera.position.addInPlace(bounceDirection);
-        
-        // If we have access to the movement system state, apply a small jump force
-        if (window.gameState && window.gameState.playerState) {
-            // Add a small jump force if the player state has this property
-            if (typeof window.gameState.playerState.jumpForce !== 'undefined') {
-                window.gameState.playerState.jumpForce = Math.max(
-                    window.gameState.playerState.jumpForce,
-                    BOUNCE_HEIGHT * 0.5  // Smaller force than manual jump
+        // If we have access to player state with physics properties, use it for smoother bouncing
+        if (playerState) {
+            // For horizontal movement, add velocity to moveVector if it exists
+            if (playerState.moveVector) {
+                // Add bounce force in the appropriate direction
+                playerState.moveVector.x += bounceDirection.x * BOUNCE_FORCE * 5;
+                playerState.moveVector.z += bounceDirection.z * BOUNCE_FORCE * 5;
+                
+                // Limit the maximum speed to prevent excessive bouncing
+                const maxSpeed = 0.5;
+                const currentSpeed = Math.sqrt(
+                    playerState.moveVector.x * playerState.moveVector.x + 
+                    playerState.moveVector.z * playerState.moveVector.z
                 );
                 
-                // Set grounded to false to allow the jump
-                window.gameState.playerState.grounded = false;
+                if (currentSpeed > maxSpeed) {
+                    const scale = maxSpeed / currentSpeed;
+                    playerState.moveVector.x *= scale;
+                    playerState.moveVector.z *= scale;
+                }
+                
+                // Create a small timer to gradually reduce this added velocity
+                setTimeout(() => {
+                    if (playerState && playerState.moveVector) {
+                        playerState.moveVector.x *= 0.8;
+                        playerState.moveVector.z *= 0.8;
+                    }
+                }, 100);
             }
+            
+            // For vertical movement, use jumpForce for a natural arc
+            if (typeof playerState.jumpForce !== 'undefined') {
+                // Only apply upward force if we're on/near the ground
+                if (playerState.grounded || camera.position.y <= CONFIG.CAMERA.GROUND_Y + 0.1) {
+                    playerState.jumpForce = BOUNCE_HEIGHT;
+                    playerState.grounded = false;
+                }
+            }
+        } else {
+            // Fallback for when we don't have access to the player state
+            // Apply a gentle impulse to the camera directly (less smooth but better than teleporting)
+            const impulse = bounceDirection.scale(BOUNCE_FORCE);
+            impulse.y = BOUNCE_HEIGHT / 2;
+            
+            // Apply small movement over several frames for smoother effect
+            let framesLeft = 5;
+            const applyImpulse = () => {
+                if (framesLeft > 0 && camera) {
+                    camera.position.addInPlace(impulse.scale(1 / 5));
+                    framesLeft--;
+                    requestAnimationFrame(applyImpulse);
+                }
+            };
+            applyImpulse();
         }
         
         // Log the bounce for debugging
-        console.log(`Bounce applied: ${bounceDirection.x.toFixed(2)}, ${bounceDirection.y.toFixed(2)}, ${bounceDirection.z.toFixed(2)}`);
+        console.log(`Bounce applied with force: ${BOUNCE_FORCE.toFixed(2)}, jump: ${BOUNCE_HEIGHT.toFixed(2)}`);
     }
     
     /**
@@ -82,6 +123,11 @@ const CollisionSystem = (function() {
         // Register with scene rendering to guarantee collision checks
         if (scene) {
             scene.onBeforeRenderObservable.add(checkCollisionsOnRender);
+        }
+        
+        // Try to get reference to player state
+        if (window.gameState && window.gameState.playerState) {
+            playerState = window.gameState.playerState;
         }
         
         // Notify of initialization
