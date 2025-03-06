@@ -16,6 +16,7 @@ const MapSystem = (function() {
     let playerRot = 0;
     let lastPos = { x: 0, z: 0 };
     let frameCounter = 0;
+    let needsRedraw = true;
     
     // Map configuration
     const config = {
@@ -23,7 +24,8 @@ const MapSystem = (function() {
         gridColor: "#00cc99",
         gridSize: 20,       // Size of grid cells in pixels
         playerColor: "#ff00cc",
-        originColor: "#ffcc00"
+        originColor: "#ffcc00",
+        scaleFactor: 1      // How much to scale world coordinates
     };
     
     // Map points - the important locations
@@ -31,7 +33,7 @@ const MapSystem = (function() {
     
     // Initialize the map
     function init() {
-        console.warn("[MAP] Initializing simplified map system");
+        console.log("[MAP] Initializing map system");
         
         // Get required DOM elements
         mapContainer = document.getElementById('mapContainer');
@@ -64,7 +66,7 @@ const MapSystem = (function() {
         requestAnimationFrame(renderLoop);
         
         initialized = true;
-        console.warn("[MAP] Map system initialized");
+        console.log("[MAP] Map system initialized successfully");
         return true;
     }
     
@@ -89,12 +91,16 @@ const MapSystem = (function() {
         };
         playerRot = Number(rotation);
         
-        // Debug logging (only log when position actually changes)
+        // Check if position significantly changed to trigger a redraw
         const deltaX = playerPos.x - lastPos.x;
         const deltaZ = playerPos.z - lastPos.z;
         
-        if (DEBUG && (Math.abs(deltaX) > 0.01 || Math.abs(deltaZ) > 0.01)) {
-            console.log(`[MAP] Position updated: (${playerPos.x.toFixed(2)}, ${playerPos.z.toFixed(2)})`);
+        if (Math.abs(deltaX) > 0.001 || Math.abs(deltaZ) > 0.001) {
+            needsRedraw = true;
+            
+            if (DEBUG) {
+                console.log(`[MAP] Position updated: (${playerPos.x.toFixed(2)}, ${playerPos.z.toFixed(2)})`);
+            }
         }
     }
     
@@ -112,6 +118,7 @@ const MapSystem = (function() {
         
         // Resize after toggling
         setTimeout(resizeCanvas, 10);
+        needsRedraw = true;
     }
     
     // Resize canvas to fit container
@@ -123,12 +130,19 @@ const MapSystem = (function() {
         
         mapCanvas.width = width;
         mapCanvas.height = height;
+        needsRedraw = true;
     }
     
     // Main render loop
     function renderLoop() {
         frameCounter++;
-        render();
+        
+        // Only render when necessary
+        if (needsRedraw || frameCounter % 60 === 0) {
+            render();
+            needsRedraw = false;
+        }
+        
         requestAnimationFrame(renderLoop);
     }
     
@@ -220,19 +234,30 @@ const MapSystem = (function() {
     // Draw grid in collapsed mode
     function drawCollapsedGrid(centerX, centerY) {
         const gridSize = config.gridSize;
+        const scaleFactor = config.scaleFactor;
         
-        // SIMPLEST GRID LOGIC:
-        // Calculate offsets based on player position
-        // We need to make sure the grid moves in the opposite direction of player movement
-        const offsetX = -(playerPos.x * gridSize) % gridSize;
-        const offsetY = -(playerPos.z * gridSize) % gridSize;
+        // IMPROVED GRID LOGIC:
+        // 1. Scale player position by grid size
+        // 2. Calculate remainder for fine-grained movement
+        // 3. Ensure we always have positive offsets
         
-        // Adjust offsets to be positive for drawing
-        const startX = (offsetX < 0) ? offsetX + gridSize : offsetX;
-        const startY = (offsetY < 0) ? offsetY + gridSize : offsetY;
+        // Calculate offset with correct direction (grid moves opposite to player)
+        // This is a key part that needed fixing - the grid offset must move
+        // in the OPPOSITE direction of player movement to create the illusion
+        // of the player moving across the grid
+        const scaledX = playerPos.x * gridSize * scaleFactor;
+        const scaledZ = playerPos.z * gridSize * scaleFactor;
+        
+        // Calculate pixel offsets with proper direction (-playerPos to move grid opposite)
+        let offsetX = -scaledX % gridSize;
+        let offsetZ = -scaledZ % gridSize;
+        
+        // Ensure offsets are positive for rendering (avoid negative offsets)
+        if (offsetX < 0) offsetX += gridSize;
+        if (offsetZ < 0) offsetZ += gridSize;
         
         // Draw vertical lines
-        for (let x = startX; x < mapCanvas.width + gridSize; x += gridSize) {
+        for (let x = offsetX; x < mapCanvas.width + gridSize; x += gridSize) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, mapCanvas.height);
@@ -240,7 +265,7 @@ const MapSystem = (function() {
         }
         
         // Draw horizontal lines
-        for (let y = startY; y < mapCanvas.height + gridSize; y += gridSize) {
+        for (let y = offsetZ; y < mapCanvas.height + gridSize; y += gridSize) {
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(mapCanvas.width, y);
@@ -248,8 +273,8 @@ const MapSystem = (function() {
         }
         
         // Draw origin marker if in view
-        const originX = centerX - (playerPos.x * gridSize);
-        const originY = centerY - (playerPos.z * gridSize);
+        const originX = centerX - (playerPos.x * gridSize * scaleFactor);
+        const originY = centerY - (playerPos.z * gridSize * scaleFactor);
         
         if (originX > -50 && originX < mapCanvas.width + 50 &&
             originY > -50 && originY < mapCanvas.height + 50) {
@@ -285,18 +310,19 @@ const MapSystem = (function() {
         const centerX = mapCanvas.width / 2;
         const centerY = mapCanvas.height / 2;
         const gridSize = config.gridSize;
+        const scaleFactor = config.scaleFactor;
         
         points.forEach(point => {
             let x, y;
             
             if (expanded) {
                 // In expanded mode, points move relative to fixed grid
-                x = centerX + point.x * gridSize;
-                y = centerY + point.z * gridSize;
+                x = centerX + point.x * gridSize * scaleFactor;
+                y = centerY + point.z * gridSize * scaleFactor;
             } else {
                 // In collapsed mode, calculate position relative to player
-                x = centerX + (point.x - playerPos.x) * gridSize;
-                y = centerY + (point.z - playerPos.z) * gridSize;
+                x = centerX + (point.x - playerPos.x) * gridSize * scaleFactor;
+                y = centerY + (point.z - playerPos.z) * gridSize * scaleFactor;
             }
             
             // Only draw if within view with some padding
@@ -327,14 +353,15 @@ const MapSystem = (function() {
         const centerY = mapCanvas.height / 2;
         const expanded = !isCollapsed;
         const gridSize = config.gridSize;
+        const scaleFactor = config.scaleFactor;
         
         // Calculate player position based on mode
         let x, y;
         
         if (expanded) {
             // In expanded mode, player position is based on map coordinates
-            x = centerX + playerPos.x * gridSize;
-            y = centerY + playerPos.z * gridSize;
+            x = centerX + playerPos.x * gridSize * scaleFactor;
+            y = centerY + playerPos.z * gridSize * scaleFactor;
         } else {
             // In collapsed mode, player is always centered
             x = centerX;
@@ -364,8 +391,6 @@ const MapSystem = (function() {
         
         // Restore context
         ctx.restore();
-        
-        // NO TEXT NEAR ARROW - as requested by user
     }
     
     // Add a point to the map
@@ -401,6 +426,7 @@ const MapSystem = (function() {
     function show() {
         if (mapContainer) {
             mapContainer.style.display = "block";
+            needsRedraw = true;
         }
     }
     
@@ -432,6 +458,7 @@ const MapSystem = (function() {
                 });
             }
         }
+        needsRedraw = true;
     }
     
     // Get map data (compatibility function)
