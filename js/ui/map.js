@@ -384,10 +384,12 @@ const MapSystem = (function() {
         ctx.save();
         ctx.translate(center, center);
         
-        // Fix: Apply rotation to match the player's view direction
-        // In Babylon.js, 0 radians = facing +Z (SOUTH)
-        // So we need to adjust our rotation accordingly
-        ctx.rotate(playerRotation); // Remove the negative sign to correct the direction
+        // Fix: Apply rotation correctly to match Babylon.js coordinate system
+        // In Babylon.js, 0 radians = looking down +Z axis (SOUTH on our map)
+        // Math.PI/2 = looking down +X axis (EAST on our map)
+        // Math.PI = looking down -Z axis (NORTH on our map)
+        // We need to adjust by Math.PI because our arrow is drawn pointing North by default
+        ctx.rotate(playerRotation + Math.PI);
         
         // Draw player arrow
         ctx.fillStyle = '#ff00cc'; // Pink/purple
@@ -405,6 +407,22 @@ const MapSystem = (function() {
         
         // Restore context
         ctx.restore();
+        
+        // Draw debug direction line (helps visualize facing direction)
+        if (DEBUG) {
+            ctx.save();
+            ctx.strokeStyle = '#ffff00'; // Yellow
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.7;
+            ctx.beginPath();
+            ctx.moveTo(center, center);
+            // Calculate point 15 pixels in the direction the player is facing
+            const dirX = center + Math.sin(playerRotation) * 15;
+            const dirZ = center + Math.cos(playerRotation) * 15;
+            ctx.lineTo(dirX, dirZ);
+            ctx.stroke();
+            ctx.restore();
+        }
     }
     
     // Draw cardinal direction indicators (N, S, E, W)
