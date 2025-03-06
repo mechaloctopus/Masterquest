@@ -10,6 +10,10 @@ const MapSystem = (function() {
     let playerZ = 0;
     let playerRotation = 0;
     
+    // NPC and Foe tracking
+    let npcs = []; // Format: [{id: 'npc1', x: 0, z: 0, label: 'NPC1'}, ...]
+    let foes = []; // Format: [{id: 'foe1', x: 0, z: 0, label: 'Foe1'}, ...]
+    
     // Simple configuration
     const MAP_SIZE = 150;
     const GRID_CELL_SIZE = 20; // Pixels per grid cell
@@ -68,7 +72,122 @@ const MapSystem = (function() {
         // Make sure CoordinateSystem is initialized
         setTimeout(ensureCoordinateDisplay, 100);
         
+        // Connect to NPC and FOE systems if available
+        setTimeout(connectToEntitySystems, 500);
+        
         console.log("[MAP] Map system initialized successfully");
+        return true;
+    }
+    
+    // Connect to NPC and Foe systems to get entity data
+    function connectToEntitySystems() {
+        // Try to connect to NPC and Foe systems
+        if (window.NPCSystem && typeof NPCSystem.getAllNPCs === 'function') {
+            console.log("[MAP] Connected to NPCSystem");
+        }
+        
+        if (window.FoeSystem && typeof FoeSystem.getAllFoes === 'function') {
+            console.log("[MAP] Connected to FoeSystem");
+        }
+        
+        // Set up periodic check for entity updates
+        setInterval(updateEntities, 1000); // Check once per second
+    }
+    
+    // Update NPC and Foe positions from their systems
+    function updateEntities() {
+        // Update NPCs if system available
+        if (window.NPCSystem && typeof NPCSystem.getAllNPCs === 'function') {
+            try {
+                const allNPCs = NPCSystem.getAllNPCs();
+                updateNPCsOnMap(allNPCs);
+            } catch (e) {
+                if (DEBUG) console.warn("[MAP] Could not get NPCs:", e);
+            }
+        }
+        
+        // Update Foes if system available
+        if (window.FoeSystem && typeof FoeSystem.getAllFoes === 'function') {
+            try {
+                const allFoes = FoeSystem.getAllFoes();
+                updateFoesOnMap(allFoes);
+            } catch (e) {
+                if (DEBUG) console.warn("[MAP] Could not get Foes:", e);
+            }
+        }
+    }
+    
+    // Process NPC data from the NPC system
+    function updateNPCsOnMap(npcData) {
+        // Reset the NPC array
+        npcs = [];
+        
+        // Process each NPC
+        if (Array.isArray(npcData)) {
+            npcData.forEach(npc => {
+                if (npc && npc.mesh && npc.mesh.position) {
+                    npcs.push({
+                        id: npc.id || `npc-${npcs.length}`,
+                        x: npc.mesh.position.x,
+                        z: npc.mesh.position.z,
+                        label: npc.name || `NPC ${npcs.length + 1}`
+                    });
+                }
+            });
+        }
+        
+        if (DEBUG) console.log(`[MAP] Updated ${npcs.length} NPCs on map`);
+    }
+    
+    // Process Foe data from the Foe system
+    function updateFoesOnMap(foeData) {
+        // Reset the Foe array
+        foes = [];
+        
+        // Process each Foe
+        if (Array.isArray(foeData)) {
+            foeData.forEach(foe => {
+                if (foe && foe.mesh && foe.mesh.position) {
+                    foes.push({
+                        id: foe.id || `foe-${foes.length}`,
+                        x: foe.mesh.position.x,
+                        z: foe.mesh.position.z,
+                        label: foe.name || `Foe ${foes.length + 1}`
+                    });
+                }
+            });
+        }
+        
+        if (DEBUG) console.log(`[MAP] Updated ${foes.length} Foes on map`);
+    }
+    
+    // Public method to add or update a single NPC
+    function updateNPC(id, x, z, label) {
+        if (!id || typeof x !== 'number' || typeof z !== 'number') return false;
+        
+        // Find existing NPC or add new one
+        const existingIndex = npcs.findIndex(npc => npc.id === id);
+        if (existingIndex >= 0) {
+            npcs[existingIndex] = { id, x, z, label: label || npcs[existingIndex].label };
+        } else {
+            npcs.push({ id, x, z, label: label || `NPC ${npcs.length + 1}` });
+        }
+        
+        return true;
+    }
+    
+    // Public method to add or update a single Foe
+    function updateFoe(id, x, z, label) {
+        if (!id || typeof x !== 'number' || typeof z !== 'number') return false;
+        
+        // Find existing Foe or add new one
+        const existingIndex = foes.findIndex(foe => foe.id === id);
+        if (existingIndex >= 0) {
+            foes[existingIndex] = { id, x, z, label: label || foes[existingIndex].label };
+        } else {
+            foes.push({ id, x, z, label: label || `Foe ${foes.length + 1}` });
+        }
+        
         return true;
     }
     
@@ -241,6 +360,10 @@ const MapSystem = (function() {
         
         // Draw origin point
         drawOrigin();
+        
+        // Draw NPCs and Foes
+        drawNPCs();
+        drawFoes();
         
         // Draw player arrow
         drawPlayer();
@@ -468,6 +591,74 @@ const MapSystem = (function() {
         return "Unknown";
     }
     
+    // Draw NPCs as blue dots
+    function drawNPCs() {
+        if (!npcs.length) return;
+        
+        const center = MAP_SIZE / 2;
+        ctx.fillStyle = '#0088ff'; // Blue color for NPCs
+        ctx.strokeStyle = '#ffffff'; // White outline
+        
+        npcs.forEach(npc => {
+            // Calculate position relative to player
+            const x = center + (npc.x - playerX) * SCALE;
+            const y = center - (npc.z - playerZ) * SCALE; // Reversed Z
+            
+            // Only draw if within map boundaries (with margin)
+            if (x >= -5 && x <= MAP_SIZE + 5 && y >= -5 && y <= MAP_SIZE + 5) {
+                // Draw dot
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+                
+                // Draw label if debug mode is on
+                if (DEBUG && npc.label) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '8px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(npc.label, x, y - 5);
+                    ctx.fillStyle = '#0088ff'; // Reset to blue for next NPC
+                }
+            }
+        });
+    }
+    
+    // Draw Foes as red dots
+    function drawFoes() {
+        if (!foes.length) return;
+        
+        const center = MAP_SIZE / 2;
+        ctx.fillStyle = '#ff3333'; // Red color for Foes
+        ctx.strokeStyle = '#ffffff'; // White outline
+        
+        foes.forEach(foe => {
+            // Calculate position relative to player
+            const x = center + (foe.x - playerX) * SCALE;
+            const y = center - (foe.z - playerZ) * SCALE; // Reversed Z
+            
+            // Only draw if within map boundaries (with margin)
+            if (x >= -5 && x <= MAP_SIZE + 5 && y >= -5 && y <= MAP_SIZE + 5) {
+                // Draw dot
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+                
+                // Draw label if debug mode is on
+                if (DEBUG && foe.label) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '8px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(foe.label, x, y - 5);
+                    ctx.fillStyle = '#ff3333'; // Reset to red for next Foe
+                }
+            }
+        });
+    }
+    
     // Clean up when unloading
     function cleanup() {
         if (coordinateCheckTimer) {
@@ -500,6 +691,9 @@ const MapSystem = (function() {
     // Public API
     return {
         updatePlayerPosition: updatePlayerPosition,
-        init: init
+        init: init,
+        // Add methods for updating NPCs and Foes
+        updateNPC: updateNPC,
+        updateFoe: updateFoe
     };
 })(); 
