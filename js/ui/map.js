@@ -88,6 +88,13 @@ const MapSystem = (function() {
         
         if (window.FoeSystem && typeof FoeSystem.getAllFoes === 'function') {
             console.log("[MAP] Connected to FoeSystem");
+        } else {
+            console.warn("[MAP] FoeSystem not available, will try to find it later");
+            
+            // Add some test foes for now
+            updateFoe('test-foe-1', 10, 10, 'Test Foe 1');
+            updateFoe('test-foe-2', -15, 5, 'Test Foe 2');
+            updateFoe('test-foe-3', 5, -20, 'Test Foe 3');
         }
         
         // Set up periodic check for entity updates
@@ -146,19 +153,60 @@ const MapSystem = (function() {
         
         // Process each Foe
         if (Array.isArray(foeData)) {
-            foeData.forEach(foe => {
+            console.log(`[MAP] Processing ${foeData.length} foes from FoeSystem`);
+            
+            foeData.forEach((foe, index) => {
+                // More flexible position detection for foes
+                let foeX = 0, foeZ = 0, foeName = `Foe ${index + 1}`;
+                
+                // Try different property paths that might contain position data
                 if (foe && foe.mesh && foe.mesh.position) {
+                    foeX = foe.mesh.position.x;
+                    foeZ = foe.mesh.position.z;
+                    foeName = foe.name || `Foe ${index + 1}`;
+                } else if (foe && foe.position) {
+                    // Direct position property
+                    foeX = foe.position.x;
+                    foeZ = foe.position.z;
+                    foeName = foe.name || `Foe ${index + 1}`;
+                } else if (foe && typeof foe.x === 'number' && typeof foe.z === 'number') {
+                    // Already has x, z coordinates
+                    foeX = foe.x;
+                    foeZ = foe.z;
+                    foeName = foe.name || foe.label || `Foe ${index + 1}`;
+                }
+                
+                // Ensure we have a valid ID
+                const foeId = foe.id || `foe-${index}`;
+                
+                // Add valid foes to the array
+                if (typeof foeX === 'number' && typeof foeZ === 'number') {
                     foes.push({
-                        id: foe.id || `foe-${foes.length}`,
-                        x: foe.mesh.position.x,
-                        z: foe.mesh.position.z,
-                        label: foe.name || `Foe ${foes.length + 1}`
+                        id: foeId,
+                        x: foeX,
+                        z: foeZ,
+                        label: foeName
                     });
+                    
+                    console.log(`[MAP] Added foe at position (${foeX.toFixed(1)}, ${foeZ.toFixed(1)})`);
+                } else {
+                    console.warn(`[MAP] Could not determine position for foe:`, foe);
                 }
             });
+        } else {
+            console.warn("[MAP] FoeSystem.getAllFoes() did not return an array:", foeData);
         }
         
-        if (DEBUG) console.log(`[MAP] Updated ${foes.length} Foes on map`);
+        console.log(`[MAP] Updated ${foes.length} Foes on map`);
+        
+        // If no foes were found using the system, add test foes for debugging
+        if (foes.length === 0) {
+            console.log("[MAP] No foes detected from system, adding test foes");
+            // Add some test foes at different positions
+            updateFoe('test-foe-1', 10, 10, 'Test Foe 1');
+            updateFoe('test-foe-2', -15, 5, 'Test Foe 2');
+            updateFoe('test-foe-3', 5, -20, 'Test Foe 3');
+        }
     }
     
     // Public method to add or update a single NPC
@@ -630,9 +678,12 @@ const MapSystem = (function() {
         if (!foes.length) return;
         
         const center = MAP_SIZE / 2;
+        
+        // Brighter red for better visibility
         ctx.fillStyle = '#ff3333'; // Red color for Foes
         ctx.strokeStyle = '#ffffff'; // White outline
         
+        // Draw each foe
         foes.forEach(foe => {
             // Calculate position relative to player
             const x = center + (foe.x - playerX) * SCALE;
@@ -640,23 +691,33 @@ const MapSystem = (function() {
             
             // Only draw if within map boundaries (with margin)
             if (x >= -5 && x <= MAP_SIZE + 5 && y >= -5 && y <= MAP_SIZE + 5) {
-                // Draw dot
+                // Draw dot with slightly larger size
                 ctx.beginPath();
-                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.arc(x, y, 4, 0, Math.PI * 2); // Increased size
                 ctx.fill();
-                ctx.lineWidth = 0.5;
+                
+                // Add white halo for better visibility
+                ctx.lineWidth = 1;
                 ctx.stroke();
                 
-                // Draw label if debug mode is on
-                if (DEBUG && foe.label) {
+                // Draw label if debug mode is on or label is set
+                if ((DEBUG || foe.id.startsWith('test')) && foe.label) {
                     ctx.fillStyle = '#ffffff';
                     ctx.font = '8px monospace';
                     ctx.textAlign = 'center';
-                    ctx.fillText(foe.label, x, y - 5);
+                    ctx.fillText(foe.label, x, y - 6);
                     ctx.fillStyle = '#ff3333'; // Reset to red for next Foe
                 }
             }
         });
+        
+        // Debug count in corner if we have foes
+        if (DEBUG || foes.some(f => f.id.startsWith('test'))) {
+            ctx.fillStyle = '#ff3333';
+            ctx.font = '8px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText(`Foes: ${foes.length}`, MAP_SIZE - 5, MAP_SIZE - 5);
+        }
     }
     
     // Clean up when unloading
