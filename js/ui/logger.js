@@ -54,9 +54,15 @@ window.Logger = (function() {
                                     window.CONFIG.UI.LOGGER && 
                                     window.CONFIG.UI.LOGGER.COLLAPSED_BY_DEFAULT;
             
-            if (defaultCollapsed) {
+            // Default to collapsed on mobile devices
+            const isMobile = 'ontouchstart' in window || 
+                            navigator.maxTouchPoints > 0 || 
+                            navigator.msMaxTouchPoints > 0 ||
+                            (window.innerWidth <= 768);
+                            
+            if (defaultCollapsed || isMobile) {
                 logElement.classList.add('collapsed');
-                logToggle.textContent = '▶ CONSOLE';
+                logToggle.textContent = '▶';
             } else {
                 logElement.classList.remove('collapsed');
                 logToggle.textContent = '▼';
@@ -84,6 +90,9 @@ window.Logger = (function() {
         if (window.togglePanelCollapse) {
             const isCollapsed = window.togglePanelCollapse(logElement, logToggle);
             
+            // Fix the toggle icon direction - Utils.togglePanelCollapse uses opposite icons
+            logToggle.textContent = isCollapsed ? '▶' : '▼';
+            
             // When opening the console, force scroll to the latest entry
             if (!isCollapsed) {
                 forceScrollToBottom();
@@ -93,7 +102,7 @@ window.Logger = (function() {
             logElement.classList.toggle('collapsed');
             
             if (logElement.classList.contains('collapsed')) {
-                logToggle.textContent = '▶ CONSOLE';
+                logToggle.textContent = '▶';
             } else {
                 logToggle.textContent = '▼';
                 forceScrollToBottom();
