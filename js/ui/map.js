@@ -16,6 +16,9 @@ const MapSystem = (function() {
     const WORLD_GRID_SIZE = 2; // World units per grid cell
     const SCALE = GRID_CELL_SIZE / WORLD_GRID_SIZE; // Pixels per world unit
     
+    // World grid configuration from CONFIG (if available)
+    const WORLD_GRID_LIMITS = (typeof CONFIG !== 'undefined' && CONFIG.GRID) ? CONFIG.GRID.SIZE : 50;
+    
     // Update rate limiting
     let frameCount = 0;
     
@@ -28,6 +31,7 @@ const MapSystem = (function() {
     
     function init() {
         console.log("[MAP] Initializing map system with direct coordinate connection");
+        console.log(`[MAP] World grid size: ${WORLD_GRID_LIMITS}x${WORLD_GRID_LIMITS} units`);
         
         // Get the map container
         mapContainer = document.getElementById('mapContainer');
@@ -261,7 +265,7 @@ const MapSystem = (function() {
         }
     }
     
-    // Draw the grid with proper scaling
+    // Draw the grid with proper scaling and boundaries
     function drawGrid() {
         const center = MAP_SIZE / 2;
         
@@ -270,30 +274,74 @@ const MapSystem = (function() {
         const offsetX = (-playerX * SCALE) % GRID_CELL_SIZE;
         const offsetZ = (-playerZ * SCALE) % GRID_CELL_SIZE;
         
-        // Make sure offsets are properly wrapped (between 0 and cell size)
-        const startX = (offsetX + GRID_CELL_SIZE) % GRID_CELL_SIZE;
-        const startZ = (offsetZ + GRID_CELL_SIZE) % GRID_CELL_SIZE;
+        // Calculate where the grid boundaries are in pixels relative to the player
+        const gridLeftEdge = center - (playerX + WORLD_GRID_LIMITS) * SCALE;
+        const gridRightEdge = center - (playerX - WORLD_GRID_LIMITS) * SCALE;
+        const gridTopEdge = center - (playerZ + WORLD_GRID_LIMITS) * SCALE;
+        const gridBottomEdge = center - (playerZ - WORLD_GRID_LIMITS) * SCALE;
         
         // Set grid style
         ctx.strokeStyle = '#00cc99'; // Neon green
         ctx.lineWidth = 0.5;
         ctx.globalAlpha = 0.3;
         
+        // Draw the grid boundary
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#ff00ff'; // Highlight the boundary
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.rect(gridLeftEdge, gridTopEdge, gridRightEdge - gridLeftEdge, gridBottomEdge - gridTopEdge);
+        ctx.stroke();
+        
+        // Reset styles for grid lines
+        ctx.strokeStyle = '#00cc99';
+        ctx.lineWidth = 0.5;
+        ctx.globalAlpha = 0.3;
+        
         // Draw vertical grid lines
-        for (let x = startX; x < MAP_SIZE; x += GRID_CELL_SIZE) {
-            ctx.beginPath();
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, MAP_SIZE);
-            ctx.stroke();
+        // Start at leftmost visible line based on player position
+        const firstLineX = Math.ceil(playerX - WORLD_GRID_LIMITS) * WORLD_GRID_SIZE;
+        const linesToDraw = Math.floor(WORLD_GRID_LIMITS * 2 / WORLD_GRID_SIZE) + 1;
+        
+        for (let i = 0; i < linesToDraw; i++) {
+            const worldX = firstLineX + i * WORLD_GRID_SIZE;
+            // Only draw if within grid boundaries
+            if (worldX >= -WORLD_GRID_LIMITS && worldX <= WORLD_GRID_LIMITS) {
+                const screenX = center + (worldX - playerX) * SCALE;
+                ctx.beginPath();
+                ctx.moveTo(screenX, gridTopEdge);
+                ctx.lineTo(screenX, gridBottomEdge);
+                ctx.stroke();
+            }
         }
         
         // Draw horizontal grid lines
-        for (let z = startZ; z < MAP_SIZE; z += GRID_CELL_SIZE) {
-            ctx.beginPath();
-            ctx.moveTo(0, z);
-            ctx.lineTo(MAP_SIZE, z);
-            ctx.stroke();
+        const firstLineZ = Math.ceil(playerZ - WORLD_GRID_LIMITS) * WORLD_GRID_SIZE;
+        
+        for (let i = 0; i < linesToDraw; i++) {
+            const worldZ = firstLineZ + i * WORLD_GRID_SIZE;
+            // Only draw if within grid boundaries
+            if (worldZ >= -WORLD_GRID_LIMITS && worldZ <= WORLD_GRID_LIMITS) {
+                const screenZ = center + (worldZ - playerZ) * SCALE;
+                ctx.beginPath();
+                ctx.moveTo(gridLeftEdge, screenZ);
+                ctx.lineTo(gridRightEdge, screenZ);
+                ctx.stroke();
+            }
         }
+        
+        // Draw outer space color for areas outside the grid
+        ctx.fillStyle = 'rgba(0, 0, 20, 0.6)'; // Dark blue with transparency
+        
+        // Fill the areas outside the grid
+        // Top
+        ctx.fillRect(0, 0, MAP_SIZE, gridTopEdge);
+        // Bottom
+        ctx.fillRect(0, gridBottomEdge, MAP_SIZE, MAP_SIZE - gridBottomEdge);
+        // Left
+        ctx.fillRect(0, gridTopEdge, gridLeftEdge, gridBottomEdge - gridTopEdge);
+        // Right
+        ctx.fillRect(gridRightEdge, gridTopEdge, MAP_SIZE - gridRightEdge, gridBottomEdge - gridTopEdge);
         
         // Reset alpha
         ctx.globalAlpha = 1.0;
@@ -390,10 +438,15 @@ const MapSystem = (function() {
         const degrees = ((playerRotation * 180 / Math.PI) % 360 + 360) % 360;
         const directionName = getCardinalDirection(playerRotation);
         
+        // Calculate if player is within grid
+        const inGrid = Math.abs(playerX) <= WORLD_GRID_LIMITS && Math.abs(playerZ) <= WORLD_GRID_LIMITS;
+        
         ctx.fillStyle = '#ffffff';
         ctx.font = '9px monospace';
         ctx.textAlign = 'left';
         ctx.fillText(`Rot: ${degrees.toFixed(0)}° (${directionName})`, 5, 10);
+        ctx.fillText(`Pos: ${playerX.toFixed(0)},${playerZ.toFixed(0)}`, 5, 20);
+        ctx.fillText(`Grid: ${inGrid ? 'ON' : 'OFF'}`, 5, 30);
     }
     
     // Get cardinal direction name
