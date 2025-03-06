@@ -8,6 +8,9 @@ const CollisionSystem = (function() {
     // Store the entities we've already collided with to avoid duplicate messages
     const collidedEntities = new Set();
     
+    // Track distance from each entity for better collision reset
+    const entityDistances = new Map();
+    
     // Configuration
     const COLLISION_RADIUS = 1.0; // Size of the player's collision sphere (reduced to 1 unit)
     const RESET_DISTANCE = 2.0;   // Distance player needs to move away to allow for re-collision detection
@@ -21,6 +24,9 @@ const CollisionSystem = (function() {
     
     // Reference to damage overlay element
     let damageOverlay = null;
+    
+    // Debug flag - set to true to show more detailed logs
+    const DEBUG = true;
     
     // Reference to player state for smooth physics
     let playerState = null;
@@ -92,20 +98,46 @@ const CollisionSystem = (function() {
     function applyDamage() {
         // Check if the health system is available
         if (window.HealthBarSystem && typeof window.HealthBarSystem.damage === 'function') {
-            // Apply the damage amount
-            const newHealth = window.HealthBarSystem.damage(COLLISION_DAMAGE);
-            
-            // Log the damage
-            logToConsole(`Player took ${COLLISION_DAMAGE} damage. Health: ${newHealth}/${window.HealthBarSystem.getHealth().max}`);
-            
-            // Check if player is dead (health <= 0)
-            if (newHealth <= 0) {
-                logToConsole("CRITICAL: Player health depleted!");
-                // Could trigger game over or respawn logic here
+            try {
+                // Apply the damage amount
+                const newHealth = window.HealthBarSystem.damage(COLLISION_DAMAGE);
+                
+                // Force an update if possible
+                if (typeof window.HealthBarSystem.setHealth === 'function') {
+                    window.HealthBarSystem.setHealth(newHealth);
+                }
+                
+                // Log the damage
+                logToConsole(`Player took ${COLLISION_DAMAGE} damage. Health: ${newHealth}/${window.HealthBarSystem.getHealth().max}`);
+                
+                // Debug output for health update
+                if (DEBUG) {
+                    console.log(`Health update: ${newHealth}/${window.HealthBarSystem.getHealth().max}`);
+                }
+                
+                // Check if player is dead (health <= 0)
+                if (newHealth <= 0) {
+                    logToConsole("CRITICAL: Player health depleted!");
+                    // Could trigger game over or respawn logic here
+                }
+                
+                return newHealth;
+            } catch (e) {
+                console.error("Error updating health:", e);
             }
         } else {
-            console.warn("HealthBarSystem not available, can't apply damage");
+            console.warn("HealthBarSystem not available or damage method missing!");
+            
+            // Debug output for health system
+            if (DEBUG) {
+                console.log("HealthBarSystem available:", !!window.HealthBarSystem);
+                if (window.HealthBarSystem) {
+                    console.log("HealthBarSystem methods:", Object.keys(window.HealthBarSystem));
+                }
+            }
         }
+        
+        return null;
     }
     
     /**
@@ -212,6 +244,13 @@ const CollisionSystem = (function() {
         // Make sure health system is initialized
         if (window.HealthBarSystem && typeof window.HealthBarSystem.init === 'function') {
             window.HealthBarSystem.init();
+            
+            // Debug check that health system is working
+            if (DEBUG) {
+                console.log("Health System initialized. Current health:", window.HealthBarSystem.getHealth());
+            }
+        } else {
+            console.warn("HealthBarSystem not found or init method missing!");
         }
         
         // Notify of initialization
@@ -288,13 +327,16 @@ const CollisionSystem = (function() {
             
             const distance = BABYLON.Vector3.Distance(playerPos, entityPosition);
             
-            // Occasionally log distance for debugging
-            if (Math.random() < 0.001) {
-                console.log(`Distance to ${entity.name || 'entity'}: ${distance.toFixed(2)} (ID: ${entity.id || 'unknown'})`);
-            }
-            
             // Get a stable entity ID
             const entityId = entity.id || `unknown-${Math.random()}`;
+            
+            // Store current distance for this entity
+            entityDistances.set(entityId, distance);
+            
+            // Occasionally log distance for debugging
+            if (DEBUG && Math.random() < 0.001) {
+                console.log(`Distance to ${entity.name || 'entity'}: ${distance.toFixed(2)} (ID: ${entityId})`);
+            }
             
             // Check if player is in collision range
             if (distance < COLLISION_RADIUS) {
@@ -322,12 +364,24 @@ const CollisionSystem = (function() {
                 // When player moves sufficiently away, remove from collided set to allow future collisions
                 if (collidedEntities.has(entityId)) {
                     collidedEntities.delete(entityId);
-                    if (Math.random() < 0.01) { // Occasionally log for debugging
+                    
+                    if (DEBUG) {
                         console.log(`Reset collision detection for entity: ${entityId} (Distance: ${distance.toFixed(2)}m)`);
                     }
                 }
             }
         });
+        
+        // Active check to reset collision status for entities that are no longer found
+        // This prevents issues where entities might be removed but still in our collision set
+        for (const entityId of collidedEntities) {
+            if (!entityDistances.has(entityId) || !currentlyColliding.has(entityId)) {
+                if (DEBUG) {
+                    console.log(`Removing entity ${entityId} from collision set - no longer tracked or colliding`);
+                }
+                collidedEntities.delete(entityId);
+            }
+        }
     }
     
     /**
@@ -345,6 +399,7 @@ const CollisionSystem = (function() {
      */
     function resetAllCollisions() {
         collidedEntities.clear();
+        entityDistances.clear();
         logToConsole("All collision detections reset");
     }
     
