@@ -604,7 +604,7 @@ const MapSystem = (function() {
         
         // Get direction name for debugging
         const dirName = getCardinalDirection(playerRotation);
-        ctx.fillText(`Angle: ${degrees.toFixed(0)}° (${dirName})`, 5, 40);
+        ctx.fillText(`${dirName}`, 5, 40);
     }
     
     // Draw cardinal direction indicators (N, S, E, W)
