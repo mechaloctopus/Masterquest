@@ -421,110 +421,157 @@ window.EntitySystem = (function() {
         });
     }
     
-    // Add nametag to entity
+    // Add nametag to an entity
     function addNametag(mesh, name) {
-        if (!scene) return;
+        // Create a Babylon GUI AdvancedDynamicTexture for the nametag
+        const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI(
+            `nametagUI-${mesh.name}`,
+            true,
+            scene
+        );
         
-        // Create dynamic texture for nametag
-        const textureWidth = 256;
-        const textureHeight = 64;
-        const dynamicTexture = new BABYLON.DynamicTexture("nametagTexture-" + name, 
-            { width: textureWidth, height: textureHeight }, scene, false);
+        // Create container to link to the 3D position
+        const container = new BABYLON.GUI.Container();
+        container.width = "150px";
+        container.height = "60px"; // Increased height to accommodate health bar
+        container.background = "transparent";
         
-        // Set font and clear the texture
-        dynamicTexture.hasAlpha = true;
-        dynamicTexture.drawText(name, null, 20, "16px Arial", "white", "transparent");
-        
-        // Add health bar if entity has health metadata
-        if (mesh.metadata && mesh.metadata.currentHealth !== undefined && mesh.metadata.maxHealth !== undefined) {
-            const healthPercent = mesh.metadata.currentHealth / mesh.metadata.maxHealth;
+        // Create health bar if entity has health data
+        if (mesh.metadata && (mesh.metadata.currentHealth !== undefined && mesh.metadata.maxHealth !== undefined)) {
+            // Create health bar background (gray)
+            const healthBarBackground = new BABYLON.GUI.Rectangle();
+            healthBarBackground.width = "120px";
+            healthBarBackground.height = "10px";
+            healthBarBackground.background = "#444444";
+            healthBarBackground.color = "#444444";
+            healthBarBackground.cornerRadius = 5;
+            healthBarBackground.top = "-15px"; // Position above the name text
             
-            // Draw background bar
-            const ctx = dynamicTexture.getContext();
-            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-            ctx.fillRect(10, 30, textureWidth - 20, 10);
+            // Create health bar fill (green)
+            const healthBarFill = new BABYLON.GUI.Rectangle();
+            healthBarFill.width = (mesh.metadata.currentHealth / mesh.metadata.maxHealth) * 120 + "px";
+            healthBarFill.height = "8px";
+            healthBarFill.background = "#22FF22";
+            healthBarFill.color = "#22FF22";
+            healthBarFill.cornerRadius = 4;
+            healthBarFill.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+            healthBarFill.left = "1px";
             
-            // Draw health bar
-            ctx.fillStyle = healthPercent > 0.5 ? "green" : healthPercent > 0.2 ? "yellow" : "red";
-            ctx.fillRect(10, 30, (textureWidth - 20) * healthPercent, 10);
+            // Create health text
+            const healthText = new BABYLON.GUI.TextBlock();
+            healthText.text = `${mesh.metadata.currentHealth}/${mesh.metadata.maxHealth} HP`;
+            healthText.fontSize = 10;
+            healthText.fontFamily = "Orbitron";
+            healthText.color = "white";
+            healthText.top = "-15px";
             
-            dynamicTexture.update();
+            // Add health elements to container
+            healthBarBackground.addControl(healthBarFill);
+            container.addControl(healthBarBackground);
+            container.addControl(healthText);
+            
+            // Store references for updating
+            mesh.healthBar = {
+                background: healthBarBackground,
+                fill: healthBarFill,
+                text: healthText
+            };
         }
         
-        // Create plane for nametag
-        const plane = BABYLON.MeshBuilder.CreatePlane("nametag-" + name, {
-            width: 1,
-            height: 0.25
-        }, scene);
+        // Create text block for the nametag - simplify to just show the name without entity type
+        const entityType = mesh.metadata && mesh.metadata.type ? mesh.metadata.type : "";
         
-        // Create material with nametag texture
-        const material = new BABYLON.StandardMaterial("nametagMaterial-" + name, scene);
-        material.diffuseTexture = dynamicTexture;
-        material.specularColor = new BABYLON.Color3(0, 0, 0);
-        material.emissiveColor = new BABYLON.Color3(1, 1, 1);
-        material.backFaceCulling = false;
+        const nameText = new BABYLON.GUI.TextBlock();
+        nameText.text = name; // Just display the name without brackets or entity type
+        nameText.fontSize = 16;
+        nameText.fontFamily = "Orbitron";
+        nameText.outlineWidth = 3;
+        nameText.top = "5px"; // Move name text down to make room for health bar
         
-        // Make material use alpha
-        material.useAlphaFromDiffuseTexture = true;
-        material.diffuseTexture.hasAlpha = true;
+        // Enhanced glow effect
+        nameText.shadowBlur = 15;
+        nameText.shadowOffsetX = 0;
+        nameText.shadowOffsetY = 0;
         
-        plane.material = material;
+        // Choose color based on entity type
+        if (entityType.toLowerCase().includes('npc')) {
+            // Cyan/teal for NPCs
+            nameText.color = "#00FFCC";
+            nameText.outlineColor = "#009977";
+            nameText.shadowColor = "#00FFAA";
+        } else if (entityType.toLowerCase().includes('foe')) {
+            // Red for foes
+            nameText.color = "#FF5555";
+            nameText.outlineColor = "#AA0000";
+            nameText.shadowColor = "#FF0000";
+        } else {
+            // Default neon green
+            nameText.color = "#55FF55";
+            nameText.outlineColor = "#00AA00";
+            nameText.shadowColor = "#00FF00";
+        }
         
-        // Position above the entity
-        plane.position = new BABYLON.Vector3(0, 1.2, 0);
-        plane.parent = mesh;
+        // Add text to container
+        container.addControl(nameText);
+        advancedTexture.addControl(container);
         
-        // Billboard mode
-        const billboardMode = BABYLON.AbstractMesh.BILLBOARDMODE_ALL;
+        // Link the container to the mesh using a better positioning approach
+        container.linkWithMesh(mesh);
         
-        // Store the observer and other components for cleanup
+        // Position above the entity with a smaller offset
+        container.linkOffsetY = -60; // Increased offset to accommodate health bar
+        
+        // Set scaling options to keep text readable at any distance
+        // This uses a different approach that should be more compatible
+        container.ignoreAdaptivePositioning = true;
+        
+        // Adjust additional positioning options
+        container.transformCenterY = 1.0;
+        
+        // Store a reference to the scene's onBeforeRenderObservable
+        // This will help us adjust the positioning if needed
+        const observer = scene.onBeforeRenderObservable.add(() => {
+            // If the mesh is too far away, hide the nametag
+            if (mesh && scene.activeCamera) {
+                const distance = BABYLON.Vector3.Distance(
+                    mesh.position,
+                    scene.activeCamera.position
+                );
+                
+                // Show/hide based on distance
+                container.alpha = distance > 50 ? 0 : 1;
+                
+                // Adjust size slightly based on distance for better readability
+                // But keep a minimum size to avoid text becoming too small
+                const scale = Math.max(0.7, 1 - (distance / 100));
+                nameText.fontSize = 16 * scale;
+                
+                // Update health bar if it exists and health changed
+                if (mesh.healthBar && mesh.metadata) {
+                    const healthPercentage = mesh.metadata.currentHealth / mesh.metadata.maxHealth;
+                    mesh.healthBar.fill.width = healthPercentage * 120 + "px";
+                    mesh.healthBar.text.text = `${mesh.metadata.currentHealth}/${mesh.metadata.maxHealth} HP`;
+                    
+                    // Change color based on health percentage
+                    if (healthPercentage > 0.6) {
+                        mesh.healthBar.fill.background = "#22FF22"; // Green
+                    } else if (healthPercentage > 0.3) {
+                        mesh.healthBar.fill.background = "#FFFF22"; // Yellow
+                    } else {
+                        mesh.healthBar.fill.background = "#FF2222"; // Red
+                    }
+                }
+            }
+        });
+        
+        // Store a reference to allow removal later
         mesh.nametag = {
-            container: plane,
-            texture: dynamicTexture,
-            observer: scene.onBeforeRenderObservable.add(() => {
-                plane.billboardMode = billboardMode;
-            })
+            container: container,
+            texture: advancedTexture,
+            observer: observer
         };
         
-        return plane;
-    }
-    
-    // Update entity health display
-    function updateEntityHealthDisplay(entity) {
-        if (!entity || !entity.mesh || !entity.mesh.nametag) return;
-        
-        const mesh = entity.mesh;
-        const nametag = mesh.nametag;
-        
-        if (!nametag.texture) return;
-        
-        // Get the dynamic texture and clear it
-        const texture = nametag.texture;
-        const textureWidth = texture.getSize().width;
-        const textureHeight = texture.getSize().height;
-        
-        // Clear the texture
-        const ctx = texture.getContext();
-        ctx.clearRect(0, 0, textureWidth, textureHeight);
-        
-        // Re-draw the name
-        texture.drawText(entity.name, null, 20, "16px Arial", "white", "transparent");
-        
-        // Draw the health bar
-        if (entity.currentHealth !== undefined && entity.maxHealth !== undefined) {
-            const healthPercent = entity.currentHealth / entity.maxHealth;
-            
-            // Draw background bar
-            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-            ctx.fillRect(10, 30, textureWidth - 20, 10);
-            
-            // Draw health bar
-            ctx.fillStyle = healthPercent > 0.5 ? "green" : healthPercent > 0.2 ? "yellow" : "red";
-            ctx.fillRect(10, 30, (textureWidth - 20) * healthPercent, 10);
-        }
-        
-        // Update the texture
-        texture.update();
+        return mesh.nametag;
     }
     
     // Setup click handler for entity
@@ -996,149 +1043,36 @@ window.EntitySystem = (function() {
         return entities.foes;
     }
     
-    // Apply damage to an entity
-    function damageEntity(entityId, amount) {
-        // Find the entity
-        let entity = getNPC(entityId);
-        let isNPC = true;
-        
-        if (!entity) {
-            entity = getFoe(entityId);
-            isNPC = false;
-            
-            if (!entity) {
-                safeLog(`Entity ${entityId} not found`, true);
-                return false;
-            }
-        }
-        
-        // Reduce health
-        entity.currentHealth = Math.max(0, entity.currentHealth - amount);
-        
-        // Update mesh metadata to keep in sync
-        if (entity.mesh && entity.mesh.metadata) {
-            entity.mesh.metadata.currentHealth = entity.currentHealth;
-        }
-        
-        // Update health display
-        updateEntityHealthDisplay(entity);
-        
-        safeLog(`Damaged ${entity.name}: -${amount} HP, Current: ${entity.currentHealth}/${entity.maxHealth}`, false, isNPC ? 'NPC' : 'FOE');
-        
-        // Visual feedback on hit
-        if (entity.mesh) {
-            // Flash the entity red briefly
-            const originalMaterial = entity.mesh.material;
-            const hitMaterial = new BABYLON.StandardMaterial("hitMaterial", scene);
-            hitMaterial.diffuseColor = new BABYLON.Color3(1, 0, 0);
-            hitMaterial.emissiveColor = new BABYLON.Color3(1, 0, 0);
-            
-            entity.mesh.material = hitMaterial;
-            
-            setTimeout(() => {
-                if (entity.mesh) {
-                    entity.mesh.material = originalMaterial;
-                }
-            }, 100);
-        }
-        
-        // Check if entity is dead
-        if (entity.currentHealth <= 0) {
-            entityDied(entity);
-        }
-        
-        return true;
-    }
-    
-    // Handle entity death
-    function entityDied(entity) {
-        safeLog(`${entity.name} has been defeated!`, false, entity.type === ENTITY_TYPES.NPC ? 'NPC' : 'FOE');
-        
-        if (entity.type === ENTITY_TYPES.FOE) {
-            entity.defeated = true;
-            
-            // In the future, this will trigger the quiz dialogue
-            // For now, just hide the foe
-            if (entity.mesh) {
-                entity.mesh.visibility = 0.3;
-            }
-            
-            // TODO: Trigger quiz dialogue here instead of just logging
-            safeLog(`${entity.name} will have a quiz soon!`, false, 'FOE');
-        } else {
-            // NPCs can also be defeated but don't need quiz
-            if (entity.mesh) {
-                entity.mesh.visibility = 0.3;
-            }
-        }
-    }
-
-    // Get nearby entities within a certain range
-    function getNearbyEntities(playerPosition, range = 2) {
-        if (!playerPosition) return [];
-        
-        const nearbyEntities = [];
-        
-        // Check NPCs
-        entities.npcs.forEach(npc => {
-            if (!npc.mesh) return;
-            
-            const distance = BABYLON.Vector3.Distance(
-                playerPosition,
-                npc.mesh.position
-            );
-            
-            if (distance <= range) {
-                nearbyEntities.push(npc.id);
-            }
-        });
-        
-        // Check foes
-        entities.foes.forEach(foe => {
-            if (!foe.mesh || foe.defeated) return;
-            
-            const distance = BABYLON.Vector3.Distance(
-                playerPosition,
-                foe.mesh.position
-            );
-            
-            if (distance <= range) {
-                nearbyEntities.push(foe.id);
-            }
-        });
-        
-        return nearbyEntities;
-    }
-    
     // Public API
     return {
+        // Core functions
         init,
         loadEntitiesForRealm,
-        loadNPCsForRealm,
-        loadFoesForRealm,
+        
+        // NPC functions
         createNPC,
-        createFoe,
-        clearEntities,
+        loadNPCsForRealm,
         startInteraction,
         endInteraction,
+        getNPC,
+        getAllNPCs,
+        
+        // Foe functions
+        createFoe,
+        loadFoesForRealm,
         startBattle,
         endBattle,
-        handleQuizAnswer,
-        checkEntityProximity,
-        handleRealmChange,
-        getNPC,
         getFoe,
-        getAllNPCs,
         getAllFoes,
+        
+        // Environment functions
+        // createEnvironmentObject,
+        
+        // Common functions
+        clearEntities,
         
         // For debugging
         entities,
-        setupClickHandler,
-        
-        // New functions
-        damageEntity,
-        entityDied,
-        getNearbyEntities,
-        updateEntityHealthDisplay
+        setupClickHandler
     };
 })(); 

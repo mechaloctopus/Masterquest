@@ -205,9 +205,6 @@ const ControlSystem = {
         state.striking = true;
         state.strikeProgress = 0; // Reset progress
         
-        // Check for nearby entities and damage them
-        this.damageNearbyEntities(state);
-        
         // Add striking class to right hand for visual effect
         const rightHand = document.getElementById('rightHand');
         if (rightHand) {
@@ -316,68 +313,5 @@ const ControlSystem = {
     // Check if controls are enabled
     isEnabled: function() {
         return this._controls.enabled;
-    },
-    
-    // NEW FUNCTION: Apply damage to nearby entities when striking
-    damageNearbyEntities: function(state) {
-        if (!window.EntitySystem) {
-            console.warn("EntitySystem not available");
-            return;
-        }
-        
-        // Get player position from state
-        const playerPosition = new BABYLON.Vector3(
-            state.camera.position.x,
-            state.camera.position.y,
-            state.camera.position.z
-        );
-        
-        // Get entities in strike range (using 2 units as default strike range)
-        const strikeRange = 2;
-        const nearbyEntities = EntitySystem.getNearbyEntities(playerPosition, strikeRange);
-        
-        if (nearbyEntities.length > 0) {
-            console.log(`Found ${nearbyEntities.length} entities in strike range`);
-            
-            // Apply damage to each nearby entity
-            nearbyEntities.forEach(entityId => {
-                // Apply 5 damage as per requirements
-                EntitySystem.damageEntity(entityId, 5);
-            });
-            
-            // Add more powerful feedback when hitting something
-            this.strikeHitFeedback();
-        } else {
-            console.log("Strike missed - no entities in range");
-        }
-    },
-    
-    // Visual feedback when strike hits an entity
-    strikeHitFeedback: function() {
-        // Add stronger screen shake or flash when hitting something
-        const canvas = document.getElementById('renderCanvas');
-        if (canvas) {
-            // Add a brief shake effect
-            let shakeTime = 0;
-            const shakeDuration = 200; // ms
-            const shakeIntensity = 3;
-            
-            const originalTransform = canvas.style.transform;
-            
-            const shakeInterval = setInterval(() => {
-                shakeTime += 16;
-                
-                if (shakeTime >= shakeDuration) {
-                    clearInterval(shakeInterval);
-                    canvas.style.transform = originalTransform;
-                    return;
-                }
-                
-                const shakeX = (Math.random() - 0.5) * shakeIntensity;
-                const shakeY = (Math.random() - 0.5) * shakeIntensity;
-                
-                canvas.style.transform = `translate(${shakeX}px, ${shakeY}px)`;
-            }, 16);
-        }
     }
 }; 
