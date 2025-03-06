@@ -19,19 +19,14 @@ const MapSystem = (function() {
     // World grid configuration from CONFIG (if available)
     const WORLD_GRID_LIMITS = (typeof CONFIG !== 'undefined' && CONFIG.GRID) ? CONFIG.GRID.SIZE : 50;
     
-    // Update rate limiting
-    let frameCount = 0;
-    
     // Direct coordinate check timer
     let coordinateCheckTimer = null;
-    let lastLoggedPosition = { x: 0, z: 0 };
     
-    // Debug mode
-    const DEBUG = true;
+    // Debug mode - set to false for production
+    const DEBUG = false;
     
     function init() {
-        console.log("[MAP] Initializing map system with direct coordinate connection");
-        console.log(`[MAP] World grid size: ${WORLD_GRID_LIMITS}x${WORLD_GRID_LIMITS} units`);
+        console.log("[MAP] Initializing map system");
         
         // Get the map container
         mapContainer = document.getElementById('mapContainer');
@@ -67,10 +62,10 @@ const MapSystem = (function() {
         // Start the update loop
         requestAnimationFrame(updateLoop);
         
-        // *** CRITICAL FIX: Set up direct coordinate polling ***
+        // Set up coordinate connection
         setupDirectCoordinateConnection();
         
-        // Make sure CoordinateSystem is initialized after a short delay
+        // Make sure CoordinateSystem is initialized
         setTimeout(ensureCoordinateDisplay, 100);
         
         console.log("[MAP] Map system initialized successfully");
@@ -103,13 +98,13 @@ const MapSystem = (function() {
                 display: block;
             }
             #mapContainer {
-                overflow: visible !important; /* Changed from hidden to visible */
+                overflow: visible !important;
                 display: flex;
                 flex-direction: column;
-                padding-bottom: 0; /* Remove padding, let the coordinate display position itself */
+                padding-bottom: 0;
             }
             
-            /* Fix coordinate display styling - don't override the original */
+            /* Fix coordinate display styling */
             .map-coordinates {
                 display: flex !important;
                 flex-direction: column;
@@ -139,7 +134,7 @@ const MapSystem = (function() {
     }
     
     function addOrigin() {
-        // Just store origin info for drawing later
+        // Store origin info for drawing
         window.mapOrigin = {
             x: 0,
             z: 0,
@@ -148,104 +143,65 @@ const MapSystem = (function() {
         };
     }
     
-    // *** CRITICAL FIX: This is the key function to fix the map! ***
     function setupDirectCoordinateConnection() {
-        // Check if we can use the coordinate display system
-        if (window.CoordinateSystem) {
-            console.log("[MAP] Connecting directly to CoordinateSystem");
+        // Poll the coordinate display DOM elements
+        coordinateCheckTimer = setInterval(function() {
+            const coordPos = document.getElementById('coordPos');
+            const compassElem = document.getElementById('coordCompass');
             
-            // Method 1: Poll the coordinate display DOM elements (most reliable)
-            coordinateCheckTimer = setInterval(function() {
-                const coordPos = document.getElementById('coordPos');
-                const compassElem = document.getElementById('coordCompass');
-                
-                if (coordPos) {
-                    // Get position from coordinates
-                    const text = coordPos.textContent;
-                    const match = text.match(/X:(-?\d+) Z:(-?\d+)/);
-                    if (match) {
-                        const x = parseFloat(match[1]);
-                        const z = parseFloat(match[2]);
-                        
-                        // Get rotation from compass direction
-                        let newRotation = playerRotation;
-                        if (compassElem) {
-                            const direction = compassElem.textContent;
-                            // Convert compass direction to radians
-                            switch (direction) {
-                                case 'N': newRotation = 0; break;
-                                case 'NE': newRotation = Math.PI / 4; break;
-                                case 'E': newRotation = Math.PI / 2; break;
-                                case 'SE': newRotation = Math.PI * 3/4; break;
-                                case 'S': newRotation = Math.PI; break;
-                                case 'SW': newRotation = Math.PI * 5/4; break;
-                                case 'W': newRotation = Math.PI * 3/2; break;
-                                case 'NW': newRotation = Math.PI * 7/4; break;
-                            }
-                        }
-                        
-                        // Update position and rotation
-                        updatePlayerPosition({x, z}, newRotation);
-                        
-                        // Debug log for significant changes
-                        if (DEBUG && (Math.abs(x - lastLoggedPosition.x) > 0.5 || 
-                                      Math.abs(z - lastLoggedPosition.z) > 0.5 ||
-                                      Math.abs(newRotation - playerRotation) > 0.1)) {
-                            console.log(`[MAP] Position from CoordinateSystem: (${x}, ${z}), Rotation: ${newRotation.toFixed(2)}, Direction: ${compassElem ? compassElem.textContent : 'unknown'}`);
-                            lastLoggedPosition = {x, z};
+            if (coordPos) {
+                // Get position from coordinates
+                const text = coordPos.textContent;
+                const match = text.match(/X:(-?\d+) Z:(-?\d+)/);
+                if (match) {
+                    const x = parseFloat(match[1]);
+                    const z = parseFloat(match[2]);
+                    
+                    // Get rotation from compass direction
+                    let newRotation = playerRotation;
+                    if (compassElem) {
+                        const direction = compassElem.textContent;
+                        // Convert compass direction to radians
+                        switch (direction) {
+                            case 'N': newRotation = 0; break;
+                            case 'NE': newRotation = Math.PI / 4; break;
+                            case 'E': newRotation = Math.PI / 2; break;
+                            case 'SE': newRotation = Math.PI * 3/4; break;
+                            case 'S': newRotation = Math.PI; break;
+                            case 'SW': newRotation = Math.PI * 5/4; break;
+                            case 'W': newRotation = Math.PI * 3/2; break;
+                            case 'NW': newRotation = Math.PI * 7/4; break;
                         }
                     }
-                }
-            }, 100); // Check 10 times per second
-            
-            // Method 2: Hook into camera updates (backup method)
-            if (window.BABYLON && BABYLON.Engine.Instances.length > 0) {
-                try {
-                    const engine = BABYLON.Engine.Instances[0];
-                    if (engine?.scenes?.length > 0) {
-                        const scene = engine.scenes[0];
-                        scene.onBeforeRenderObservable.add(() => {
-                            if (scene.activeCamera?.position) {
-                                const camera = scene.activeCamera;
-                                // IMPORTANT: This is a direct connection to camera rotation
-                                updatePlayerPosition({
-                                    x: camera.position.x,
-                                    z: camera.position.z
-                                }, camera.rotation.y);
-                                
-                                // Log camera rotation for debugging
-                                if (DEBUG && frameCount % 300 === 0) {
-                                    console.log(`[MAP] Camera rotation: ${camera.rotation.y.toFixed(2)}`);
-                                }
-                            }
-                        });
-                        console.log("[MAP] Connected to Babylon camera for position updates");
-                    }
-                } catch (e) {
-                    console.warn("[MAP] Could not connect to Babylon camera:", e);
+                    
+                    // Update position and rotation
+                    updatePlayerPosition({x, z}, newRotation);
                 }
             }
-        } else {
-            console.warn("[MAP] CoordinateSystem not available, falling back to polling");
-            
-            // Method 3: Poll the state.systems.camera directly
-            coordinateCheckTimer = setInterval(function() {
-                if (window.state?.systems?.camera) {
-                    const camera = state.systems.camera;
-                    if (camera?.position) {
-                        // Also get rotation if available
-                        const rotation = camera.rotation?.y || playerRotation;
-                        updatePlayerPosition({
-                            x: camera.position.x,
-                            z: camera.position.z
-                        }, rotation);
-                    }
+        }, 100); // Check 10 times per second
+        
+        // Backup method: Connect to Babylon camera if available
+        if (window.BABYLON && BABYLON.Engine.Instances.length > 0) {
+            try {
+                const engine = BABYLON.Engine.Instances[0];
+                if (engine?.scenes?.length > 0) {
+                    const scene = engine.scenes[0];
+                    scene.onBeforeRenderObservable.add(() => {
+                        if (scene.activeCamera?.position) {
+                            const camera = scene.activeCamera;
+                            updatePlayerPosition({
+                                x: camera.position.x,
+                                z: camera.position.z
+                            }, camera.rotation.y);
+                        }
+                    });
                 }
-            }, 100); // Check 10 times per second
+            } catch (e) {
+                console.warn("[MAP] Could not connect to Babylon camera");
+            }
         }
     }
     
-    // Standard update function for position updates (may be called manually)
     function updatePlayerPosition(position, rotation) {
         if (!position) return;
         
@@ -256,7 +212,7 @@ const MapSystem = (function() {
         // Only update rotation if provided and different
         if (typeof rotation === 'number' && Math.abs(rotation - playerRotation) > 0.01) {
             playerRotation = rotation;
-            // Log rotation changes for debugging
+            
             if (DEBUG) {
                 console.log(`[MAP] Rotation updated: ${playerRotation.toFixed(2)}`);
             }
@@ -265,15 +221,8 @@ const MapSystem = (function() {
     
     // Main render loop
     function updateLoop() {
-        frameCount++;
-        
         // Render the map
         renderMap();
-        
-        // Debug output occasionally
-        if (DEBUG && frameCount % 300 === 0) {
-            console.log(`[MAP] Current position: (${playerX.toFixed(2)}, ${playerZ.toFixed(2)})`);
-        }
         
         // Continue loop
         requestAnimationFrame(updateLoop);
@@ -306,8 +255,7 @@ const MapSystem = (function() {
     function drawGrid() {
         const center = MAP_SIZE / 2;
         
-        // FIXED: Recalculated grid offset methods
-        // First determine how far the player is from the world origin in screen pixels
+        // Calculate player offset in screen pixels
         const playerOffsetX = playerX * SCALE;
         const playerOffsetZ = playerZ * SCALE;
         
@@ -317,12 +265,10 @@ const MapSystem = (function() {
         const gridTopEdge = center - (WORLD_GRID_LIMITS * SCALE - playerOffsetZ);
         const gridBottomEdge = center + (WORLD_GRID_LIMITS * SCALE + playerOffsetZ);
         
-        // Set grid style for the boundary
+        // Draw the grid boundary
         ctx.lineWidth = 2;
         ctx.strokeStyle = '#ff00ff'; // Magenta boundary
         ctx.globalAlpha = 0.8;
-        
-        // Draw the grid boundary as a rectangle
         ctx.beginPath();
         ctx.rect(gridLeftEdge, gridTopEdge, gridRightEdge - gridLeftEdge, gridBottomEdge - gridTopEdge);
         ctx.stroke();
@@ -331,9 +277,6 @@ const MapSystem = (function() {
         ctx.strokeStyle = '#00cc99'; // Neon green
         ctx.lineWidth = 0.5;
         ctx.globalAlpha = 0.4;
-        
-        // FIXED: Draw grid lines to exactly match the scene grid
-        // Calculate where the grid lines should be based on world coordinates
         
         // Draw vertical grid lines (running north-south)
         for (let worldX = -WORLD_GRID_LIMITS; worldX <= WORLD_GRID_LIMITS; worldX += WORLD_GRID_SIZE) {
@@ -366,20 +309,16 @@ const MapSystem = (function() {
         // Draw "void" in areas outside the grid
         ctx.fillStyle = 'rgba(0, 0, 20, 0.7)'; // Dark blue with transparency
         
-        // Fill the areas outside the grid
-        // Top
+        // Fill the areas outside the grid (only if needed)
         if (gridTopEdge > 0) {
             ctx.fillRect(0, 0, MAP_SIZE, gridTopEdge);
         }
-        // Bottom
         if (gridBottomEdge < MAP_SIZE) {
             ctx.fillRect(0, gridBottomEdge, MAP_SIZE, MAP_SIZE - gridBottomEdge);
         }
-        // Left
         if (gridLeftEdge > 0) {
             ctx.fillRect(0, gridTopEdge, gridLeftEdge, gridBottomEdge - gridTopEdge);
         }
-        // Right
         if (gridRightEdge < MAP_SIZE) {
             ctx.fillRect(gridRightEdge, gridTopEdge, MAP_SIZE - gridRightEdge, gridBottomEdge - gridTopEdge);
         }
@@ -396,11 +335,10 @@ const MapSystem = (function() {
         const center = MAP_SIZE / 2;
         
         // Calculate origin position relative to player
-        // FIXED: Adjusted for Z-axis reversal
         const x = center + (origin.x - playerX) * SCALE;
         const y = center - (origin.z - playerZ) * SCALE; // Reversed Z
         
-        // Check if within view
+        // Check if within view (with small margin)
         if (x >= -10 && x <= MAP_SIZE + 10 && y >= -10 && y <= MAP_SIZE + 10) {
             // Draw the point
             ctx.fillStyle = origin.color;
@@ -419,30 +357,20 @@ const MapSystem = (function() {
     function drawPlayer() {
         const center = MAP_SIZE / 2;
         
-        // First draw cardinal direction indicators around the edge
+        // Draw cardinal direction indicators
         drawCardinalDirections();
-        
-        // Draw a debug circle to show the center point
-        if (DEBUG) {
-            ctx.beginPath();
-            ctx.arc(center, center, 2, 0, Math.PI * 2);
-            ctx.fillStyle = '#ffffff';
-            ctx.fill();
-        }
         
         // Save context for rotation
         ctx.save();
         ctx.translate(center, center);
         
-        // FIXED: Arrow rotation by flipping it 180 degrees
-        // We found we need to use the direct rotation value without negating
-        // Our arrow should point where the player is facing, not the opposite direction
-        ctx.rotate(playerRotation); // Use direct rotation without flipping or offset
+        // Rotate to player direction
+        ctx.rotate(playerRotation);
         
         // Draw player arrow
         ctx.fillStyle = '#ff00cc'; // Pink/purple
         ctx.beginPath();
-        ctx.moveTo(0, -8);  // Arrow tip (points UP/NORTH by default)
+        ctx.moveTo(0, -8);  // Arrow tip
         ctx.lineTo(-5, 5);  // Bottom left
         ctx.lineTo(5, 5);   // Bottom right
         ctx.closePath();
@@ -456,35 +384,39 @@ const MapSystem = (function() {
         // Restore context
         ctx.restore();
         
-        // Draw debug direction line (helps visualize facing direction)
+        // Draw debug direction line if needed
         if (DEBUG) {
-            ctx.save();
-            ctx.strokeStyle = '#ffff00'; // Yellow
-            ctx.lineWidth = 1;
-            ctx.globalAlpha = 0.7;
-            ctx.beginPath();
-            ctx.moveTo(center, center);
-            
-            // FIXED: Calculate the correct direction line - no need to flip rotation anymore
-            // Convert playerRotation to degrees for easier debugging
-            const degrees = ((playerRotation * 180 / Math.PI) % 360 + 360) % 360;
-            
-            // Draw the direction line using direct angle
-            const dirX = center + Math.sin(playerRotation) * 15;
-            const dirY = center - Math.cos(playerRotation) * 15;
-            ctx.lineTo(dirX, dirY);
-            ctx.stroke();
-            ctx.restore();
-            
-            // Show compass and rotation as debug text
-            ctx.fillStyle = "#ffff00";
-            ctx.font = "9px monospace";
-            ctx.textAlign = "left";
-            
-            // Get direction name for debugging - no need to adjust since we're using direct rotation
-            const dirName = getCardinalDirection(playerRotation);
-            ctx.fillText(`Angle: ${degrees.toFixed(0)}° (${dirName})`, 5, 40);
+            drawDirectionDebug(center);
         }
+    }
+    
+    // Separate function for direction debug drawing
+    function drawDirectionDebug(center) {
+        ctx.save();
+        ctx.strokeStyle = '#ffff00'; // Yellow
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(center, center);
+        
+        // Convert playerRotation to degrees for debugging
+        const degrees = ((playerRotation * 180 / Math.PI) % 360 + 360) % 360;
+        
+        // Draw the direction line
+        const dirX = center + Math.sin(playerRotation) * 15;
+        const dirY = center - Math.cos(playerRotation) * 15;
+        ctx.lineTo(dirX, dirY);
+        ctx.stroke();
+        ctx.restore();
+        
+        // Show compass and rotation as debug text
+        ctx.fillStyle = "#ffff00";
+        ctx.font = "9px monospace";
+        ctx.textAlign = "left";
+        
+        // Get direction name for debugging
+        const dirName = getCardinalDirection(playerRotation);
+        ctx.fillText(`Angle: ${degrees.toFixed(0)}° (${dirName})`, 5, 40);
     }
     
     // Draw cardinal direction indicators (N, S, E, W)
@@ -499,22 +431,15 @@ const MapSystem = (function() {
         ctx.textBaseline = 'middle';
         
         // Draw the letters at the edges
-        // North
         ctx.fillText('N', size/2, margin + 6);
-        
-        // South
         ctx.fillText('S', size/2, size - margin - 6);
-        
-        // East
         ctx.fillText('E', size - margin - 6, size/2);
-        
-        // West
         ctx.fillText('W', margin + 6, size/2);
     }
     
     // Draw debug information
     function drawDebugInfo() {
-        // Convert rotation to degrees for easier reading
+        // Convert rotation to degrees
         const degrees = ((playerRotation * 180 / Math.PI) % 360 + 360) % 360;
         const directionName = getCardinalDirection(playerRotation);
         
@@ -529,13 +454,12 @@ const MapSystem = (function() {
         ctx.fillText(`Grid: ${inGrid ? 'ON' : 'OFF'}`, 5, 30);
     }
     
-    // Helper to get cardinal direction based on rotation angle
+    // Get cardinal direction based on rotation angle
     function getCardinalDirection(radians) {
         // Normalize the angle to 0-2π
         const angle = ((radians % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
         
-        // We no longer need to flip the direction since we're using direct rotation
-        // Define direction ranges - North is at 0, East at π/2, etc.
+        // Define direction ranges
         if (angle < Math.PI * 0.25 || angle >= Math.PI * 1.75) return "North";
         if (angle >= Math.PI * 0.25 && angle < Math.PI * 0.75) return "East";
         if (angle >= Math.PI * 0.75 && angle < Math.PI * 1.25) return "South";
@@ -553,7 +477,6 @@ const MapSystem = (function() {
     
     // Ensure coordinate display is visible
     function ensureCoordinateDisplay() {
-        // Check if CoordinateSystem exists but isn't initialized yet
         if (window.CoordinateSystem && typeof window.CoordinateSystem.init === 'function') {
             // Initialize if not already done
             if (!document.getElementById('coordinateDisplay')) {
@@ -564,10 +487,7 @@ const MapSystem = (function() {
             // Make sure it's visible
             if (typeof window.CoordinateSystem.show === 'function') {
                 window.CoordinateSystem.show();
-                console.log("[MAP] CoordinateSystem display shown");
             }
-        } else {
-            console.warn("[MAP] CoordinateSystem not available");
         }
     }
     
@@ -577,10 +497,9 @@ const MapSystem = (function() {
     // Clean up when window unloads
     window.addEventListener('unload', cleanup);
     
-    // Public API - only expose what's needed
+    // Public API
     return {
         updatePlayerPosition: updatePlayerPosition,
-        // Add an explicit init function to the public API for App.js to call
         init: init
     };
 })(); 
