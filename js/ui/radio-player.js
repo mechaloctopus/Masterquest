@@ -90,23 +90,24 @@ window.RadioPlayerSystem = (function() {
         // Clear any existing tracks
         tracksContainer.innerHTML = '';
         
-        // Force-read the tracks from CONFIG
-        const configTracks = [
-            { NAME: "vhs", URL: "js/audio/vhs.mp3" },
-            { NAME: "happy airlines", URL: "js/audio/happyairlines.wav" },
-            { NAME: "klaxon", URL: "js/audio/klaxon.wav" },
-            { NAME: "video game land", URL: "js/audio/videogameland.wav" }
-        ];
-        
-        console.log("[Radio] Using hardcoded tracks from CONFIG.AUDIO.TRACKS");
-        
-        // Convert to our format
-        trackList = configTracks.map(track => {
-            return {
-                name: track.NAME,
-                path: track.URL
-            };
-        });
+        // Use tracks from Config
+        if (window.Config && window.Config.AUDIO && window.Config.AUDIO.TRACKS) {
+            console.log("[Radio] Loading tracks from Config.AUDIO.TRACKS");
+            
+            // Convert to our format
+            trackList = window.Config.AUDIO.TRACKS.map(track => {
+                return {
+                    name: track.NAME,
+                    path: track.URL
+                };
+            });
+        } else {
+            console.error("[Radio] Config.AUDIO.TRACKS not found, using fallback tracks");
+            // Fallback tracks in case Config isn't available
+            trackList = [
+                { name: "vhs", path: "js/audio/vhs.mp3" }
+            ];
+        }
         
         // Add tracks to DOM
         trackList.forEach((track, index) => {
