@@ -16,7 +16,7 @@ const MapSystem = (function() {
     
     // Simple configuration
     const MAP_SIZE = 150;
-    const GRID_CELL_SIZE = 10; // Pixels per grid cell (changed from 20 to 10 to zoom out)
+    const GRID_CELL_SIZE = 10; // Pixels per grid cell (zoomed out for 16x16 grid view)
     const WORLD_GRID_SIZE = 2; // World units per grid cell
     const SCALE = GRID_CELL_SIZE / WORLD_GRID_SIZE; // Pixels per world unit
     
@@ -26,7 +26,7 @@ const MapSystem = (function() {
     // Direct coordinate check timer
     let coordinateCheckTimer = null;
     
-    // Debug mode - set to true temporarily for troubleshooting
+    // Debug mode - set to true to troubleshoot foe tracking
     const DEBUG = true;
     
     function init() {
@@ -72,8 +72,8 @@ const MapSystem = (function() {
         // Make sure CoordinateSystem is initialized
         setTimeout(ensureCoordinateDisplay, 100);
         
-        // Connect to NPC and FOE systems if available
-        setTimeout(connectToEntitySystems, 500);
+        // Connect to NPC and FOE systems right away
+        connectToEntitySystems();
         
         console.log("[MAP] Map system initialized successfully");
         return true;
@@ -81,41 +81,13 @@ const MapSystem = (function() {
     
     // Connect to NPC and Foe systems to get entity data
     function connectToEntitySystems() {
-        console.log("[MAP] Attempting to connect to entity systems...");
+        console.log("[MAP] Connecting to entity systems...");
         
-        // Try to connect to NPC and Foe systems
-        if (window.NPCSystem && typeof NPCSystem.getAllNPCs === 'function') {
-            console.log("[MAP] Connected to NPCSystem");
-            // Test the NPC connection
-            try {
-                const npcs = NPCSystem.getAllNPCs();
-                console.log(`[MAP] NPCSystem returned ${npcs.length} NPCs`);
-            } catch (e) {
-                console.error("[MAP] Error testing NPCSystem:", e);
-            }
-        } else {
-            console.warn("[MAP] NPCSystem not available");
-        }
+        // First, directly fetch entities once
+        updateEntities();
         
-        if (window.FoeSystem && typeof FoeSystem.getAllFoes === 'function') {
-            console.log("[MAP] Connected to FoeSystem");
-            // Test the Foe connection
-            try {
-                const foes = FoeSystem.getAllFoes();
-                console.log(`[MAP] FoeSystem returned ${foes.length} foes:`, foes);
-            } catch (e) {
-                console.error("[MAP] Error testing FoeSystem:", e);
-            }
-        } else {
-            console.warn("[MAP] FoeSystem not available, using test foes");
-            // Add test foes
-            updateFoe('test-foe-1', 10, 10, 'Test Foe 1');
-            updateFoe('test-foe-2', -15, 5, 'Test Foe 2');
-            updateFoe('test-foe-3', 5, -20, 'Test Foe 3');
-        }
-        
-        // Set up periodic check for entity updates
-        setInterval(updateEntities, 1000); // Check once per second
+        // Then set up polling for updates
+        setInterval(updateEntities, 500); // Check twice per second
     }
     
     // Update NPC and Foe positions from their systems
@@ -126,19 +98,79 @@ const MapSystem = (function() {
                 const allNPCs = NPCSystem.getAllNPCs();
                 updateNPCsOnMap(allNPCs);
             } catch (e) {
-                if (DEBUG) console.warn("[MAP] Could not get NPCs:", e);
+                console.warn("[MAP] Could not get NPCs:", e);
             }
         }
         
-        // Update Foes if system available
+        // Update Foes using multiple approaches to ensure we get them
+        updateFoesFromSystem();
+    }
+    
+    // Enhanced foe update function - tries multiple methods
+    function updateFoesFromSystem() {
+        // First try the standard FoeSystem approach
         if (window.FoeSystem && typeof FoeSystem.getAllFoes === 'function') {
             try {
                 const allFoes = FoeSystem.getAllFoes();
-                updateFoesOnMap(allFoes);
+                if (Array.isArray(allFoes) && allFoes.length > 0) {
+                    console.log(`[MAP] Found ${allFoes.length} foes via FoeSystem.getAllFoes`);
+                    updateFoesOnMap(allFoes);
+                    return; // Successfully updated
+                } else {
+                    console.log("[MAP] FoeSystem.getAllFoes returned empty array");
+                }
             } catch (e) {
-                if (DEBUG) console.warn("[MAP] Could not get Foes:", e);
+                console.warn("[MAP] Error using FoeSystem.getAllFoes:", e);
             }
         }
+        
+        // Try second approach - check if foes are directly accessible
+        if (window.FoeSystem && Array.isArray(FoeSystem.foes)) {
+            console.log(`[MAP] Found ${FoeSystem.foes.length} foes via FoeSystem.foes property`);
+            updateFoesOnMap(FoeSystem.foes);
+            return; // Successfully updated
+        }
+        
+        // Final approach - check global state for foes
+        if (window.state && state.foes) {
+            console.log(`[MAP] Found foes via global state.foes`);
+            updateFoesOnMap(Array.isArray(state.foes) ? state.foes : [state.foes]);
+            return; // Successfully updated
+        }
+        
+        // If we get here, check if any foes are active in battle
+        if (window.state && state.activeFoe) {
+            console.log(`[MAP] Found active foe in battle`);
+            updateFoesOnMap([state.activeFoe]);
+            return; // Successfully updated  
+        }
+        
+        // Last resort - manually scan the scene for foe meshes
+        if (window.BABYLON && BABYLON.Engine.Instances.length > 0) {
+            try {
+                const scene = BABYLON.Engine.Instances[0].scenes[0];
+                if (scene) {
+                    const foeMeshes = scene.meshes.filter(mesh => 
+                        mesh.name && (mesh.name.includes('foe') || mesh.name.includes('Foe')));
+                    
+                    if (foeMeshes.length > 0) {
+                        console.log(`[MAP] Found ${foeMeshes.length} foe meshes in scene`);
+                        const foesFromMeshes = foeMeshes.map((mesh, i) => ({
+                            id: mesh.id || `foe-${i}`,
+                            mesh: mesh,
+                            position: mesh.position,
+                            name: mesh.name
+                        }));
+                        updateFoesOnMap(foesFromMeshes);
+                        return; // Successfully updated
+                    }
+                }
+            } catch (e) {
+                console.warn("[MAP] Error scanning scene for foes:", e);
+            }
+        }
+        
+        console.warn("[MAP] Could not find any foes using multiple methods");
     }
     
     // Process NPC data from the NPC system
@@ -148,123 +180,84 @@ const MapSystem = (function() {
         
         // Process each NPC
         if (Array.isArray(npcData)) {
-            console.log(`[MAP] Processing ${npcData.length} NPCs from NPCSystem`);
-            
             npcData.forEach((npc, index) => {
-                if (npc && npc.mesh && npc.mesh.position) {
+                // Try to extract position data
+                let npcPosition = null;
+                
+                if (npc.mesh && npc.mesh.position) {
+                    npcPosition = npc.mesh.position;
+                } else if (npc.position) {
+                    npcPosition = npc.position;
+                }
+                
+                if (npcPosition) {
                     npcs.push({
-                        id: npc.id || `npc-${npcs.length}`,
-                        x: npc.mesh.position.x,
-                        z: npc.mesh.position.z,
-                        label: npc.name || `NPC ${npcs.length + 1}`
+                        id: npc.id || `npc-${index}`,
+                        x: npcPosition.x,
+                        z: npcPosition.z,
+                        label: npc.name || `NPC ${index + 1}`
                     });
                     
                     if (DEBUG) {
-                        console.log(`[MAP] NPC at position: (${npc.mesh.position.x.toFixed(1)}, ${npc.mesh.position.z.toFixed(1)})`);
+                        console.log(`[MAP] Added NPC '${npc.name || "unnamed"}' at (${npcPosition.x.toFixed(1)}, ${npcPosition.z.toFixed(1)})`);
                     }
                 }
             });
         }
         
-        console.log(`[MAP] Updated ${npcs.length} NPCs on map`);
-        
-        // Always add a test NPC for comparison with foes
         if (DEBUG) {
-            updateNPC('test-npc', 0, 0, 'Test NPC');
+            console.log(`[MAP] Updated ${npcs.length} NPCs on map`);
         }
     }
     
     // Process Foe data from the Foe system
     function updateFoesOnMap(foeData) {
+        // Back up existing foes in case we need to restore them
+        const oldFoes = [...foes];
+        
         // Reset the Foe array
         foes = [];
         
         // Process each Foe
         if (Array.isArray(foeData)) {
-            console.log(`[MAP] Processing ${foeData.length} foes from FoeSystem`);
-            
             foeData.forEach((foe, index) => {
-                // More flexible position detection for foes
-                let foeX = 0, foeZ = 0, foeName = `Foe ${index + 1}`;
+                // Extract foe position using various possible data structures
+                let foePosition = null;
+                let foeId = foe.id || `foe-${index}`;
+                let foeName = foe.name || `Foe ${index + 1}`;
                 
-                // Try different property paths that might contain position data
-                if (foe && foe.mesh && foe.mesh.position) {
-                    foeX = foe.mesh.position.x;
-                    foeZ = foe.mesh.position.z;
-                    foeName = foe.name || `Foe ${index + 1}`;
-                } else if (foe && foe.position) {
-                    // Direct position property
-                    foeX = foe.position.x;
-                    foeZ = foe.position.z;
-                    foeName = foe.name || `Foe ${index + 1}`;
-                } else if (foe && typeof foe.x === 'number' && typeof foe.z === 'number') {
-                    // Already has x, z coordinates
-                    foeX = foe.x;
-                    foeZ = foe.z;
-                    foeName = foe.name || foe.label || `Foe ${index + 1}`;
+                // Check all possible position paths
+                if (foe.mesh && foe.mesh.position) {
+                    foePosition = foe.mesh.position;
+                } else if (foe.position) {
+                    foePosition = foe.position;
+                } else if (typeof foe.x === 'number' && typeof foe.z === 'number') {
+                    foePosition = { x: foe.x, z: foe.z };
                 }
                 
-                // Ensure we have a valid ID
-                const foeId = foe.id || `foe-${index}`;
-                
-                // Add valid foes to the array
-                if (typeof foeX === 'number' && typeof foeZ === 'number') {
+                // Only add if we found a valid position
+                if (foePosition && typeof foePosition.x === 'number' && typeof foePosition.z === 'number') {
                     foes.push({
                         id: foeId,
-                        x: foeX,
-                        z: foeZ,
+                        x: foePosition.x,
+                        z: foePosition.z,
                         label: foeName
                     });
                     
-                    console.log(`[MAP] Added foe at position (${foeX.toFixed(1)}, ${foeZ.toFixed(1)})`);
+                    console.log(`[MAP] Added foe '${foeName}' at position (${foePosition.x.toFixed(1)}, ${foePosition.z.toFixed(1)})`);
                 } else {
-                    console.warn(`[MAP] Could not determine position for foe:`, foe);
+                    console.warn(`[MAP] Could not determine position for foe '${foeName}'`);
                 }
             });
-        } else {
-            console.warn("[MAP] FoeSystem.getAllFoes() did not return an array:", foeData);
+        }
+        
+        if (foes.length === 0 && oldFoes.length > 0) {
+            // If we lost foes, it might be a temporary error, restore the old ones
+            console.warn("[MAP] Lost foe tracking, maintaining last known positions");
+            foes = oldFoes;
         }
         
         console.log(`[MAP] Updated ${foes.length} Foes on map`);
-        
-        // If no foes were found using the system, add test foes for debugging
-        if (foes.length === 0) {
-            console.log("[MAP] No foes detected from system, adding test foes");
-            // Add some test foes at different positions
-            updateFoe('test-foe-1', 10, 10, 'Test Foe 1');
-            updateFoe('test-foe-2', -15, 5, 'Test Foe 2');
-            updateFoe('test-foe-3', 5, -20, 'Test Foe 3');
-        }
-    }
-    
-    // Public method to add or update a single NPC
-    function updateNPC(id, x, z, label) {
-        if (!id || typeof x !== 'number' || typeof z !== 'number') return false;
-        
-        // Find existing NPC or add new one
-        const existingIndex = npcs.findIndex(npc => npc.id === id);
-        if (existingIndex >= 0) {
-            npcs[existingIndex] = { id, x, z, label: label || npcs[existingIndex].label };
-        } else {
-            npcs.push({ id, x, z, label: label || `NPC ${npcs.length + 1}` });
-        }
-        
-        return true;
-    }
-    
-    // Public method to add or update a single Foe
-    function updateFoe(id, x, z, label) {
-        if (!id || typeof x !== 'number' || typeof z !== 'number') return false;
-        
-        // Find existing Foe or add new one
-        const existingIndex = foes.findIndex(foe => foe.id === id);
-        if (existingIndex >= 0) {
-            foes[existingIndex] = { id, x, z, label: label || foes[existingIndex].label };
-        } else {
-            foes.push({ id, x, z, label: label || `Foe ${foes.length + 1}` });
-        }
-        
-        return true;
     }
     
     function styleMapContainer() {
@@ -651,9 +644,7 @@ const MapSystem = (function() {
         ctx.fillText(`Rot: ${degrees.toFixed(0)}° (${directionName})`, 5, 10);
         ctx.fillText(`Pos: ${playerX.toFixed(0)},${playerZ.toFixed(0)}`, 5, 20);
         ctx.fillText(`Grid: ${inGrid ? 'ON' : 'OFF'}`, 5, 30);
-        ctx.fillText(`Scale: ${SCALE.toFixed(1)} px/unit`, 5, 40); // Show scale for debugging
-        
-        // Draw grid size indicator
+        ctx.fillText(`Scale: ${SCALE.toFixed(1)} px/unit`, 5, 40);
         ctx.fillText(`View: 16x16 grid`, 5, 50);
     }
     
@@ -713,60 +704,48 @@ const MapSystem = (function() {
         }
     }
     
-    // Draw Foes as red dots - FIXED to match NPC drawing style
+    // Draw Foes as red dots
     function drawFoes() {
-        // Directly add test foes every frame to ensure they show up
-        if (DEBUG && foes.length === 0) {
-            foes = [
-                { id: 'test-foe-1', x: 10, z: 10, label: 'Test Foe 1' },
-                { id: 'test-foe-2', x: -15, z: 5, label: 'Test Foe 2' },
-                { id: 'test-foe-3', x: 5, z: -20, label: 'Test Foe 3' }
-            ];
-            console.log("[MAP] Added test foes:", foes);
-        }
-        
         if (!foes.length) return;
         
         const center = MAP_SIZE / 2;
         
-        // Use a much brighter red for maximum visibility
+        // Use a bright red for maximum visibility
         ctx.fillStyle = '#ff0000'; // Bright red color for Foes
         ctx.strokeStyle = '#ffffff'; // White outline
         
         foes.forEach(foe => {
-            // Calculate position relative to player - EXACT SAME CALCULATION AS NPCS
+            // Calculate position relative to player
             const x = center + (foe.x - playerX) * SCALE;
             const y = center - (foe.z - playerZ) * SCALE; // Reversed Z
             
-            console.log(`[MAP] Drawing foe at screen position: (${x.toFixed(1)}, ${y.toFixed(1)}) from world position: (${foe.x}, ${foe.z})`);
-            
-            // Only draw if within map boundaries with larger margin
-            if (x >= -10 && x <= MAP_SIZE + 10 && y >= -10 && y <= MAP_SIZE + 10) {
-                // Draw dot with LARGER size
+            // Only draw if within map boundaries (with margin)
+            if (x >= -5 && x <= MAP_SIZE + 5 && y >= -5 && y <= MAP_SIZE + 5) {
+                // Draw dot
                 ctx.beginPath();
-                ctx.arc(x, y, 5, 0, Math.PI * 2); // Even larger for better visibility
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
                 ctx.fill();
-                
-                // Add double white outline for better visibility
-                ctx.lineWidth = 1.5;
+                ctx.lineWidth = 1;
                 ctx.stroke();
                 
-                // Always draw labels for test foes
-                ctx.fillStyle = '#ffffff';
-                ctx.font = '9px monospace';
-                ctx.textAlign = 'center';
-                ctx.fillText(foe.label || "FOE", x, y - 7);
-                ctx.fillStyle = '#ff0000'; // Reset to red for next Foe
-            } else {
-                console.log(`[MAP] Foe at (${x.toFixed(1)}, ${y.toFixed(1)}) is outside map view`);
+                // Draw label if debug mode is on
+                if (DEBUG && foe.label) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '8px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(foe.label, x, y - 6);
+                    ctx.fillStyle = '#ff0000'; // Reset to red for next Foe
+                }
             }
         });
         
-        // Always show foe count in corner
-        ctx.fillStyle = '#ff0000';
-        ctx.font = '9px monospace';
-        ctx.textAlign = 'right';
-        ctx.fillText(`Foes: ${foes.length}`, MAP_SIZE - 5, MAP_SIZE - 5);
+        // Debug count in corner
+        if (DEBUG) {
+            ctx.fillStyle = '#ff0000';
+            ctx.font = '8px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText(`Foes: ${foes.length}`, MAP_SIZE - 5, MAP_SIZE - 5);
+        }
     }
     
     // Clean up when unloading
@@ -805,11 +784,8 @@ const MapSystem = (function() {
         // Add methods for updating NPCs and Foes
         updateNPC: updateNPC,
         updateFoe: updateFoe,
-        // Add direct access for debugging
-        debug: {
-            getNPCs: () => npcs,
-            getFoes: () => foes,
-            setDebug: (value) => { DEBUG = value; }
-        }
+        // Manual methods to force entity updates
+        refreshEntities: updateEntities,
+        refreshFoes: updateFoesFromSystem
     };
 })(); 
