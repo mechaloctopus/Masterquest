@@ -15,9 +15,11 @@ canvas { width: 100%; height: 100%; }
     font-family: 'Orbitron', sans-serif;
     transition: all 0.3s ease;
     color: #00ffff;
-    max-height: 500px;
+    max-height: 550px;
     z-index: 20 !important;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Log header styling to match radio player */
@@ -28,6 +30,7 @@ canvas { width: 100%; height: 100%; }
     padding: 10px;
     background: rgba(0, 0, 0, 0.9);
     border-bottom: 1px solid #00ffff;
+    flex-shrink: 0;
 }
 
 .log-title {
@@ -38,11 +41,12 @@ canvas { width: 100%; height: 100%; }
 
 #logContent {
     height: auto;
-    max-height: 400px;
+    max-height: 350px;
     overflow-y: auto;
     padding: 10px;
     background: rgba(0, 0, 0, 0.6);
-    margin-top: 20px;
+    margin-bottom: 0;
+    flex-grow: 1;
 }
 
 #logToggle {
@@ -1433,7 +1437,7 @@ body.mobile-detected .radio-player {
     right: 20px !important;
     width: 300px !important;
     max-width: 300px !important;
-    max-height: 500px !important;
+    max-height: 550px !important;
 }
 
 /* Create a shared panel-toggle class for both log and radio toggles */
@@ -1632,6 +1636,8 @@ body.mobile-detected .radio-player {
     padding: 10px;
     background: rgba(0, 0, 0, 0.8);
     border-top: 1px solid #00ffff;
+    position: relative;
+    z-index: 30;
 }
 
 #terminalForm {
@@ -1648,6 +1654,7 @@ body.mobile-detected .radio-player {
     font-family: 'Orbitron', monospace;
     font-size: 12px;
     outline: none;
+    height: 20px;
 }
 
 #terminalInput:focus {

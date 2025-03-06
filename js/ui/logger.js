@@ -63,6 +63,20 @@ window.Logger = (function() {
             }
         }
         
+        // Debug terminal elements
+        console.log('Terminal form exists:', !!terminalForm);
+        console.log('Terminal input exists:', !!terminalInput);
+        
+        if (terminalForm) {
+            console.log('Terminal form visibility check:', 
+                        window.getComputedStyle(terminalForm).display !== 'none');
+        }
+        
+        if (terminalInput) {
+            console.log('Terminal input visibility check:', 
+                        window.getComputedStyle(terminalInput).display !== 'none');
+        }
+        
         // Set initial state based on config
         if (logElement && logToggle) {
             const defaultCollapsed = window.CONFIG && 
@@ -76,13 +90,9 @@ window.Logger = (function() {
                             navigator.msMaxTouchPoints > 0 ||
                             (window.innerWidth <= 768);
                             
-            if (defaultCollapsed || isMobile) {
-                logElement.classList.add('collapsed');
-                logToggle.textContent = '▶';
-            } else {
-                logElement.classList.remove('collapsed');
-                logToggle.textContent = '▼';
-            }
+            // For testing, always start expanded
+            logElement.classList.remove('collapsed');
+            logToggle.textContent = '▼';
             
             // Add toggle event listener
             logToggle.addEventListener('click', toggleLogger);
@@ -125,7 +135,37 @@ window.Logger = (function() {
         }
         
         initialized = true;
+        
+        // Test terminal functionality
+        testTerminal();
+        
         return true;
+    }
+    
+    // Test function to verify terminal functionality
+    function testTerminal() {
+        // Log some test messages
+        log("Terminal initialized and ready for input.");
+        system("Type a command and press Enter or click the button.");
+        
+        // Make sure terminal input container is visible
+        const inputContainer = document.querySelector('.terminal-input-container');
+        if (inputContainer) {
+            inputContainer.style.display = 'flex';
+            console.log('Forced terminal input container to be visible');
+        }
+        
+        // Focus on the terminal input
+        if (terminalInput) {
+            setTimeout(() => {
+                // Focus and make sure terminal is visible
+                terminalInput.focus();
+                if (logElement) {
+                    logElement.classList.add('terminal-active');
+                }
+                console.log('Terminal should now be focused and active');
+            }, 1000);
+        }
     }
     
     // Toggle logger visibility
