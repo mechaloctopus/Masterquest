@@ -1,45 +1,40 @@
-// Map System - Complete Rewrite
+// Map System - Simple Static Version
 const MapSystem = (function() {
-    // Debug
-    const DEBUG = true; // Enable debugging temporarily
+    // Debug mode
+    const DEBUG = true;
     
     // DOM elements
     let mapContainer = null;
-    let mapToggle = null;
     let mapCanvas = null;
     let ctx = null;
     
     // Map state
     let initialized = false;
-    let isCollapsed = true;
     let playerPos = { x: 0, z: 0 };
     let playerRot = 0;
-    let lastPos = { x: 0, z: 0 };
     let frameCounter = 0;
     let needsRedraw = true;
     
-    // Map configuration - SIMPLIFIED
+    // Map configuration
     const config = {
         backgroundColor: "#001a33",
         gridColor: "#00cc99",
-        gridSize: 20,       // Size of grid cells in pixels
-        playerColor: "#ff00cc",
-        originColor: "#ffcc00"
+        gridSize: 20,       // Pixel size of grid cells
+        playerColor: "#ff00cc"
     };
     
-    // Map points - the important locations
+    // Points of interest
     let points = [];
     
     // Initialize the map
     function init() {
-        console.log("[MAP] Initializing map system");
+        console.log("[MAP] Initializing simplified map system");
         
         // Get required DOM elements
         mapContainer = document.getElementById('mapContainer');
-        mapToggle = document.getElementById('mapToggle');
         mapCanvas = document.getElementById('mapCanvas');
         
-        if (!mapContainer || !mapToggle || !mapCanvas) {
+        if (!mapContainer || !mapCanvas) {
             console.error("[MAP] Failed to find map elements");
             return false;
         }
@@ -51,14 +46,48 @@ const MapSystem = (function() {
             return false;
         }
         
+        // Remove the toggle button since we're making the map permanent
+        const mapToggle = document.getElementById('mapToggle');
+        if (mapToggle) {
+            mapToggle.style.display = 'none';
+        }
+        
+        // Make map permanently visible
+        mapContainer.classList.add('permanent');
+        mapContainer.style.display = 'block';
+        
+        // Remove expanded/collapsed classes
+        mapContainer.classList.remove('expanded');
+        mapContainer.classList.remove('collapsed');
+        
+        // Add custom CSS for permanent map
+        const style = document.createElement('style');
+        style.textContent = `
+            #mapContainer.permanent {
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                width: 200px;
+                height: 200px;
+                border: 2px solid #00cc99;
+                background: rgba(0, 10, 30, 0.8);
+                z-index: 100;
+            }
+            #mapCanvas {
+                width: 100%;
+                height: calc(100% - 30px);
+                display: block;
+            }
+        `;
+        document.head.appendChild(style);
+        
         // Initial resize
         resizeCanvas();
         
-        // Setup event listeners
-        mapToggle.addEventListener('click', toggleMap);
+        // Add window resize listener
         window.addEventListener('resize', resizeCanvas);
         
-        // Add origin point
+        // Add origin point for reference
         addPoint(0, 0, { label: "Origin", color: "#00FFFF" });
         
         // Start render loop
@@ -66,16 +95,12 @@ const MapSystem = (function() {
         
         initialized = true;
         console.log("[MAP] Map system initialized");
-        
-        // Log the initial state
-        if (DEBUG) {
-            console.log("[MAP] Initial player position:", playerPos);
-        }
+        console.log("[MAP] Initial player position:", playerPos);
         
         return true;
     }
     
-    // Update player position - THIS IS CALLED BY THE GAME ENGINE
+    // Update player position
     function updatePlayerPosition(position, rotation) {
         // Ensure we're getting valid data
         if (!position || typeof position.x !== 'number' || typeof position.z !== 'number') {
@@ -83,47 +108,20 @@ const MapSystem = (function() {
             return;
         }
         
-        // Save last position for comparison
-        lastPos = { 
-            x: playerPos.x, 
-            z: playerPos.z 
-        };
-        
-        // Update current position with numeric values
+        // Update player position and rotation
         playerPos = { 
             x: Number(position.x), 
             z: Number(position.z) 
         };
         playerRot = Number(rotation);
         
-        // Check if position significantly changed to trigger a redraw
-        const deltaX = playerPos.x - lastPos.x;
-        const deltaZ = playerPos.z - lastPos.z;
-        
-        if (Math.abs(deltaX) > 0.001 || Math.abs(deltaZ) > 0.001) {
-            needsRedraw = true;
-            
-            if (DEBUG) {
-                console.log(`[MAP] Position updated: (${playerPos.x.toFixed(2)}, ${playerPos.z.toFixed(2)})`);
-            }
-        }
-    }
-    
-    // Toggle map between expanded and collapsed
-    function toggleMap(e) {
-        if (e) e.preventDefault();
-        
-            isCollapsed = !isCollapsed;
-            
-            if (isCollapsed) {
-            mapContainer.classList.remove('expanded');
-            } else {
-            mapContainer.classList.add('expanded');
-        }
-        
-        // Resize after toggling
-        setTimeout(resizeCanvas, 10);
+        // Always redraw when position updates
         needsRedraw = true;
+        
+        // Debug logging
+        if (DEBUG && frameCounter % 30 === 0) {
+            console.log(`[MAP] Position updated: x=${playerPos.x.toFixed(2)}, z=${playerPos.z.toFixed(2)}, rot=${playerRot.toFixed(2)}`);
+        }
     }
     
     // Resize canvas to fit container
@@ -135,20 +133,20 @@ const MapSystem = (function() {
         
         mapCanvas.width = width;
         mapCanvas.height = height;
-        needsRedraw = true;
         
-        // Debug canvas size
         if (DEBUG) {
-            console.log("Canvas size:", mapCanvas.width, mapCanvas.height);
+            console.log("[MAP] Canvas resized to:", width, "×", height);
         }
+        
+        needsRedraw = true;
     }
     
     // Main render loop
     function renderLoop() {
         frameCounter++;
         
-        // Only render when necessary
-        if (needsRedraw || frameCounter % 30 === 0) {
+        // Only render when necessary or occasionally
+        if (needsRedraw || frameCounter % 15 === 0) {
             render();
             needsRedraw = false;
         }
@@ -160,15 +158,12 @@ const MapSystem = (function() {
     function render() {
         if (!ctx || !mapCanvas) return;
         
-        // Skip if map is not visible
-        if (mapContainer.style.display === 'none') return;
-        
         // Clear canvas
         ctx.fillStyle = config.backgroundColor;
         ctx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
         
         // Draw grid
-            drawGrid();
+        drawGrid();
         
         // Draw points of interest
         drawPoints();
@@ -177,83 +172,27 @@ const MapSystem = (function() {
         drawPlayer();
     }
     
-    // Draw grid 
+    // Draw grid - simplified to always be in "collapsed" mode
     function drawGrid() {
         if (!ctx || !mapCanvas) return;
         
         const centerX = mapCanvas.width / 2;
         const centerY = mapCanvas.height / 2;
+        const gridSpacing = CONFIG.GRID.SPACING || 2;  // World grid spacing (2 units)
+        const pixelSpacing = config.gridSize;          // Pixel grid spacing (20 pixels)
+        const scale = pixelSpacing / gridSpacing;      // 10 pixels per world unit
         
         // Set grid style
         ctx.strokeStyle = config.gridColor;
         ctx.lineWidth = 0.5;
         ctx.globalAlpha = 0.3;
         
-        if (!isCollapsed) {
-            // Expanded mode - fixed grid, player moves
-            drawExpandedGrid(centerX, centerY);
-        } else {
-            // Collapsed mode - moving grid, player fixed in center
-            drawCollapsedGrid(centerX, centerY);
-        }
-        
-        // Reset alpha
-        ctx.globalAlpha = 1.0;
-    }
-    
-    // Draw grid in expanded mode
-    function drawExpandedGrid(centerX, centerY) {
-        const gridSpacing = CONFIG.GRID.SPACING || 2; // World grid spacing (2 units)
-        const pixelSpacing = config.gridSize;         // Pixel grid spacing (20 pixels)
-        const scale = pixelSpacing / gridSpacing;     // 10 pixels per world unit
-        const range = 50; // Number of grid lines to draw
-        
-        // Draw vertical lines
-        for (let i = -range; i <= range; i++) {
-            const x = centerX + i * pixelSpacing;
-            ctx.beginPath();
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, mapCanvas.height);
-            ctx.stroke();
-            
-            // Draw labels for major grid lines
-            if (i % 5 === 0) {
-                ctx.fillStyle = "#00ffcc";
-                ctx.font = "8px monospace";
-                ctx.fillText((i * gridSpacing).toString(), x + 2, 10);
-            }
-        }
-        
-        // Draw horizontal lines
-        for (let i = -range; i <= range; i++) {
-            const y = centerY + i * pixelSpacing;
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(mapCanvas.width, y);
-            ctx.stroke();
-            
-            // Draw labels for major grid lines
-            if (i % 5 === 0) {
-                ctx.fillStyle = "#00ffcc";
-                ctx.font = "8px monospace";
-                ctx.fillText((i * gridSpacing).toString(), 2, y - 2);
-            }
-        }
-    }
-    
-    // Draw grid in collapsed mode - PROPERLY SCALED
-    function drawCollapsedGrid(centerX, centerY) {
-        const gridSpacing = CONFIG.GRID.SPACING || 2;  // World grid spacing (2 units)
-        const pixelSpacing = config.gridSize;          // Pixel grid spacing (20 pixels)
-        const scale = pixelSpacing / gridSpacing;      // 10 pixels per world unit
-        
         // Calculate total offset in pixels based on player position
-        // Grid moves opposite to player movement (negative scale)
+        // Grid moves opposite to player movement
         const totalOffsetX = -playerPos.x * scale;
         const totalOffsetZ = -playerPos.z * scale;
         
-        // Calculate starting positions for seamless grid looping
-        // Ensures the offset wraps between 0 and pixelSpacing
+        // Calculate starting positions for grid lines
         let startX = (totalOffsetX % pixelSpacing + pixelSpacing) % pixelSpacing;
         let startY = (totalOffsetZ % pixelSpacing + pixelSpacing) % pixelSpacing;
         
@@ -273,47 +212,43 @@ const MapSystem = (function() {
             ctx.stroke();
         }
         
+        // Reset alpha
+        ctx.globalAlpha = 1.0;
+        
+        // Debug logging of grid offsets
         if (DEBUG && frameCounter % 60 === 0) {
             console.log(`[MAP] Grid offset: X=${startX.toFixed(1)}, Z=${startY.toFixed(1)}`);
+            console.log(`[MAP] Player position: X=${playerPos.x.toFixed(1)}, Z=${playerPos.z.toFixed(1)}`);
         }
     }
     
-    // Draw points of interest - PROPERLY SCALED
+    // Draw points of interest
     function drawPoints() {
         if (!ctx || !mapCanvas) return;
         
         const centerX = mapCanvas.width / 2;
         const centerY = mapCanvas.height / 2;
-        const gridSpacing = CONFIG.GRID.SPACING || 2; // World grid spacing (2 units)
-        const pixelSpacing = config.gridSize;         // Pixel grid spacing (20 pixels)
-        const scale = pixelSpacing / gridSpacing;     // 10 pixels per world unit
+        const gridSpacing = CONFIG.GRID.SPACING || 2;
+        const pixelSpacing = config.gridSize;
+        const scale = pixelSpacing / gridSpacing;
         
         points.forEach(point => {
-            let x, y;
-            
-            if (!isCollapsed) {
-                // In expanded mode, points have fixed positions on grid
-                x = centerX + point.x * scale;
-                y = centerY + point.z * scale;
-            } else {
-                // In collapsed mode, points move relative to player
-                // This is key - the relative position calculation with proper scaling
-                x = centerX + (point.x - playerPos.x) * scale;
-                y = centerY + (point.z - playerPos.z) * scale;
-            }
+            // Point position relative to player
+            const x = centerX + (point.x - playerPos.x) * scale;
+            const y = centerY + (point.z - playerPos.z) * scale;
             
             // Only draw if within view
             if (x > -20 && x < mapCanvas.width + 20 &&
                 y > -20 && y < mapCanvas.height + 20) {
-            
-            // Draw point
+                
+                // Draw point
                 ctx.fillStyle = point.color || "#ffffff";
                 ctx.beginPath();
                 ctx.arc(x, y, 3, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Draw label
-            if (point.label) {
+                if (point.label) {
                     ctx.fillStyle = "#ffffff";
                     ctx.font = "9px monospace";
                     ctx.fillText(point.label, x + 5, y + 3);
@@ -322,20 +257,16 @@ const MapSystem = (function() {
         });
     }
     
-    // Draw player marker - PROPERLY SCALED
+    // Draw player marker
     function drawPlayer() {
         if (!ctx || !mapCanvas) return;
         
         const centerX = mapCanvas.width / 2;
         const centerY = mapCanvas.height / 2;
-        const gridSpacing = CONFIG.GRID.SPACING || 2; // World grid spacing (2 units)
-        const pixelSpacing = config.gridSize;         // Pixel grid spacing (20 pixels)
-        const scale = pixelSpacing / gridSpacing;     // 10 pixels per world unit
         
-        // In collapsed mode, player is always at center
-        // In expanded mode, player moves on the grid with proper scaling
-        const x = !isCollapsed ? centerX + playerPos.x * scale : centerX;
-        const y = !isCollapsed ? centerY + playerPos.z * scale : centerY;
+        // Player is always at center in this simplified map
+        const x = centerX;
+        const y = centerY;
         
         // Draw player triangle
         ctx.fillStyle = config.playerColor;
@@ -379,11 +310,7 @@ const MapSystem = (function() {
     // Remove a point from the map
     function removePoint(x, z) {
         const initialLength = points.length;
-        
-        points = points.filter(point => 
-            !(point.x === x && point.z === z)
-        );
-        
+        points = points.filter(point => !(point.x === x && point.z === z));
         needsRedraw = true;
         return points.length < initialLength;
     }
@@ -392,50 +319,6 @@ const MapSystem = (function() {
     function clearPoints() {
         points = [];
         needsRedraw = true;
-    }
-    
-    // Show map
-    function show() {
-        if (mapContainer) {
-            mapContainer.style.display = "block";
-            needsRedraw = true;
-        }
-    }
-    
-    // Hide map
-    function hide() {
-        if (mapContainer) {
-            mapContainer.style.display = "none";
-        }
-    }
-    
-    // Check if map is collapsed
-    function isMapCollapsed() {
-        return isCollapsed;
-    }
-    
-    // Set map data (compatibility function)
-    function setMapData(data) {
-        if (data && data.points) {
-            // Clear existing points
-            points = [];
-            
-            // Add new points
-            if (Array.isArray(data.points)) {
-                data.points.forEach(point => {
-                    addPoint(point.x, point.z, {
-                        color: point.color,
-                        label: point.label
-                    });
-                });
-            }
-        }
-        needsRedraw = true;
-    }
-    
-    // Get map data (compatibility function)
-    function getMapData() {
-        return { points: points };
     }
     
     // Test function - for debugging
@@ -467,19 +350,13 @@ const MapSystem = (function() {
     // Initialize when the DOM is ready
     document.addEventListener('DOMContentLoaded', init);
     
-    // Public API - only expose what's needed
+    // Public API
     return {
         init,
         updatePlayerPosition,
         addPoint,
         removePoint,
         clearPoints,
-        setMapData,
-        getMapData,
-        toggle: toggleMap,
-        isCollapsed: isMapCollapsed,
-        show,
-        hide,
         test: testMove
     };
 })(); 
