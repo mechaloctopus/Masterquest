@@ -271,14 +271,33 @@ const App = (function() {
     function initializeCollisionSystem() {
         try {
             if (window.CollisionSystem) {
-                CollisionSystem.init(state.scene, state.systems.camera);
-                Logger.log("> COLLISION SYSTEM INITIALIZED");
-                state.systems.collision = true;
+                // Make sure we pass the camera and scene directly
+                const success = CollisionSystem.init(state.scene, state.systems.camera);
+                
+                if (success) {
+                    console.log("Collision system initialized successfully");
+                    Logger.log("> COLLISION SYSTEM INITIALIZED");
+                    
+                    // Add a delayed test to ensure collision system is working
+                    setTimeout(() => {
+                        console.log("Running delayed collision system test");
+                        // Force a collision detection test to verify system is working
+                        if (CollisionSystem.testCollision) {
+                            CollisionSystem.testCollision();
+                        }
+                    }, 5000); // Run test after 5 seconds
+                    
+                    state.systems.collision = true;
+                } else {
+                    console.error("Collision system init returned false");
+                    Logger.error("> COLLISION SYSTEM INIT FAILED");
+                }
             } else {
                 console.error("CollisionSystem is not defined globally");
                 Logger.error("> COLLISION SYSTEM NOT FOUND");
             }
         } catch (e) {
+            console.error("Error initializing collision system:", e);
             Logger.error(`Collision system initialization failed: ${e.message}`);
         }
     }
@@ -845,23 +864,41 @@ const App = (function() {
     
     // Update player position for entities
     function updatePlayerPositionForEntities() {
-        if (state.systems.camera && window.EventSystem) {
-            const camera = state.systems.camera;
-            const position = camera.position;
-            
-            // Debug logging - do this only occasionally to avoid console spam
-            if (Math.random() < 0.01) { // 1% chance each frame
-                console.log("Emitting player.position event", {
-                    position: { x: position.x, y: position.y, z: position.z },
-                    rotation: camera.rotation.y
-                });
-            }
-            
+        // Always try to get the camera, even if state.systems.camera might be null
+        const camera = state.systems.camera;
+        
+        if (!camera) {
+            console.error("Camera not available for position updates");
+            return;
+        }
+        
+        const position = camera.position;
+        
+        // Debug logging - occasionally
+        if (Math.random() < 0.01) { // 1% chance each frame
+            console.log("Emitting player.position event", {
+                position: { x: position.x, y: position.y, z: position.z },
+                rotation: camera.rotation.y
+            });
+        }
+        
+        // Don't check EventSystem availability - call entity systems directly if needed
+        if (window.EventSystem) {
             // Emit player position event for NPC and Foe proximity checks
             EventSystem.emit('player.position', {
                 position: { x: position.x, y: position.y, z: position.z },
                 rotation: camera.rotation.y
             });
+        } else {
+            console.error("EventSystem not available for player position updates");
+            
+            // Try direct collision detection as a fallback
+            if (window.CollisionSystem && CollisionSystem.checkCollisions) {
+                CollisionSystem.checkCollisions({
+                    position: { x: position.x, y: position.y, z: position.z },
+                    rotation: camera.rotation.y
+                });
+            }
         }
     }
     
