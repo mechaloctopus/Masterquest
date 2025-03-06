@@ -501,34 +501,30 @@ window.EntitySystem = (function() {
             new BABYLON.ExecuteCodeAction(
                 BABYLON.ActionManager.OnPickTrigger,
                 function() {
-                    // Create a distinctive message that stands out in the console
+                    // Simple, direct message for the on-screen console
                     const entityType = entity.type === ENTITY_TYPES.NPC ? 'NPC' : 'FOE';
-                    const message = `>>> ${entityType} INTERACTION: Hello, I am ${entity.name} <<<`;
+                    const message = `${entityType} clicked: Hello, I am ${entity.name}`;
                     
-                    // Make sure the Logger is initialized
+                    // Ensure the on-screen console is visible
+                    const logElement = document.getElementById('log');
+                    const logToggle = document.getElementById('logToggle');
+                    
+                    if (logElement && logElement.classList.contains('collapsed')) {
+                        logElement.classList.remove('collapsed');
+                        if (logToggle) {
+                            logToggle.textContent = '▼';
+                        }
+                    }
+                    
+                    // Use Logger to display message in the on-screen console
                     if (window.Logger) {
-                        // Force display of message in the on-screen console
+                        // Add message to the visible on-screen console
                         Logger.log(message);
                         
-                        // Also log a debug message in case the Logger isn't working properly
-                        console.log("[ENTITY CLICK]", message);
-                        
-                        // Ensure the log is scrolled to show this new message
+                        // Make sure it's scrolled into view
                         if (Logger.forceScrollToBottom) {
                             Logger.forceScrollToBottom();
                         }
-                        
-                        // Highlight the entity when clicked
-                        highlightEntity(entity, true);
-                        setTimeout(() => {
-                            // Remove highlight after a short delay unless player is still nearby
-                            if (!entity.isNearby) {
-                                highlightEntity(entity, false);
-                            }
-                        }, 2000);
-                    } else {
-                        // Fallback to console if Logger not available
-                        console.log("[ENTITY SYSTEM] Logger not available, using console:", message);
                     }
                     
                     // If it's an NPC, also start interaction
